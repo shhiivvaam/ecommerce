@@ -9,7 +9,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import axios from "axios";
+import { api } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 const formSchema = z.object({
     email: z.string().email("Invalid email address"),
@@ -26,12 +27,13 @@ export default function LoginPage() {
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            const { data } = await axios.post("http://localhost:3001/api/auth/login", values);
+            const { data } = await api.post("/auth/login", values);
             login(data.user, data.access_token);
+            toast.success("Successfully logged in!");
             router.push("/");
         } catch (error: any) {
             console.error(error);
-            alert(error.response?.data?.message || "Login failed. Please check your credentials.");
+            toast.error(error.response?.data?.message || "Login failed. Please check your credentials.");
         }
     };
 

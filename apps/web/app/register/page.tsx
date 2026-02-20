@@ -9,7 +9,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import axios from "axios";
+import { api } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 const formSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -27,12 +28,13 @@ export default function RegisterPage() {
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            const { data } = await axios.post("http://localhost:3001/api/auth/register", values);
+            const { data } = await api.post("/auth/register", values);
             login(data.user, data.access_token);
+            toast.success("Account created successfully!");
             router.push("/");
         } catch (error: any) {
             console.error(error);
-            alert(error.response?.data?.message || "Registration failed. Try a different email.");
+            toast.error(error.response?.data?.message || "Registration failed. Try a different email.");
         }
     };
 
