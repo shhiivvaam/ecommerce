@@ -42,7 +42,7 @@ export default function LoginPage() {
                 <div className="relative z-20 mt-auto">
                     <blockquote className="space-y-2">
                         <p className="text-lg">
-                            "This e-commerce platform has completely transformed how our team buys equipment. It's fast, beautifully designed, and highly reliable."
+                            &quot;This e-commerce platform has completely transformed how our team buys equipment. It&apos;s fast, beautifully designed, and highly reliable.&quot;
                         </p>
                         <footer className="text-sm">Sofia Davis</footer>
                     </blockquote>
@@ -77,7 +77,7 @@ export default function LoginPage() {
                         </Button>
                     </form>
                     <p className="px-8 text-center text-sm text-muted-foreground">
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?{" "}
                         <Link href="/register" className="underline underline-offset-4 hover:text-primary">
                             Sign up
                         </Link>
