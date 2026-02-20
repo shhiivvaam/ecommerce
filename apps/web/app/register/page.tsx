@@ -12,11 +12,12 @@ import { motion } from "framer-motion";
 import axios from "axios";
 
 const formSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-export default function LoginPage() {
+export default function RegisterPage() {
     const login = useAuthStore(state => state.login);
     const router = useRouter();
 
@@ -26,12 +27,12 @@ export default function LoginPage() {
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            const { data } = await axios.post("http://localhost:3001/api/auth/login", values);
+            const { data } = await axios.post("http://localhost:3001/api/auth/register", values);
             login(data.user, data.access_token);
             router.push("/");
         } catch (error: any) {
             console.error(error);
-            alert(error.response?.data?.message || "Login failed. Please check your credentials.");
+            alert(error.response?.data?.message || "Registration failed. Try a different email.");
         }
     };
 
@@ -46,9 +47,9 @@ export default function LoginPage() {
                 <div className="relative z-20 mt-auto">
                     <blockquote className="space-y-2">
                         <p className="text-lg">
-                            &quot;This e-commerce platform has completely transformed how our team buys equipment. It&apos;s fast, beautifully designed, and highly reliable.&quot;
+                            &quot;Joining this platform was the best decision for our company. We now get access to the best premium products across the globe.&quot;
                         </p>
-                        <footer className="text-sm">Sofia Davis</footer>
+                        <footer className="text-sm">Alex Johnson</footer>
                     </blockquote>
                 </div>
             </div>
@@ -59,31 +60,33 @@ export default function LoginPage() {
                     className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]"
                 >
                     <div className="flex flex-col space-y-2 text-center">
-                        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-                        <p className="text-sm text-muted-foreground">Enter your email and password to sign in</p>
+                        <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
+                        <p className="text-sm text-muted-foreground">Enter your details below to create your account</p>
                     </div>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">Full Name</label>
+                            <Input {...register("name")} type="text" placeholder="John Doe" />
+                            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                        </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium leading-none">Email</label>
                             <Input {...register("email")} type="email" placeholder="m@example.com" />
                             {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
                         </div>
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium leading-none">Password</label>
-                                <Link href="#" className="text-xs text-primary hover:underline">Forgot password?</Link>
-                            </div>
+                            <label className="text-sm font-medium leading-none">Password</label>
                             <Input {...register("password")} type="password" />
                             {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
                         </div>
                         <Button disabled={isSubmitting} type="submit" className="w-full">
-                            {isSubmitting ? "Signing in..." : "Sign In"}
+                            {isSubmitting ? "Creating account..." : "Sign Up"}
                         </Button>
                     </form>
                     <p className="px-8 text-center text-sm text-muted-foreground">
-                        Don&apos;t have an account?{" "}
-                        <Link href="/register" className="underline underline-offset-4 hover:text-primary">
-                            Sign up
+                        Already have an account?{" "}
+                        <Link href="/login" className="underline underline-offset-4 hover:text-primary">
+                            Sign in
                         </Link>
                     </p>
                 </motion.div>
