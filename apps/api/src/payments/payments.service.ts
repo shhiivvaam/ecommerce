@@ -1,17 +1,51 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import Stripe from 'stripe';
 
 @Injectable()
 export class PaymentsService {
-    constructor(private prisma: PrismaService) { }
+    private stripe: Stripe;
 
-    async createPaymentIntent(orderId: string, amount: number) {
-        // Mock Stripe Intention
-        return {
-            clientSecret: `pi_mock_secret_${orderId}_${Date.now()}`,
-            amount
-        };
+    constructor(private prisma: PrismaService) {
+        // Cast options to any to satisfy specific stripe version type constraints temporarily
+        const options: any = { apiVersion: '2023-10-16' };
+        this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', options);
+    }
+
+    async createCheckoutSession(orderId: string, items: any[], successUrl: string, cancelUrl: string) {
+        const lineItems = items.map(item => ({
+            price_data: {
+                currency: 'usd',
+                product_data: {
+                    name: item.product?.title || item.title || 'Product Item',
+                },
+                unit_amount: Math.round(item.price * 100),
+            },
+            quantity: item.quantity,
+        }));
+
+        const session = await this.stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: lineItems,
+            mode: 'payment',
+            success_url: successUrl,
+            cancel_url: cancelUrl,
+            metadata: {
+                orderId: orderId,
+            }
+        });
+
+        return { url: session.url, sessionId: session.id };
+    }
+
+    async constructEvent(payload: any, signature: string) {
+        const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test';
+        try {
+            return this.stripe.webhooks.constructEvent(payload, signature, endpointSecret);
+        } catch (err: any) {
+            throw new BadRequestException(`Webhook Error: ${err.message}`);
+        }
     }
 
     async verifyPayment(orderId: string, transactionId: string, method: PaymentMethod = PaymentMethod.STRIPE) {
