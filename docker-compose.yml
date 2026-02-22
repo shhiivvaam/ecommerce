@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001" # localhost only — public traffic goes through Nginx
 
     environment:
       NODE_ENV: production
@@ -72,3 +72,14 @@ services:
 
     security_opt:
       - no-new-privileges:true
+
+    # Resource limits — sized for t3.micro (1 GB RAM, 2 vCPU)
+    # Hard cap: 512m — leaves ~512m for OS + Nginx
+    # Reservation: 256m soft limit — scheduler hint, not a hard floor
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+        reservations:
+          memory: 256m
