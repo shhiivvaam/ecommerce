@@ -33,7 +33,8 @@ RUN echo "=== dist/ contents ==" && find apps/api/dist -type f -name '*.js' | he
 # ─────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
-RUN apk add --no-cache tini
+# tini is needed for proper signal handling, openssl is needed natively by Prisma on Alpine
+RUN apk add --no-cache tini openssl
 
 WORKDIR /app
 
@@ -45,8 +46,8 @@ COPY apps/api/prisma ./apps/api/prisma/
 # Install ONLY production dependencies at the root
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi && npm cache clean --force
 
-# Generate Prisma client for production image (natively runs since prisma is in dependencies)
-RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
+# Generate Prisma client for production image (execute binary directly from workspace node_modules)
+RUN ./apps/api/node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
 
 # Copy compiled output from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
