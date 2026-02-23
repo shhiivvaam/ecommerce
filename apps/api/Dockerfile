@@ -19,8 +19,8 @@ COPY . .
 # Install ALL dependencies at the root
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Generate Prisma client
-RUN npx -y prisma generate --schema=apps/api/prisma/schema.prisma
+# Generate Prisma client natively (prisma is now in dependencies)
+RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
 
 # Compile TypeScript using npm workspace command
 RUN npm run build -w apps/api
@@ -45,8 +45,8 @@ COPY apps/api/prisma ./apps/api/prisma/
 # Install ONLY production dependencies at the root
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi && npm cache clean --force
 
-# Install Prisma globally just to generate the client and then remove it to save space
-RUN npm install -g prisma@6.0.0 && prisma generate --schema=apps/api/prisma/schema.prisma && npm uninstall -g prisma
+# Generate Prisma client for production image (natively runs since prisma is in dependencies)
+RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
 
 # Copy compiled output from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
