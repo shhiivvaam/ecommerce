@@ -53,7 +53,11 @@ describe('OrdersService', () => {
   });
 
   it('should create an order successfully', async () => {
-    const orderDto = { totalAmount: 100, items: [{ productId: 'prod-1', quantity: 1, price: 100 }], addressId: 'address-1' };
+    const orderDto = {
+      totalAmount: 100,
+      items: [{ productId: 'prod-1', quantity: 1, price: 100 }],
+      addressId: 'address-1',
+    };
     const order = await service.create(
       'user-1',
       orderDto as unknown as CreateOrderDto,

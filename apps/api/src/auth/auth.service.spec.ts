@@ -20,7 +20,7 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: { sign: jest.fn().mockReturnValue('token') },
-        }
+        },
       ],
     }).compile();
 

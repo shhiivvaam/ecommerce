@@ -26,7 +26,7 @@ export class PrismaClientExceptionFilter implements ExceptionFilter {
     switch (exception.code) {
       case 'P2002': {
         status = HttpStatus.CONFLICT;
-        const targetMeta = exception.meta?.target as any;
+        const targetMeta = exception.meta?.target;
         const target = Array.isArray(targetMeta)
           ? targetMeta.join(', ')
           : typeof targetMeta === 'string'

@@ -34,7 +34,8 @@ import { validateEnv } from './config/env.config';
       isGlobal: true,
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const url = configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+        const url =
+          configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
         const store = await redisStore({
           url: url,
           ttl: 60 * 60 * 1000, // Default 1 hour TTL
@@ -61,4 +62,4 @@ import { validateEnv } from './config/env.config';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -6,8 +6,9 @@ import {
   Headers,
   BadRequestException,
   UseGuards,
-  RawBodyRequest,
 } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -72,13 +73,17 @@ export class PaymentsController {
   })
   @ApiBadRequestResponse({ description: 'Invalid Stripe webhook signature' })
   async handleStripeWebhook(
-    @Req() req: { rawBody?: Buffer; body: any },
+    @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,
   ) {
     let event;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const rawBody = req.rawBody || req.body;
-      event = await this.paymentsService.constructEvent(rawBody, signature);
+      event = this.paymentsService.constructEvent(
+        rawBody as string | Buffer,
+        signature,
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown Error';
       throw new BadRequestException(`Webhook Error: ${msg}`);

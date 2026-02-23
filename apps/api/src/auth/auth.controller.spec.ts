@@ -11,9 +11,13 @@ describe('AuthController', () => {
       providers: [
         {
           provide: AuthService,
-          useValue: { validateUser: jest.fn(), login: jest.fn(), register: jest.fn() },
-        }
-      ]
+          useValue: {
+            validateUser: jest.fn(),
+            login: jest.fn(),
+            register: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
