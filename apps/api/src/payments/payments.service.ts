@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import Stripe from 'stripe';
@@ -7,14 +8,30 @@ import Stripe from 'stripe';
 export class PaymentsService {
     private stripe: Stripe;
 
-    constructor(private prisma: PrismaService) {
-        // Cast options to any to satisfy specific stripe version type constraints temporarily
-        const options: any = { apiVersion: '2023-10-16' };
-        this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', options);
+    constructor(
+        private prisma: PrismaService,
+        private configService: ConfigService,
+    ) {
+        this.stripe = new Stripe(
+            this.configService.get<string>('STRIPE_SECRET_KEY') || 'sk_test_mock',
+            {
+                apiVersion: '2023-10-16' as any,
+            } as Stripe.StripeConfig,
+        );
     }
 
-    async createCheckoutSession(orderId: string, items: any[], successUrl: string, cancelUrl: string) {
-        const lineItems = items.map(item => ({
+    async createCheckoutSession(
+        orderId: string,
+        items: {
+            product?: { title?: string };
+            title?: string;
+            price: number;
+            quantity: number;
+        }[],
+        successUrl: string,
+        cancelUrl: string,
+    ) {
+        const lineItems = items.map((item) => ({
             price_data: {
                 currency: 'usd',
                 product_data: {
@@ -33,23 +50,44 @@ export class PaymentsService {
             cancel_url: cancelUrl,
             metadata: {
                 orderId: orderId,
-            }
+            },
         });
 
         return { url: session.url, sessionId: session.id };
     }
 
-    async constructEvent(payload: any, signature: string) {
-        const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test';
+    constructEvent(payload: string | Buffer, signature: string) {
+        const endpointSecret =
+            this.configService.get<string>('STRIPE_WEBHOOK_SECRET') || 'whsec_test';
         try {
-            return this.stripe.webhooks.constructEvent(payload, signature, endpointSecret);
-        } catch (err: any) {
-            throw new BadRequestException(`Webhook Error: ${err.message}`);
+            return this.stripe.webhooks.constructEvent(
+                payload,
+                signature,
+                endpointSecret,
+            );
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown Error';
+            throw new BadRequestException(`Webhook Error: ${msg}`);
         }
     }
 
-    async verifyPayment(orderId: string, transactionId: string, method: PaymentMethod = PaymentMethod.STRIPE) {
-        const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    async verifyPayment(
+        orderId: string,
+        transactionId: string,
+        method: PaymentMethod = PaymentMethod.STRIPE,
+    ) {
+        // Check for idempotency: if payment already exists for this order, ignore
+        const existingPayment = await this.prisma.payment.findUnique({
+            where: { orderId },
+        });
+
+        if (existingPayment) {
+            return existingPayment;
+        }
+
+        const order = await this.prisma.order.findUnique({
+            where: { id: orderId },
+        });
         if (!order) throw new BadRequestException('Order not found');
 
         const payment = await this.prisma.payment.create({
@@ -58,13 +96,13 @@ export class PaymentsService {
                 amount: order.totalAmount,
                 method,
                 status: PaymentStatus.COMPLETED,
-                transactionId
-            }
+                transactionId,
+            },
         });
 
         await this.prisma.order.update({
             where: { id: orderId },
-            data: { status: 'PROCESSING' }
+            data: { status: 'PROCESSING' },
         });
 
         return payment;

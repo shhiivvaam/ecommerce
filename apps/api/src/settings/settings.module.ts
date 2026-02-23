@@ -8,4 +8,4 @@ import { SettingsController } from './settings.controller';
   providers: [SettingsService],
   exports: [SettingsService],
 })
-export class SettingsModule { }
+export class SettingsModule {}

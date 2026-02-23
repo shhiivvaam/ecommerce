@@ -30,6 +30,9 @@ model User {
   isVerified Boolean    @default(false)
   avatar     String?
   
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+  
   cart       Cart?
   orders     Order[]
   reviews    Review[]
@@ -38,6 +41,7 @@ model User {
   
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
 }
 
 model Category {
@@ -50,6 +54,7 @@ model Category {
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 }
 
 model Product {
@@ -75,6 +80,7 @@ model Product {
   stock       Int        @default(0)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
 }
 
 model Variant {
@@ -150,17 +156,19 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  variantId String?
-  variant   Variant? @relation(fields: [variantId], references: [id])
-  quantity  Int
-  price     Float
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  variantId    String?
+  variant      Variant? @relation(fields: [variantId], references: [id])
+  quantity     Int
+  price        Float
+  productTitle String
+  sku          String?
   
-  createdAt DateTime @default(now())
+  createdAt    DateTime @default(now())
 }
 
 enum PaymentStatus {

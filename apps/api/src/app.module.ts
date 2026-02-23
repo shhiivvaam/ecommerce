@@ -1,4 +1,9 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -10,10 +15,34 @@ import { CartModule } from './cart/cart.module';
 import { SettingsModule } from './settings/settings.module';
 import { StorageModule } from './storage/storage.module';
 import { EmailModule } from './email/email.module';
+import { validateEnv } from './config/env.config';
 
 @Module({
   controllers: [HealthController],
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true, // Making it global so we don't have to import ConfigModule everywhere
+      validate: validateEnv,
+    }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 60 seconds
+        limit: 100, // 100 requests per IP per minute
+      },
+    ]),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        const url = configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+        const store = await redisStore({
+          url: url,
+          ttl: 60 * 60 * 1000, // Default 1 hour TTL
+        });
+        return { store };
+      },
+      inject: [ConfigService],
+    }),
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -23,7 +52,13 @@ import { EmailModule } from './email/email.module';
     CartModule,
     SettingsModule,
     StorageModule,
-    EmailModule
+    EmailModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule { }
