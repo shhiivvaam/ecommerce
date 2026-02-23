@@ -1,9 +1,6 @@
 {
     "version": 2,
     "name": "ecommerce-web",
-    "buildCommand": "npm run build",
-    "outputDirectory": ".next",
-    "installCommand": "npm install",
     "framework": "nextjs",
     "regions": [
         "iad1"
