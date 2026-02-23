@@ -1,8 +1,0 @@
-error TS6059: File 'C:/Users/lifes/Documents/Projects/E-Commerce/apps/api/prisma/seed.ts' is not under 'rootDir' 'C:/Users/lifes/Documents/Projects/E-Commerce/apps/api/src'. 'rootDir' is expected to contain all source files.
-  The file is in the program because:
-    Matched by default include pattern '**/*'
-  File is CommonJS module because 'C:/Users/lifes/Documents/Projects/E-Commerce/apps/api/package.json' does not have field "type"
-error TS6059: File 'C:/Users/lifes/Documents/Projects/E-Commerce/apps/api/test/app.e2e-spec.ts' is not under 'rootDir' 'C:/Users/lifes/Documents/Projects/E-Commerce/apps/api/src'. 'rootDir' is expected to contain all source files.
-  The file is in the program because:
-    Matched by default include pattern '**/*'
-  File is CommonJS module because 'C:/Users/lifes/Documents/Projects/E-Commerce/apps/api/package.json' does not have field "type"
