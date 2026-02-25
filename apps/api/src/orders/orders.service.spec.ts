@@ -36,7 +36,9 @@ describe('OrdersService', () => {
         }),
       },
       product: {
-        findMany: jest.fn().mockResolvedValue([{ id: 'prod-1', price: 100, stock: 10 }]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'prod-1', price: 100, stock: 10 }]),
         update: jest.fn().mockResolvedValue({ id: 'prod-1', stock: 9 }),
       },
       $transaction: jest.fn().mockImplementation(async (cb) => cb(prismaMock)),

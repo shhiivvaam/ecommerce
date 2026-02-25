@@ -24,7 +24,10 @@ describe('AuthService', () => {
         },
         {
           provide: EmailService,
-          useValue: { sendVerificationEmail: jest.fn(), sendPasswordReset: jest.fn() },
+          useValue: {
+            sendVerificationEmail: jest.fn(),
+            sendPasswordReset: jest.fn(),
+          },
         },
       ],
     }).compile();
