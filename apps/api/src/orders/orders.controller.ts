@@ -34,7 +34,7 @@ import {
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @ApiOperation({

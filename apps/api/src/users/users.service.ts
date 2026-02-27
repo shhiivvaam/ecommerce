@@ -9,7 +9,7 @@ import { RoleType } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
@@ -52,11 +52,11 @@ export class UsersService {
     const skip = (page - 1) * limit;
     const where = search
       ? {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' as const } },
-          { email: { contains: search, mode: 'insensitive' as const } },
-        ],
-      }
+          OR: [
+            { name: { contains: search, mode: 'insensitive' as const } },
+            { email: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }
       : {};
 
     const [users, total] = await Promise.all([
@@ -98,7 +98,9 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
 
     // Find the role record
-    const role = await this.prisma.role.findFirst({ where: { name: roleType } });
+    const role = await this.prisma.role.findFirst({
+      where: { name: roleType },
+    });
     if (!role) throw new BadRequestException(`Role ${roleType} not found`);
 
     const updated = await this.prisma.user.update({

@@ -8,8 +8,35 @@ import {
   MinLength,
   MaxLength,
   IsIn,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export class CreateVariantDto {
+  @ApiPropertyOptional({ example: 'L' })
+  @IsString()
+  @IsOptional()
+  size?: string;
+
+  @ApiPropertyOptional({ example: 'Black' })
+  @IsString()
+  @IsOptional()
+  color?: string;
+
+  @ApiPropertyOptional({ example: 'WH-100-L' })
+  @IsString()
+  @IsOptional()
+  sku?: string;
+
+  @ApiProperty({ example: 50 })
+  @IsNumber()
+  @Min(0)
+  stock: number;
+
+  @ApiProperty({ example: 0, description: 'Price difference from base price' })
+  @IsNumber()
+  priceDiff: number;
+}
 
 export class CreateProductDto {
   @ApiProperty({ example: 'Wireless Headphones', description: 'Product title' })
@@ -60,6 +87,12 @@ export class CreateProductDto {
   @IsOptional()
   @IsString({ each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({ type: [CreateVariantDto] })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateVariantDto)
+  variants?: CreateVariantDto[];
 }
 
 export class UpdateProductDto {
@@ -108,8 +141,13 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString({ each: true })
   tags?: string[];
-}
 
+  @ApiPropertyOptional({ type: [CreateVariantDto] })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateVariantDto)
+  variants?: CreateVariantDto[];
+}
 
 export class ProductQueryDto {
   @ApiPropertyOptional({ example: 'headphones', description: 'Search by name' })

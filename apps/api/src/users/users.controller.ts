@@ -26,7 +26,7 @@ import { RoleType } from '@prisma/client';
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   // ─── Current user endpoints ───────────────────────────────────
   @Get('me')
@@ -106,10 +106,7 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change user role (admin)' })
   @ApiParam({ name: 'id', description: 'User ID' })
-  changeRole(
-    @Param('id') id: string,
-    @Body('role') role: RoleType,
-  ) {
+  changeRole(@Param('id') id: string, @Body('role') role: RoleType) {
     return this.usersService.changeRole(id, role);
   }
 

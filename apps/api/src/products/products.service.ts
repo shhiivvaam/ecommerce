@@ -13,7 +13,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private settings: SettingsService,
-  ) { }
+  ) {}
 
   private generateSlug(title: string): string {
     return (
@@ -45,6 +45,17 @@ export class ProductsService {
       stock: data.stock ?? 0,
       gallery: data.gallery ? { set: data.gallery } : { set: [] },
       tags: data.tags ? { set: data.tags } : { set: [] },
+      variants: data.variants
+        ? {
+            create: data.variants.map((v) => ({
+              size: v.size,
+              color: v.color,
+              sku: v.sku,
+              stock: v.stock,
+              priceDiff: v.priceDiff,
+            })),
+          }
+        : undefined,
     };
 
     if (data.categoryId) {
@@ -150,6 +161,18 @@ export class ProductsService {
       stock: data.stock,
       gallery: data.gallery ? { set: data.gallery } : undefined,
       tags: data.tags ? { set: data.tags } : undefined,
+      variants: data.variants
+        ? {
+            deleteMany: {},
+            create: data.variants.map((v) => ({
+              size: v.size,
+              color: v.color,
+              sku: v.sku,
+              stock: v.stock,
+              priceDiff: v.priceDiff,
+            })),
+          }
+        : undefined,
     };
 
     if (data.title && data.title !== product.title) {

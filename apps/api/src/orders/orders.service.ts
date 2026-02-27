@@ -5,12 +5,16 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { OrderStatus } from '@prisma/client';
 import { CreateOrderDto } from './dto/order.dto';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
 
   async create(userId: string, data: CreateOrderDto) {
     if (!data.items || data.items.length === 0) {
@@ -97,7 +101,7 @@ export class OrdersService {
         throw new BadRequestException('Address could not be resolved');
       }
 
-      return tx.order.create({
+      const order = await tx.order.create({
         data: {
           userId,
           status: OrderStatus.PENDING,
@@ -109,8 +113,15 @@ export class OrdersService {
             create: orderItemsData,
           },
         },
-        include: { items: true },
+        include: { items: true, user: true },
       });
+
+      // Send confirmation email (async call, don't wait for it if not critical, but here we can)
+      this.emailService
+        .sendOrderConfirmation(order.user.email, order.id, order.totalAmount)
+        .catch((err) => console.error('Failed to send order email:', err));
+
+      return order;
     });
   }
 
