@@ -34,7 +34,7 @@ import {
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   @Post()
   @ApiOperation({
@@ -122,6 +122,22 @@ export class OrdersController {
   @ApiNotFoundResponse({ description: 'Order not found' })
   updateStatus(@Param('id') id: string, @Body('status') status: OrderStatus) {
     return this.ordersService.updateStatus(id, status);
+  }
+
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  @ApiOperation({
+    summary: 'Get all orders (admin)',
+    description: 'Retrieve all orders in the system. Restricted to Admin roles.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all orders',
+    type: [OrderResponseDto],
+  })
+  findAllAdmin() {
+    return this.ordersService.findAll();
   }
 
   @Patch(':id/cancel')

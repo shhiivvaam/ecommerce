@@ -14,7 +14,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   async create(userId: string, data: CreateOrderDto) {
     if (!data.items || data.items.length === 0) {
@@ -150,6 +150,16 @@ export class OrdersService {
     return this.prisma.order.update({
       where: { id },
       data: { status },
+    });
+  }
+
+  async findAll() {
+    return this.prisma.order.findMany({
+      include: {
+        user: { select: { name: true, email: true } },
+        items: true
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
