@@ -1,5 +1,5 @@
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
-import { Logger } from '@nestjs/common';
+import { Logger, ForbiddenException } from '@nestjs/common';
 
 export const getCorsConfig = (): CorsOptions => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -10,13 +10,23 @@ export const getCorsConfig = (): CorsOptions => {
     throw new Error('FRONTEND_URL env var is required in production');
   }
 
+  // Support comma-separated FRONTEND_URLs
+  const envOrigins = (process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean);
+
   const productionOrigins: string[] = [
-    process.env.FRONTEND_URL, // e.g. https://reyva.vercel.app
-  ].filter(Boolean) as string[];
+    ...envOrigins,
+    'https://reyva.co.in',
+    'https://www.reyva.co.in',
+  ];
 
   const developmentOrigins: string[] = [
     'http://localhost:3000',
     'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
   ];
 
   const allowedOrigins = isProduction
@@ -35,7 +45,9 @@ export const getCorsConfig = (): CorsOptions => {
         callback(null, true);
       } else {
         logger.warn(`Blocked origin: ${requestOrigin}`);
-        callback(new Error(`Origin ${requestOrigin} not allowed by CORS`));
+        // Return null, false to avoid 500 error on preflight (let browser block it cleanly)
+        // or resolve with an explicit ForbiddenException.
+        callback(new ForbiddenException(`Origin ${requestOrigin} not allowed by CORS`), false);
       }
     },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
