@@ -24,43 +24,56 @@ interface Banner {
   title?: string;
   subtitle?: string;
 }
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+  const [storeMode, setStoreMode] = useState<{ mode: string; productId: string | null }>({ mode: 'multi', productId: null });
   const [products, setProducts] = useState<Product[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [activeBanner, setActiveBanner] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchTrendingProducts = async () => {
+    if (storeMode.mode === 'single' && storeMode.productId) {
+      router.push(`/products/${storeMode.productId}`);
+    }
+  }, [storeMode, router]);
+
+  useEffect(() => {
+    const fetchAll = async () => {
       try {
-        const { data } = await api.get('/products?limit=4');
-        const formattedProducts = data.products.map((p: { id: string; title: string; description: string; price: number; gallery: string[] }) => ({
+        const [settingsRes, trendingRes, bannersRes] = await Promise.all([
+          api.get('/settings').catch(() => ({ data: null })),
+          api.get('/products?limit=4').catch(() => ({ data: { products: [] } })),
+          api.get('/banners').catch(() => ({ data: [] })),
+        ]);
+
+        const settings = settingsRes.data;
+        if (settings?.storeMode === 'single' && settings?.singleProductId) {
+          // Redirect or transform into landing page
+          // For now, let's just mark it in state
+          setStoreMode({ mode: 'single', productId: settings.singleProductId });
+        }
+
+        const formattedProducts = trendingRes.data.products.map((p: any) => ({
           id: p.id,
           title: p.title,
           description: p.description,
           price: p.price,
-          image: p.gallery && p.gallery.length > 0 ? p.gallery[0] : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1000&auto=format&fit=crop",
+          image: p.gallery?.[0] || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1000&auto=format&fit=crop",
         }));
+
         setProducts(formattedProducts);
+        setBanners(bannersRes.data);
       } catch (error) {
-        console.error("Failed to fetch products:", error);
+        console.error("Failed to fetch initial data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchBanners = async () => {
-      try {
-        const { data } = await api.get('/banners');
-        setBanners(data);
-      } catch {
-        // Banners are optional — fail silently
-      }
-    };
-
-    fetchTrendingProducts();
-    fetchBanners();
+    fetchAll();
   }, []);
 
   // Auto-rotate banners every 5s

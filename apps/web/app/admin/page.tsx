@@ -19,20 +19,14 @@ export default function AdminOverview() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const [pRes, oRes] = await Promise.all([
-                    api.get('/products?limit=1'),
-                    api.get('/orders'),
-                ]);
-                const orders = oRes.data;
-                const revenue = orders.reduce((s: number, o: { totalAmount?: number }) => s + (o.totalAmount ?? 0), 0);
-                const pending = orders.filter((o: { status: string }) => o.status === "PENDING").length;
+                const { data } = await api.get('/admin/stats');
                 setStats({
-                    totalRevenue: revenue,
-                    totalOrders: orders.length,
-                    totalProducts: pRes.data.total,
-                    pendingOrders: pending,
+                    totalRevenue: data.totalRevenue,
+                    totalOrders: data.totalOrders,
+                    totalProducts: data.totalProducts,
+                    pendingOrders: data.statusCounts.find((sc: any) => sc.status === "PENDING")?._count || 0,
                 });
-                setRecentOrders(orders.slice(0, 5));
+                setRecentOrders(data.recentOrders);
             } catch (err) {
                 console.error("Failed to fetch admin stats", err);
             } finally {

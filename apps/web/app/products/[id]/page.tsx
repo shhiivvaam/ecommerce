@@ -9,6 +9,7 @@ import { ShoppingCart, Star, ShieldCheck, Truck, ArrowLeft, Send, Heart } from "
 import Link from "next/link";
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
+import { ProductCard } from "@/components/ProductCard";
 
 interface Variant {
     id: string;
@@ -34,6 +35,7 @@ interface Product {
 interface RelatedProduct {
     id: string;
     title: string;
+    description: string;
     price: number;
     discounted?: number;
     gallery: string[];
@@ -382,6 +384,27 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                     </div>
                 )}
             </section>
+
+            {relatedProducts.length > 0 && (
+                <section className="mt-20">
+                    <h2 className="text-2xl font-bold tracking-tight mb-8">You may also like</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {relatedProducts.map((p) => (
+                            <ProductCard
+                                key={p.id}
+                                product={{
+                                    id: p.id,
+                                    title: p.title,
+                                    description: p.description,
+                                    price: p.price,
+                                    discounted: p.discounted,
+                                    image: p.gallery?.[0] || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1000&auto=format&fit=crop",
+                                }}
+                            />
+                        ))}
+                    </div>
+                </section>
+            )}
         </div>
     );
 }

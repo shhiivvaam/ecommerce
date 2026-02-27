@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Search, Trash2, RefreshCw, Pencil } from "lucide-react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 interface Product {
@@ -63,9 +64,11 @@ export default function AdminProductsPage() {
                     <Button variant="outline" size="icon" onClick={() => fetchProducts(search)} title="Refresh">
                         <RefreshCw className="h-4 w-4" />
                     </Button>
-                    <Button className="gap-2 shrink-0">
-                        <Plus className="h-4 w-4" /> Add Product
-                    </Button>
+                    <Link href="/admin/products/new">
+                        <Button className="gap-2 shrink-0">
+                            <Plus className="h-4 w-4" /> Add Product
+                        </Button>
+                    </Link>
                 </div>
             </div>
 
@@ -118,7 +121,12 @@ export default function AdminProductsPage() {
                                             {p.stock === 0 ? "Out of stock" : p.stock <= 10 ? `Low (${p.stock})` : p.stock}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-right">
+                                    <td className="p-4 text-right flex justify-end gap-1">
+                                        <Link href={`/admin/products/${p.id}/edit`}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
                                         <Button
                                             variant="ghost"
                                             size="icon"
