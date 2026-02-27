@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Eye, EyeOff, Link as LinkIcon, Image as ImageIcon, Check, X } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Link as LinkIcon, Image as ImageIcon, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -37,7 +37,7 @@ export default function AdminBannersPage() {
         try {
             const { data } = await api.get('/banners/all');
             setBanners(data);
-        } catch (err) {
+        } catch {
             toast.error("Failed to fetch banners");
         } finally {
             setLoading(false);
@@ -71,7 +71,7 @@ export default function AdminBannersPage() {
             await api.delete(`/banners/${id}`);
             toast.success("Banner deleted");
             fetchBanners();
-        } catch (err) {
+        } catch {
             toast.error("Delete failed");
         }
     };
@@ -81,7 +81,7 @@ export default function AdminBannersPage() {
             await api.patch(`/banners/${banner.id}`, { isActive: !banner.isActive });
             fetchBanners();
             toast.success(`Banner ${!banner.isActive ? 'activated' : 'deactivated'}`);
-        } catch (err) {
+        } catch {
             toast.error("Status update failed");
         }
     };

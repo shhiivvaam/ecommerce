@@ -70,7 +70,8 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
-    const sanitized = users.map(({ password, ...u }) => u);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const sanitized = users.map(({ password: _, ...u }) => u);
     return { users: sanitized, total, page, limit };
   }
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { ProductCard } from "@/components/ProductCard";
 import { api } from "@/lib/api";
 import { Input } from "@/components/ui/input";
-import { Search, SlidersHorizontal, ChevronDown, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Product {

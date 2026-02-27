@@ -36,7 +36,7 @@ export class ProductsService {
     }
 
     // Map DTO 'name' to Prisma 'title', and auto-generate the required unique slug
-    const productData: any = {
+    const productData: Prisma.ProductCreateInput = {
       title: data.title,
       slug: this.generateSlug(data.title),
       description: data.description,
@@ -56,6 +56,7 @@ export class ProductsService {
             })),
           }
         : undefined,
+      category: { connect: { id: 'temp' } }, // Will be overwritten below
     };
 
     if (data.categoryId) {
