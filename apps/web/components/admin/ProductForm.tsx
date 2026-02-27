@@ -133,7 +133,7 @@ const [variants, setVariants] = useState<Variant[]>(initialData?.variants || [])
             const errorMessage = err && typeof err === 'object' && 'response' in err 
                 ? (err as { response?: { data?: { message?: string } } }).response?.data?.message 
                 : "Something went wrong";
-            toast.error(errorMessage);
+            toast.error(errorMessage || "Something went wrong");
         } finally {
             setLoading(false);
         }

@@ -17,14 +17,6 @@ interface Product {
   image: string;
 }
 
-interface Banner {
-  id: string;
-  imageUrl: string;
-  linkUrl?: string;
-  title?: string;
-  subtitle?: string;
-}
-
 export default function Home() {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
@@ -41,10 +33,9 @@ export default function Home() {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [settingsRes, productsRes, bannersRes] = await Promise.all([
+        const [settingsRes, productsRes] = await Promise.all([
           api.get('/settings').catch(() => ({ data: null })),
           api.get('/products?limit=8').catch(() => ({ data: { products: [] } })),
-          api.get('/banners').catch(() => ({ data: [] })),
         ]);
 
         const settings = settingsRes.data;
