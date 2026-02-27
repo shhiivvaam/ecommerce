@@ -14,7 +14,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
-  ) { }
+  ) {}
 
   async create(userId: string, data: CreateOrderDto) {
     if (!data.items || data.items.length === 0) {
@@ -158,7 +158,7 @@ export class OrdersService {
       include: {
         user: { select: { name: true, email: true } },
         items: true,
-        address: true
+        address: true,
       },
       orderBy: { createdAt: 'desc' },
     });

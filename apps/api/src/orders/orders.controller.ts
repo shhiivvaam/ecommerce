@@ -34,7 +34,7 @@ import {
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @ApiOperation({
@@ -129,7 +129,8 @@ export class OrdersController {
   @Roles(RoleType.ADMIN)
   @ApiOperation({
     summary: 'Get all orders (admin)',
-    description: 'Retrieve all orders in the system. Restricted to Admin roles.',
+    description:
+      'Retrieve all orders in the system. Restricted to Admin roles.',
   })
   @ApiResponse({
     status: 200,

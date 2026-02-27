@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, ShoppingBag, Package, Clock, Users, ArrowUpRight, TrendingUp, Activity, Zap, AlertCircle } from "lucide-react";
+import { DollarSign, ShoppingBag, Package, Clock, Users, ArrowUpRight, TrendingUp, Activity } from "lucide-react";
 import { api } from "@/lib/api";
 import Link from "next/link";
 

@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { ShoppingCart, Heart, ArrowUpRight, Plus } from "lucide-react";
+import { Heart, ArrowUpRight, Plus } from "lucide-react";
 import { Button } from "./ui/button";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
-import { ShoppingCart, User, LogOut, Search, ShieldAlert, Heart, Menu, X, ArrowUpRight } from "lucide-react";
+import { ShoppingCart, User, LogOut, Search, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";

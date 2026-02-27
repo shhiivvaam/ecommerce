@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Shield, ShieldOff, Search, RefreshCw, Users, UserCheck, UserX, Mail, MoreHorizontal, X, MapPin, Calendar, ShoppingBag, DollarSign, Activity, ChevronDown } from "lucide-react";
+import { Shield, ShieldOff, Search, RefreshCw, Users, UserCheck, UserX, Mail, X, MapPin, Calendar, ShoppingBag, Activity, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
