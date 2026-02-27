@@ -20,6 +20,8 @@ import { AddressesModule } from './addresses/addresses.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CouponsModule } from './coupons/coupons.module';
+import { WishlistsModule } from './wishlists/wishlists.module';
+import { BannersModule } from './banners/banners.module';
 
 @Module({
   controllers: [HealthController],
@@ -62,6 +64,8 @@ import { CouponsModule } from './coupons/coupons.module';
     CategoriesModule,
     ReviewsModule,
     CouponsModule,
+    WishlistsModule,
+    BannersModule,
   ],
   providers: [
     {
