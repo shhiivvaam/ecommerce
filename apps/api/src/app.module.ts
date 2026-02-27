@@ -23,6 +23,7 @@ import { CouponsModule } from './coupons/coupons.module';
 import { WishlistsModule } from './wishlists/wishlists.module';
 import { BannersModule } from './banners/banners.module';
 import { VariantsModule } from './variants/variants.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   controllers: [HealthController],
@@ -68,6 +69,7 @@ import { VariantsModule } from './variants/variants.module';
     WishlistsModule,
     BannersModule,
     VariantsModule,
+    AdminModule,
   ],
   providers: [
     {
@@ -76,4 +78,4 @@ import { VariantsModule } from './variants/variants.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
