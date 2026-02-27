@@ -94,30 +94,30 @@ export default function ProductsPage() {
     };
 
     return (
-        <div className="bg-white min-h-screen pb-40">
+        <div className="bg-white dark:bg-[#050505] min-h-screen pb-40 transition-colors duration-500">
             {/* Architectural Header */}
-            <header className="pt-20 pb-16 border-b-2 border-slate-50 relative overflow-hidden">
+            <header className="pt-20 pb-16 border-b-2 border-slate-50 dark:border-slate-900 relative overflow-hidden transition-colors">
                 <div className="absolute top-0 right-0 w-1/3 h-full bg-primary/5 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2 pointer-events-none" />
                 <div className="container mx-auto px-8 relative z-10">
                     <div className="space-y-4">
                         <span className="text-[10px] font-black uppercase text-primary tracking-[0.4em]">Resource Gallery</span>
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-10">
                             <div>
-                                <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter leading-none">The Master <br />Archives</h1>
-                                <p className="text-lg text-slate-400 font-medium mt-6 max-w-xl italic leading-relaxed">A curated ecosystem of meticulously engineered products for the modern individual.</p>
+                                <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter leading-none text-black dark:text-white">The Master <br />Archives</h1>
+                                <p className="text-lg text-slate-400 dark:text-slate-500 font-medium mt-6 max-w-xl italic leading-relaxed">A curated ecosystem of meticulously engineered products for the modern individual.</p>
                             </div>
 
-                            <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 flex items-center shadow-sm w-full md:w-auto">
-                                <Search className="ml-6 h-5 w-5 text-slate-300" />
+                            <div className="bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[32px] p-2 flex items-center shadow-sm w-full md:w-auto transition-colors">
+                                <Search className="ml-6 h-5 w-5 text-slate-300 dark:text-slate-600" />
                                 <input
                                     placeholder="Search the archives..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="bg-transparent h-16 px-6 text-sm font-black uppercase tracking-widest outline-none w-full md:w-64 placeholder:text-slate-300"
+                                    className="bg-transparent h-16 px-6 text-sm font-black uppercase tracking-widest outline-none w-full md:w-64 placeholder:text-slate-300 dark:placeholder:text-slate-600 text-black dark:text-white"
                                 />
                                 <Button
                                     onClick={() => setShowFilters(!showFilters)}
-                                    className={`h-16 px-8 rounded-[24px] gap-3 font-black uppercase tracking-widest text-[10px] shadow-lg transition-transform active:scale-95 ${showFilters ? 'bg-black text-white' : 'bg-white text-black border-2 border-slate-100 shadow-none'}`}
+                                    className={`h-16 px-8 rounded-[24px] gap-3 font-black uppercase tracking-widest text-[10px] shadow-lg transition-all active:scale-95 ${showFilters ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-white text-black dark:bg-slate-800 dark:text-white border-2 border-slate-100 dark:border-slate-700 shadow-none'}`}
                                 >
                                     <SlidersHorizontal className="h-4 w-4" />
                                     Filter Engine
@@ -136,18 +136,18 @@ export default function ProductsPage() {
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="bg-slate-50 border-2 border-slate-100 rounded-[40px] p-10 mb-16 shadow-2xl shadow-slate-200/50 relative overflow-hidden"
+                            className="bg-slate-50 dark:bg-slate-900/50 border-2 border-slate-100 dark:border-slate-800 rounded-[40px] p-10 mb-16 shadow-2xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden transition-colors"
                         >
-                            <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
-                                <ListFilter className="h-48 w-48 rotate-12" />
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.03] dark:opacity-[0.05] pointer-events-none">
+                                <ListFilter className="h-48 w-48 rotate-12 text-black dark:text-white" />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 relative z-10">
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Classification</label>
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Classification</label>
                                     <div className="relative">
                                         <select
-                                            className="w-full h-14 pl-6 pr-12 border-2 border-slate-200 bg-white rounded-2xl outline-none font-black uppercase tracking-widest text-[10px] appearance-none focus:border-black transition-colors"
+                                            className="w-full h-14 pl-6 pr-12 border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-black rounded-2xl outline-none font-black uppercase tracking-widest text-[10px] appearance-none focus:border-black dark:focus:border-white transition-all text-black dark:text-white"
                                             value={selectedCategory}
                                             onChange={(e) => setSelectedCategory(e.target.value)}
                                         >
@@ -159,18 +159,18 @@ export default function ProductsPage() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Valuation Range</label>
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Valuation Range</label>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <Input placeholder="MIN" type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="rounded-2xl h-14 border-2 font-black uppercase tracking-widest text-[10px] text-center" />
-                                        <Input placeholder="MAX" type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="rounded-2xl h-14 border-2 font-black uppercase tracking-widest text-[10px] text-center" />
+                                        <Input placeholder="MIN" type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="rounded-2xl h-14 border-2 dark:border-slate-800 bg-white dark:bg-black font-black uppercase tracking-widest text-[10px] text-center" />
+                                        <Input placeholder="MAX" type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="rounded-2xl h-14 border-2 dark:border-slate-800 bg-white dark:bg-black font-black uppercase tracking-widest text-[10px] text-center" />
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Sort Protocol</label>
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Sort Protocol</label>
                                     <div className="relative">
                                         <select
-                                            className="w-full h-14 pl-6 pr-12 border-2 border-slate-200 bg-white rounded-2xl outline-none font-black uppercase tracking-widest text-[10px] appearance-none focus:border-black transition-colors"
+                                            className="w-full h-14 pl-6 pr-12 border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-black rounded-2xl outline-none font-black uppercase tracking-widest text-[10px] appearance-none focus:border-black dark:focus:border-white transition-all text-black dark:text-white"
                                             value={`${sortBy}-${sortOrder}`}
                                             onChange={(e) => {
                                                 const [field, order] = e.target.value.split("-");
@@ -191,7 +191,7 @@ export default function ProductsPage() {
                                 <div className="flex flex-col justify-end">
                                     <Button
                                         variant="ghost"
-                                        className="h-14 rounded-2xl gap-3 font-black uppercase tracking-widest text-[10px] border-2 border-dashed border-slate-200 hover:border-rose-500 hover:text-rose-500 transition-all"
+                                        className="h-14 rounded-2xl gap-3 font-black uppercase tracking-widest text-[10px] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-rose-500 hover:text-rose-500 transition-all dark:text-slate-400"
                                         onClick={resetFilters}
                                     >
                                         <RotateCcw className="h-4 w-4" />
@@ -207,14 +207,14 @@ export default function ProductsPage() {
                 <div className="flex justify-between items-center mb-10 overflow-x-auto no-scrollbar gap-8">
                     <div className="flex items-center gap-6 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Viewing</span>
-                            <span className="text-xl font-black">{products.length}</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 dark:text-slate-700">Viewing</span>
+                            <span className="text-xl font-black text-black dark:text-white">{products.length}</span>
                         </div>
-                        <span className="h-6 w-px bg-slate-100" />
+                        <span className="h-6 w-px bg-slate-100 dark:bg-slate-900" />
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setSelectedCategory("all")}
-                                className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === "all" ? 'bg-black text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === "all" ? 'bg-black text-white dark:bg-white dark:text-black shadow-lg' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                             >
                                 All Archives
                             </button>
@@ -222,7 +222,7 @@ export default function ProductsPage() {
                                 <button
                                     key={c.id}
                                     onClick={() => setSelectedCategory(c.id)}
-                                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === c.id ? 'bg-black text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === c.id ? 'bg-black text-white dark:bg-white dark:text-black shadow-lg' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                                 >
                                     {c.name}
                                 </button>
@@ -230,19 +230,19 @@ export default function ProductsPage() {
                         </div>
                     </div>
 
-                    <div className="hidden lg:flex items-center gap-2 text-slate-300">
+                    <div className="hidden lg:flex items-center gap-2 text-slate-300 dark:text-slate-800">
                         <LayoutGrid className="h-5 w-5" />
                     </div>
                 </div>
 
                 {/* Assets Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-16">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-20">
                     {loading ? (
                         Array.from({ length: 8 }).map((_, i) => (
-                            <div key={i} className="space-y-4">
-                                <div className="aspect-[4/5] bg-slate-50 animate-pulse rounded-[40px] border-2 border-slate-50" />
-                                <div className="h-6 bg-slate-50 animate-pulse rounded-full w-2/3" />
-                                <div className="h-10 bg-slate-50 animate-pulse rounded-full w-1/3" />
+                            <div key={i} className="space-y-6">
+                                <div className="aspect-[4/5] bg-slate-50 dark:bg-slate-900 animate-pulse rounded-[40px] border-2 border-slate-50 dark:border-slate-800" />
+                                <div className="h-8 bg-slate-50 dark:bg-slate-900 animate-pulse rounded-full w-2/3" />
+                                <div className="h-12 bg-slate-50 dark:bg-slate-900 animate-pulse rounded-full w-1/3" />
                             </div>
                         ))
                     ) : products.length > 0 ? (
@@ -257,15 +257,15 @@ export default function ProductsPage() {
                             </motion.div>
                         ))
                     ) : (
-                        <div className="col-span-full py-40 text-center bg-slate-50 rounded-[60px] border-4 border-dashed border-slate-100">
-                            <div className="h-20 w-20 bg-white shadow-md rounded-3xl flex items-center justify-center mx-auto mb-8 text-slate-200">
-                                <RotateCcw className="h-10 w-10" />
+                        <div className="col-span-full py-40 text-center bg-slate-50 dark:bg-slate-900/50 rounded-[60px] border-4 border-dashed border-slate-100 dark:border-slate-800 transition-colors">
+                            <div className="h-24 w-24 bg-white dark:bg-slate-800 shadow-md rounded-3xl flex items-center justify-center mx-auto mb-10 text-slate-200 dark:text-slate-700">
+                                <RotateCcw className="h-12 w-12" />
                             </div>
-                            <h3 className="text-3xl font-black uppercase tracking-tighter">Null Result.</h3>
-                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-3 italic leading-relaxed">No assets match the current filtration parameters.</p>
+                            <h3 className="text-4xl font-black uppercase tracking-tighter text-black dark:text-white">Null Result.</h3>
+                            <p className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-4 italic leading-relaxed">No assets match the current filtration parameters.</p>
                             <Button
                                 onClick={resetFilters}
-                                className="mt-10 rounded-2xl h-14 px-10 font-black uppercase tracking-widest text-[10px] transition-transform active:scale-95"
+                                className="mt-12 rounded-[24px] h-16 px-12 font-black uppercase tracking-widest text-[10px] transition-transform active:scale-95 shadow-2xl"
                             >
                                 Re-Initialize Archives
                             </Button>
