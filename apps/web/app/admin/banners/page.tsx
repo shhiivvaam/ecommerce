@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Eye, EyeOff, Link as LinkIcon, Image as ImageIcon, X, Zap, Activity, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Link as LinkIcon, Image as ImageIcon, X, Zap, Activity, ExternalLink, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
