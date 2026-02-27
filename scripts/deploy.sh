@@ -115,7 +115,7 @@ if ! docker run --rm \
   --env-file "${ENV_FILE}" \
   -e NODE_ENV=production \
   "${API_IMAGE}" \
-  npx -y prisma migrate deploy --schema=apps/api/prisma/schema.prisma; then
+  ./apps/api/node_modules/.bin/prisma migrate deploy --schema=apps/api/prisma/schema.prisma; then
   log_error "Migrations FAILED — aborting deployment. Old container is still live."
   exit 1
 fi
