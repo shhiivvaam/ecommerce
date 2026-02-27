@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { analytics } from "@/lib/analytics";
 
 interface ProductCardProps {
     product: {
@@ -40,6 +41,13 @@ export function ProductCard({ product }: ProductCardProps) {
             quantity: 1,
             image: product.image,
         });
+        analytics.track('ADD_TO_CART', {
+            productId: product.id,
+            title: product.title,
+            price: displayPrice,
+            location: 'gallery_card'
+        });
+
         toast.success("Added to collection", {
             icon: '🛍️',
             style: { borderRadius: '16px', fontWeight: 'bold' }

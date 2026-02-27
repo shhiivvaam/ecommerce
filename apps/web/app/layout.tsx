@@ -12,6 +12,9 @@ export const metadata: Metadata = {
 };
 
 import { Footer } from '@/components/Footer';
+import { AnalyticsProvider } from '@/lib/analytics';
+
+import { ThemeProvider } from '@/components/ThemeProvider';
 
 export default function RootLayout({
   children,
@@ -21,12 +24,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <div className="relative flex min-h-screen flex-col">
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </div>
-        <Toaster position="bottom-right" />
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <AnalyticsProvider />
+          <div className="relative flex min-h-screen flex-col bg-white dark:bg-[#050505] text-slate-900 dark:text-slate-100 transition-colors duration-500">
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </div>
+          <Toaster position="bottom-right" />
+        </ThemeProvider>
       </body>
     </html>
   );

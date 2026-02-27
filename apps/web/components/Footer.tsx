@@ -11,7 +11,7 @@ export function Footer() {
     if (isAdmin) return null;
 
     return (
-        <footer className="bg-white border-t-2 border-slate-50 relative overflow-hidden">
+        <footer className="bg-white dark:bg-[#050505] border-t-2 border-slate-50 dark:border-slate-900 relative overflow-hidden transition-colors duration-500">
             <div className="absolute top-0 right-0 w-1/3 h-full bg-primary/5 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
             <div className="container mx-auto px-8 pt-24 pb-12 relative z-10">
@@ -19,17 +19,17 @@ export function Footer() {
                     {/* Brand Column */}
                     <div className="lg:col-span-5 space-y-8">
                         <Link href="/" className="flex items-center gap-3 group">
-                            <div className="h-12 w-12 bg-black rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
-                                <div className="h-6 w-6 border-2 border-white rounded-sm rotate-45" />
+                            <div className="h-12 w-12 bg-black dark:bg-white rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
+                                <div className="h-6 w-6 border-2 border-white dark:border-black rounded-sm rotate-45" />
                             </div>
-                            <span className="text-2xl font-black uppercase tracking-tighter">Nexus<span className="text-primary opacity-50 italic">OS</span></span>
+                            <span className="text-2xl font-black uppercase tracking-tighter text-black dark:text-white">Nexus<span className="text-primary opacity-50 italic">OS</span></span>
                         </Link>
                         <p className="text-lg text-slate-400 font-medium max-w-sm italic leading-relaxed uppercase tracking-tighter">
                             A meticulously engineered ecosystem for the acquisition of high-fidelity lifestyle assets.
                         </p>
                         <div className="flex gap-4">
                             {[Twitter, Github, Instagram].map((Icon, i) => (
-                                <button key={i} className="h-12 w-12 rounded-xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-slate-400 hover:text-black hover:border-black transition-all">
+                                <button key={i} className="h-12 w-12 rounded-xl bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-400 hover:text-black dark:hover:text-white hover:border-black dark:hover:border-white transition-all">
                                     <Icon className="h-5 w-5" />
                                 </button>
                             ))}
@@ -43,7 +43,7 @@ export function Footer() {
                             <ul className="space-y-4">
                                 {['All Products', 'Collections', 'New Arrivals', 'Sales'].map(item => (
                                     <li key={item}>
-                                        <Link href="/products" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-black transition-colors flex items-center gap-2 group">
+                                        <Link href="/products" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-black dark:hover:text-white transition-colors flex items-center gap-2 group">
                                             {item} <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </Link>
                                     </li>
@@ -78,7 +78,7 @@ export function Footer() {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className="pt-12 border-t-2 border-slate-50 flex flex-col md:flex-row justify-between items-center gap-8">
+                <div className="pt-12 border-t-2 border-slate-50 dark:border-slate-900 flex flex-col md:flex-row justify-between items-center gap-8">
                     <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest italic">
                         © 2026 NexusOS Digital Ecosystem. All Protocol Rights Reserved.
                     </p>

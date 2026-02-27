@@ -8,6 +8,7 @@ import { Button } from "./ui/button";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Navbar() {
     const { isAuthenticated, logout, user } = useAuthStore();
@@ -43,21 +44,21 @@ export function Navbar() {
     return (
         <nav
             className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled
-                    ? "py-4 px-6 md:px-12"
-                    : "py-8 px-8 md:px-20"
+                ? "py-4 px-6 md:px-12"
+                : "py-8 px-8 md:px-20"
                 }`}
         >
             <div className={`container mx-auto max-w-7xl h-20 px-8 flex items-center justify-between transition-all duration-500 rounded-[32px] border-2 shadow-2xl relative overflow-hidden ${scrolled
-                    ? "bg-white/80 backdrop-blur-3xl border-slate-100/50 shadow-slate-200/40"
-                    : "bg-white border-transparent shadow-transparent"
+                ? "bg-white/80 dark:bg-black/80 backdrop-blur-3xl border-slate-100/50 dark:border-slate-800/50 shadow-slate-200/40 dark:shadow-none"
+                : "bg-white dark:bg-slate-900 border-transparent shadow-transparent"
                 }`}>
                 {/* Brand Layer */}
                 <div className="flex items-center gap-12 z-10">
                     <Link href="/" className="flex items-center gap-3 group">
-                        <div className="h-10 w-10 bg-black rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
-                            <div className="h-5 w-5 border-2 border-white rounded-sm rotate-45" />
+                        <div className="h-10 w-10 bg-black dark:bg-white rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
+                            <div className="h-5 w-5 border-2 border-white dark:border-black rounded-sm rotate-45" />
                         </div>
-                        <span className="text-xl font-black uppercase tracking-tighter">Nexus<span className="text-primary opacity-50 italic">OS</span></span>
+                        <span className="text-xl font-black uppercase tracking-tighter text-black dark:text-white">Nexus<span className="text-primary opacity-50 italic">OS</span></span>
                     </Link>
 
                     <div className="hidden lg:flex items-center gap-8">
@@ -68,7 +69,7 @@ export function Navbar() {
                                 <Link
                                     key={item}
                                     href={href}
-                                    className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all hover:text-black ${isActive ? 'text-black' : 'text-slate-400'}`}
+                                    className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all hover:text-black dark:hover:text-white ${isActive ? 'text-black dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
                                 >
                                     {item}
                                 </Link>
@@ -84,7 +85,7 @@ export function Navbar() {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="absolute inset-0 bg-white z-[20] flex items-center px-12"
+                            className="absolute inset-0 bg-white dark:bg-black z-[20] flex items-center px-12"
                         >
                             <Search className="h-5 w-5 text-slate-300 mr-4" />
                             <form onSubmit={handleSearchSubmit} className="flex-1">
@@ -106,11 +107,13 @@ export function Navbar() {
 
                 {/* Utility Hub */}
                 <div className="flex items-center gap-2 z-10">
+                    <ThemeToggle />
+
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => { setSearchOpen(true); setTimeout(() => inputRef.current?.focus(), 100); }}
-                        className="rounded-xl h-12 w-12 hover:bg-slate-50"
+                        className="rounded-xl h-12 w-12 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                         <Search className="h-5 w-5" />
                     </Button>
