@@ -68,11 +68,6 @@ export default function Home() {
   ];
 
   useEffect(() => {
-    const t = setTimeout(() => setHeroLoaded(true), 100);
-    return () => clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
     if (prefersReducedMotion) return;
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
