@@ -17,7 +17,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private settings: SettingsService,
-  ) {}
+  ) { }
 
   private async generateSlug(title: string): Promise<string> {
     const base = title
@@ -62,19 +62,24 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : { set: [] },
       variants: data.variants
         ? {
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
       category: { connect: { id: 'temp' } }, // Will be overwritten below
     };
 
     if (data.categoryId) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: data.categoryId },
+      });
+      if (!category) throw new NotFoundException('Category not found');
+
       productData.category = {
         connect: { id: data.categoryId },
       };
@@ -114,10 +119,11 @@ export class ProductsService {
         include: { variants: true, category: true },
       });
       return {
-        products,
+        data: products,
         total: products.length,
         page: 1,
         limit: Math.max(1, query.limit || 10),
+        totalPages: 1,
       };
     }
 
@@ -152,7 +158,9 @@ export class ProductsService {
       this.prisma.product.count({ where }),
     ]);
 
-    return { products, total, page, limit };
+    const totalPages = Math.ceil(total / limit);
+
+    return { data: products, total, page, limit, totalPages };
   }
 
   async findOne(id: string) {
@@ -197,15 +205,15 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : undefined,
       variants: data.variants
         ? {
-            deleteMany: {},
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          deleteMany: {},
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
     };
 
@@ -226,6 +234,9 @@ export class ProductsService {
   }
 
   async remove(id: string) {
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    if (!product) throw new NotFoundException('Product not found');
+
     // Prevent deleting the primary product in single-product mode
     const isSingle = await this.settings.isSingleProductMode();
     const singleId = await this.settings.getSingleProductId();

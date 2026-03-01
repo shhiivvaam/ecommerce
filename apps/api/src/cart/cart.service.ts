@@ -8,7 +8,7 @@ import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
 
 @Injectable()
 export class CartService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getCart(userId: string) {
     let cart = await this.prisma.cart.findUnique({
@@ -125,10 +125,14 @@ export class CartService {
       );
     }
 
-    await this.prisma.cartItem.update({
-      where: { id: itemId },
-      data: { quantity: data.quantity },
-    });
+    if (data.quantity === 0) {
+      await this.prisma.cartItem.delete({ where: { id: itemId } });
+    } else {
+      await this.prisma.cartItem.update({
+        where: { id: itemId },
+        data: { quantity: data.quantity },
+      });
+    }
 
     return this.calculateTotal(cart.id);
   }
@@ -153,5 +157,46 @@ export class CartService {
 
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
     return this.calculateTotal(cart.id);
+  }
+
+  async getCartSummary(userId: string) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { userId },
+      include: {
+        items: {
+          include: { product: true, variant: true },
+        },
+      },
+    });
+
+    if (!cart) {
+      return {
+        totalItems: 0,
+        subtotal: 0,
+        tax: 0,
+        shipping: 0,
+        total: 0,
+      };
+    }
+
+    const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+    const subtotal = cart.items.reduce((sum, item) => {
+      let price = item.product.discounted ?? item.product.price;
+      if (item.variant) {
+        price += item.variant.priceDiff;
+      }
+      return sum + price * item.quantity;
+    }, 0);
+
+    // Rounding to handle floating point issues
+    const roundedSubtotal = Math.round(subtotal * 100) / 100;
+
+    return {
+      totalItems,
+      subtotal: roundedSubtotal,
+      tax: 0, // Placeholder for future implementation
+      shipping: 0, // Placeholder
+      total: roundedSubtotal,
+    };
   }
 }
