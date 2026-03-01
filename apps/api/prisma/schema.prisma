@@ -12,6 +12,18 @@ enum RoleType {
   CUSTOMER
 }
 
+enum RefundStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum StoreMode {
+  MULTI
+  SINGLE
+}
+
 model Role {
   id        String   @id @default(cuid())
   name      RoleType @default(CUSTOMER)
@@ -123,6 +135,9 @@ model CartItem {
   
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([cartId])
+  @@index([productId])
 }
 
 enum OrderStatus {
@@ -153,6 +168,8 @@ model Order {
   
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+
+  @@index([userId])
 }
 
 model OrderItem {
@@ -169,6 +186,9 @@ model OrderItem {
   sku          String?
   
   createdAt    DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 enum PaymentStatus {
@@ -224,6 +244,9 @@ model Review {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([userId])
 }
 
 model Address {
@@ -261,7 +284,7 @@ model Refund {
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   amount      Float
   reason      String?
-  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  status      RefundStatus @default(PENDING)
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -269,7 +292,7 @@ model Refund {
 
 model Settings {
   id              String   @id @default(cuid())
-  storeMode       String   @default("multi") // "multi" or "single"
+  storeMode       StoreMode @default(MULTI)
   taxPercent      Float    @default(0)
   shippingFlat    Float    @default(0)
   logoUrl         String?
