@@ -17,7 +17,7 @@ export class StorageService {
   constructor(private configService: ConfigService) {
     this.bucketName =
       this.configService.get<string>('AWS_S3_BUCKET') ||
-      'nexcart-storage-bucket';
+      'reyva-storage-bucket';
     this.s3Client = new S3Client({
       region: this.configService.get<string>('AWS_REGION') || 'ap-south-1',
       credentials: {

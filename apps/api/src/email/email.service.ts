@@ -23,7 +23,7 @@ export class EmailService {
   async sendOrderConfirmation(to: string, orderId: string, total: number) {
     try {
       await this.transporter.sendMail({
-        from: '"NexCart Support" <support@nexcart.com>',
+        from: '"Reyva Support" <support@reyva.com>',
         to,
         subject: `Order Confirmation - #${orderId}`,
         html: `<h2>Thank you for your order!</h2><p>Your order #${orderId} for $${total} has been confirmed. We will send tracking details soon!</p>`,
@@ -46,7 +46,7 @@ export class EmailService {
         'http://localhost:3000';
       const resetLink = `${frontendUrl}/reset-password?token=${token}`;
       await this.transporter.sendMail({
-        from: '"NexCart Support" <support@nexcart.com>',
+        from: '"Reyva Support" <support@reyva.com>',
         to,
         subject: `Reset your password`,
         html: `<h2>Password Reset Request</h2><p>Click <a href="${resetLink}">here</a> to reset your password. The link expires in 15 minutes.</p>`,
@@ -64,9 +64,9 @@ export class EmailService {
   async sendWelcomeEmail(to: string, name: string) {
     try {
       await this.transporter.sendMail({
-        from: '"NexCart Support" <support@nexcart.com>',
+        from: '"Reyva Support" <support@reyva.com>',
         to,
-        subject: `Welcome to NexCart!`,
+        subject: `Welcome to Reyva!`,
         html: `<h2>Welcome ${name}!</h2><p>We're thrilled to have you. Enjoy exploring our premium products.</p>`,
       });
     } catch (error) {

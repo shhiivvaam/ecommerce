@@ -1,4 +1,4 @@
-# NexCart E-Commerce Platform
+# REYVA E-Commerce Platform
 
 A production-ready, highly scalable, and modern full-stack e-commerce platform built using a monorepo architecture. 
 
