@@ -3,7 +3,11 @@ import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
-import { CreateProductDto, UpdateProductDto, ProductQueryDto } from './dto/product.dto';
+import {
+  CreateProductDto,
+  UpdateProductDto,
+  ProductQueryDto,
+} from './dto/product.dto';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -48,8 +52,8 @@ describe('ProductsService', () => {
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
-    prismaService = module.get(PrismaService) as jest.Mocked<PrismaService>;
-    settingsService = module.get(SettingsService) as jest.Mocked<SettingsService>;
+    prismaService = module.get(PrismaService);
+    settingsService = module.get(SettingsService);
   });
 
   it('should be defined', () => {
@@ -109,7 +113,9 @@ describe('ProductsService', () => {
 
       prismaService.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createProductDto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(createProductDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -136,8 +142,14 @@ describe('ProductsService', () => {
     });
 
     it('should filter by category when provided', async () => {
-      const query: ProductQueryDto = { categoryId: 'cat-1', page: 1, limit: 10 };
-      const mockProducts = [{ id: '1', title: 'Product 1', categoryId: 'cat-1' }];
+      const query: ProductQueryDto = {
+        categoryId: 'cat-1',
+        page: 1,
+        limit: 10,
+      };
+      const mockProducts = [
+        { id: '1', title: 'Product 1', categoryId: 'cat-1' },
+      ];
 
       prismaService.product.findMany.mockResolvedValue(mockProducts);
       prismaService.product.count.mockResolvedValue(1);
@@ -149,7 +161,7 @@ describe('ProductsService', () => {
           where: expect.objectContaining({
             categoryId: 'cat-1',
           }),
-        })
+        }),
       );
     });
   });
@@ -181,7 +193,9 @@ describe('ProductsService', () => {
     it('should throw NotFoundException if product not found', async () => {
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -211,7 +225,9 @@ describe('ProductsService', () => {
 
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('invalid-id', updateData)).rejects.toThrow(NotFoundException);
+      await expect(service.update('invalid-id', updateData)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -237,7 +253,9 @@ describe('ProductsService', () => {
     it('should throw NotFoundException if product to delete does not exist', async () => {
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

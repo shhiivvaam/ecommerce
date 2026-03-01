@@ -33,14 +33,14 @@ describe('ProductsController', () => {
         CacheModule.register(),
       ],
     })
-    .overrideGuard(JwtAuthGuard)
-    .useValue({ canActivate: () => true })
-    .overrideGuard(RolesGuard)
-    .useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<ProductsController>(ProductsController);
-    productsService = module.get(ProductsService) as jest.Mocked<ProductsService>;
+    productsService = module.get(ProductsService);
   });
 
   it('should be defined', () => {
@@ -94,7 +94,10 @@ describe('ProductsController', () => {
       const result = await controller.findAll({ page: 1, limit: 10 });
 
       expect(result).toEqual(mockResponse);
-      expect(productsService.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(productsService.findAll).toHaveBeenCalledWith({
+        page: 1,
+        limit: 10,
+      });
     });
   });
 
@@ -130,7 +133,10 @@ describe('ProductsController', () => {
       const result = await controller.update('product-1', updateData);
 
       expect(result).toEqual(mockProduct);
-      expect(productsService.update).toHaveBeenCalledWith('product-1', updateData);
+      expect(productsService.update).toHaveBeenCalledWith(
+        'product-1',
+        updateData,
+      );
     });
   });
 
