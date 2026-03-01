@@ -7,9 +7,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { api } from "@/lib/api";
 import { toast } from "react-hot-toast";
-import { isAxiosError } from "axios";
 import { ArrowRight, ChevronLeft, Mail, Lock, User as UserIcon } from "lucide-react";
 
 const formSchema = z.object({
@@ -35,12 +33,28 @@ export default function RegisterPage() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const { data } = await api.post("/auth/register", values);
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const message =
+          (data && (data.message || data.error)) ||
+          "This email may already be in use.";
+        throw new Error(message);
+      }
+
       login(data.user, data.access_token);
       toast.success("Account created. Welcome.");
       router.push("/");
     } catch (error) {
-      const message = isAxiosError(error) ? error.response?.data?.message : undefined;
+      const message = error instanceof Error ? error.message : undefined;
       toast.error(message || "This email may already be in use.");
     }
   };

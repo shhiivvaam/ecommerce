@@ -2,229 +2,311 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, ShoppingBag, Package, Clock, Users, ArrowUpRight, TrendingUp, Activity } from "lucide-react";
+import { DollarSign, ShoppingBag, Package, Clock, Users, ArrowUpRight, TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
 import Link from "next/link";
 
+interface RecentOrder {
+  id: string;
+  user: { email: string; name?: string };
+  totalAmount: number;
+  status: string;
+  createdAt: string;
+}
+
+const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
+  PENDING:    { color: "#d97706", bg: "#fffbeb" },
+  PROCESSING: { color: "#2563eb", bg: "#eff6ff" },
+  SHIPPED:    { color: "#7c3aed", bg: "#f5f3ff" },
+  DELIVERED:  { color: "#16a34a", bg: "#f0fdf4" },
+  CANCELLED:  { color: "#e11d48", bg: "#fff0f3" },
+};
+
 export default function AdminOverview() {
-    const [stats, setStats] = useState({
-        totalRevenue: 0,
-        totalOrders: 0,
-        totalProducts: 0,
-        totalUsers: 0,
-        pendingOrders: 0,
-    });
-    const [recentOrders, setRecentOrders] = useState<{ id: string; user: { email: string; name?: string }; totalAmount: number; status: string; createdAt: string }[]>([]);
-    const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ totalRevenue: 0, totalOrders: 0, totalProducts: 0, totalUsers: 0, pendingOrders: 0 });
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const { data } = await api.get('/admin/stats');
-                setStats({
-                    totalRevenue: data.totalRevenue,
-                    totalOrders: data.totalOrders,
-                    totalProducts: data.totalProducts,
-                    totalUsers: data.totalUsers || 0,
-                    pendingOrders: data.statusCounts?.find((sc: { status: string; _count: number }) => sc.status === "PENDING")?._count || 0,
-                });
-                setRecentOrders(data.recentOrders || []);
-            } catch (err) {
-                console.error("Failed to fetch admin stats", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchStats();
-    }, []);
-
-    const kpis = [
-        { title: "Net Revenue", value: `$${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "bg-emerald-500", trend: "+12.5%" },
-        { title: "Active Orders", value: stats.totalOrders, icon: ShoppingBag, color: "bg-blue-500", trend: "+3.2%" },
-        { title: "Inventory", value: stats.totalProducts, icon: Package, color: "bg-indigo-500", trend: "Stable" },
-        { title: "Customer Base", value: stats.totalUsers, icon: Users, color: "bg-rose-500", trend: "+24 today" },
-    ];
-
-    const STATUS_STYLING: Record<string, string> = {
-        PENDING: "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/30",
-        PROCESSING: "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30",
-        SHIPPED: "bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/30",
-        DELIVERED: "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30",
-        CANCELLED: "bg-rose-100 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-950/30",
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { data } = await api.get("/admin/stats");
+        setStats({
+          totalRevenue: data.totalRevenue,
+          totalOrders: data.totalOrders,
+          totalProducts: data.totalProducts,
+          totalUsers: data.totalUsers || 0,
+          pendingOrders: data.statusCounts?.find((sc: { status: string }) => sc.status === "PENDING")?._count || 0,
+        });
+        setRecentOrders(data.recentOrders || []);
+      } catch (err) {
+        console.error("Failed to fetch admin stats", err);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchStats();
+  }, []);
 
-    return (
-        <div className="space-y-16 pb-20">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-                <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                        <span className="h-px w-12 bg-black/10 dark:bg-white/10" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Intelligence Hub</span>
-                    </div>
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black dark:text-white">Admin <br />Performance</h2>
-                    <p className="text-lg font-medium text-slate-400 dark:text-slate-500 italic max-w-xl">Real-time health pulse of your sovereign digital commerce engine.</p>
-                </div>
-                <div className="px-6 py-3 bg-emerald-500/5 dark:bg-emerald-500/10 border-2 border-emerald-500/10 dark:border-emerald-500/20 rounded-[20px] flex items-center gap-4 transition-colors">
-                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Node Sync Active</span>
-                </div>
-            </header>
+  const kpis = [
+    { title: "Revenue",   value: `$${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: DollarSign, trend: "+12.5%" },
+    { title: "Orders",    value: stats.totalOrders,   icon: ShoppingBag, trend: "+3.2%" },
+    { title: "Products",  value: stats.totalProducts, icon: Package,    trend: "Stable" },
+    { title: "Customers", value: stats.totalUsers,    icon: Users,      trend: "+24 today" },
+  ];
 
-            {/* KPI Modules */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {kpis.map((kpi, index) => (
-                    <motion.div
-                        key={kpi.title}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1, duration: 0.6 }}
-                        className="group relative rounded-[40px] border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-[#0a0a0a] p-8 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 overflow-hidden"
-                    >
-                        <div className="flex justify-between items-start mb-8 relative z-10">
-                            <div className={`h-16 w-16 rounded-[24px] flex items-center justify-center text-white ${kpi.color} shadow-2xl`}>
-                                <kpi.icon className="h-8 w-8" />
-                            </div>
-                            <div className="flex flex-col items-end">
-                                <span className="text-[10px] font-black px-3 py-1 bg-slate-50 dark:bg-white/5 rounded-full text-slate-400 dark:text-slate-600 uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
-                                    {kpi.trend}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="space-y-2 relative z-10">
-                            <h4 className="text-4xl font-black tracking-tighter text-black dark:text-white">{loading ? "..." : kpi.value}</h4>
-                            <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] italic">{kpi.title}</p>
-                        </div>
-                        <div className="absolute right-[-20px] bottom-[-20px] opacity-[0.03] dark:opacity-[0.05] rotate-12 transition-transform group-hover:scale-150 duration-1000">
-                            <kpi.icon className="h-40 w-40" />
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+  const quickLinks = [
+    { label: "Products",  href: "/admin/products",  icon: Package },
+    { label: "Orders",    href: "/admin/orders",    icon: ShoppingBag },
+    { label: "Customers", href: "/admin/customers", icon: Users },
+    { label: "Settings",  href: "/admin/settings",  icon: DollarSign },
+  ];
 
-            <div className="grid gap-10 lg:grid-cols-12">
-                {/* Visual Velocity Chart */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-                    className="lg:col-span-8 bg-white dark:bg-[#0a0a0a] border-2 border-slate-50 dark:border-slate-800 rounded-[56px] p-12 shadow-sm relative overflow-hidden transition-colors"
-                >
-                    <div className="flex items-center justify-between mb-12">
-                        <div className="space-y-2">
-                            <h3 className="font-black text-3xl uppercase tracking-tight flex items-center gap-4 text-black dark:text-white">
-                                <TrendingUp className="h-8 w-8 text-primary" />
-                                Sales Velocity
-                            </h3>
-                            <p className="text-sm font-medium text-slate-400 dark:text-slate-500 italic">Temporal distribution of acquisition sequences across the grid.</p>
-                        </div>
-                    </div>
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
+        :root { --ink:#0a0a0a; --paper:#f5f3ef; --accent:#c8ff00; --mid:#8a8a8a; --border:rgba(10,10,10,0.1); --card:#fff; }
 
-                    <div className="h-80 flex items-end justify-between gap-2 w-full pb-4">
-                        {Array.from({ length: 24 }).map((_, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ height: 0 }}
-                                animate={{ height: `${Math.random() * 80 + 10}%` }}
-                                transition={{ delay: 0.6 + (i * 0.03), type: "spring", stiffness: 40 }}
-                                className="w-full bg-slate-50 dark:bg-slate-900/50 hover:bg-primary dark:hover:bg-primary rounded-t-2xl transition-all relative group cursor-crosshair border-x border-transparent"
-                            >
-                                <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black dark:bg-white text-white dark:text-black text-[10px] font-black px-4 py-2 rounded-2xl opacity-0 group-hover:opacity-100 shadow-3xl transition-all pointer-events-none whitespace-nowrap z-20">
-                                    {(Math.random() * 10).toFixed(0)} PROTOCOLS
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                    <div className="flex justify-between mt-8 text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.4em] px-2 italic">
-                        <span>Yesterday</span>
-                        <span>Grid Meridian</span>
-                        <span>Now</span>
-                    </div>
-                </motion.div>
+        .ao-wrap { font-family:'DM Sans',sans-serif; color:var(--ink); padding-bottom:80px; display:flex; flex-direction:column; gap:32px; }
 
-                {/* Protocol Shortcuts */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
-                    className="lg:col-span-4 bg-slate-50 dark:bg-white/5 border-4 border-dashed border-slate-100 dark:border-white/5 rounded-[56px] p-12 space-y-10 transition-colors"
-                >
-                    <h3 className="font-black text-2xl uppercase tracking-tighter flex items-center gap-4 text-black dark:text-white">
-                        <Activity className="h-6 w-6 text-indigo-500" />
-                        Control Hub
-                    </h3>
-                    <div className="grid grid-cols-1 gap-4">
-                        {[
-                            { label: "Inventory Logic", href: "/admin/products", icon: Package, color: "text-purple-600 dark:text-purple-400" },
-                            { label: "Dispatch Module", href: "/admin/orders", icon: ShoppingBag, color: "text-blue-600 dark:text-blue-400" },
-                            { label: "Global Policies", href: "/admin/settings", icon: DollarSign, color: "text-emerald-600 dark:text-emerald-400" },
-                            { label: "Auth & Access", href: "/admin/customers", icon: Users, color: "text-rose-600 dark:text-rose-400" },
-                        ].map((action) => (
-                            <Link key={action.href} href={action.href}
-                                className="flex items-center gap-6 p-6 rounded-[32px] bg-white dark:bg-black border-2 border-transparent hover:border-primary/10 hover:shadow-2xl transition-all group active:scale-95 shadow-sm">
-                                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center bg-slate-50 dark:bg-white/5 group-hover:bg-primary group-hover:text-white transition-all shadow-inner ${action.color}`}>
-                                    <action.icon className="h-5 w-5" />
-                                </div>
-                                <span className="text-xs font-black uppercase tracking-widest text-black dark:text-white">{action.label}</span>
-                                <ArrowUpRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
-                            </Link>
-                        ))}
-                    </div>
-                </motion.div>
+        /* Header */
+        .ao-header { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:20px; }
+        .ao-header-tag { font-size:11px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--mid); display:block; margin-bottom:10px; }
+        .ao-header-title { font-family:'Barlow Condensed',sans-serif; font-size:clamp(40px,6vw,64px); font-weight:900; text-transform:uppercase; line-height:1; letter-spacing:-.01em; }
+        .ao-header-sub { font-size:14px; font-weight:300; color:var(--mid); margin-top:8px; }
+        .ao-live-dot { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:#16a34a; }
+        .ao-dot { width:7px; height:7px; border-radius:50%; background:#16a34a; animation:ao-pulse 2s ease-in-out infinite; }
+        @keyframes ao-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-                {/* Transaction Manifest */}
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-                    className="lg:col-span-12 bg-white dark:bg-[#0a0a0a] border-2 border-slate-50 dark:border-slate-800 rounded-[56px] p-12 shadow-sm transition-colors"
-                >
-                    <div className="flex items-center justify-between mb-12">
-                        <div className="space-y-2">
-                            <h3 className="font-black text-3xl uppercase tracking-tight text-black dark:text-white">Recent Protocol Stream</h3>
-                            <p className="text-sm font-medium text-slate-400 dark:text-slate-500 italic">Continuous feed of all incoming acquisition sequences.</p>
-                        </div>
-                        <Link href="/admin/orders" className="h-14 px-8 flex items-center bg-slate-50 dark:bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] text-primary hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all">Full Log Access</Link>
-                    </div>
-                    <div className="space-y-4">
-                        {loading ? (
-                            Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-24 bg-slate-50 dark:bg-slate-900/50 animate-pulse rounded-[32px]" />
-                            ))
-                        ) : recentOrders.length > 0 ? recentOrders.map((order, i) => (
-                            <motion.div
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.7 + (i * 0.05) }}
-                                key={order.id}
-                                className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-8 rounded-[32px] border-2 border-transparent hover:border-slate-100 dark:hover:border-slate-800 hover:bg-slate-50 dark:hover:bg-white/5 transition-all group"
-                            >
-                                <div className="flex items-center gap-6">
-                                    <div className="h-16 w-16 rounded-[24px] bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 dark:text-slate-700 font-black text-xs uppercase group-hover:bg-primary/10 group-hover:text-primary transition-all shadow-inner">
-                                        #{(order.id || "").slice(-4)}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="font-black text-lg leading-none text-black dark:text-white uppercase tracking-tight">{order.user?.name || "Independent Node"}</p>
-                                        <p className="text-xs text-slate-400 dark:text-slate-600 font-medium italic">{order.user?.email}</p>
-                                    </div>
-                                </div>
-                                <div className="mt-6 sm:mt-0 flex items-center gap-12 w-full sm:w-auto justify-between sm:justify-end">
-                                    <div className="text-right space-y-1">
-                                        <p className="text-2xl font-black tracking-tighter text-black dark:text-white tabular-nums">${(order.totalAmount || 0).toFixed(2)}</p>
-                                        <p className="text-[10px] text-slate-300 dark:text-slate-700 uppercase font-black tracking-widest italic">{new Date(order.createdAt).toLocaleDateString()}</p>
-                                    </div>
-                                    <div className={`px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border-2 shadow-sm ${STATUS_STYLING[order.status] || "bg-muted"}`}>
-                                        {order.status}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )) : (
-                            <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
-                                <div className="h-20 w-20 bg-slate-50 dark:bg-white/5 rounded-3xl flex items-center justify-center text-slate-100 dark:text-slate-900 border-2 border-slate-50 dark:border-slate-900">
-                                    <Clock className="h-10 w-10 flex-shrink-0" />
-                                </div>
-                                <div className="space-y-2">
-                                    <p className="font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600 text-[10px]">No Activity Stream Detected</p>
-                                    <p className="text-sm font-medium text-slate-300 dark:text-slate-700 italic">The network is currently idle. Awaiting acquisition sequence.</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
-            </div>
+        /* KPI grid */
+        .ao-kpis { display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+        @media(min-width:768px){ .ao-kpis { grid-template-columns:repeat(4,1fr); } }
+        .ao-kpi { background:var(--card); padding:24px 28px; position:relative; overflow:hidden; transition:background .2s; }
+        .ao-kpi:hover { background:var(--paper); }
+        .ao-kpi-label { font-size:10px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--mid); display:block; margin-bottom:6px; }
+        .ao-kpi-val { font-family:'Barlow Condensed',sans-serif; font-size:clamp(32px,4vw,44px); font-weight:900; line-height:1; }
+        .ao-kpi-trend { display:inline-flex; align-items:center; margin-top:6px; font-size:11px; font-weight:500; color:var(--mid); }
+        .ao-kpi-icon { position:absolute; right:-8px; bottom:-8px; opacity:.04; }
+
+        /* Main grid */
+        .ao-grid { display:grid; grid-template-columns:1fr; gap:16px; }
+        @media(min-width:1024px){ .ao-grid { grid-template-columns:1fr 320px; } }
+
+        /* Panel base */
+        .ao-panel { background:var(--card); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+        .ao-panel-head { padding:24px 28px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:16px; }
+        .ao-panel-title { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:900; text-transform:uppercase; display:flex; align-items:center; gap:10px; }
+        .ao-panel-sub { font-size:13px; font-weight:300; color:var(--mid); margin-top:2px; }
+
+        /* Chart */
+        .ao-chart-bars { display:flex; align-items:flex-end; gap:3px; height:160px; padding:0 4px; }
+        .ao-bar { flex:1; border-radius:3px 3px 0 0; background:rgba(10,10,10,.07); cursor:pointer; transition:background .2s; min-width:0; }
+        .ao-bar:hover { background:var(--accent); }
+        .ao-chart-labels { display:flex; justify-content:space-between; padding:10px 4px 0; }
+        .ao-chart-label { font-size:10px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--mid); }
+
+        /* Quick links */
+        .ao-quicklinks { display:flex; flex-direction:column; gap:0; }
+        .ao-quicklink { display:flex; align-items:center; justify-content:space-between; padding:16px 28px; border-bottom:1px solid var(--border); text-decoration:none; color:var(--ink); transition:background .2s; }
+        .ao-quicklink:last-child { border-bottom:none; }
+        .ao-quicklink:hover { background:var(--paper); }
+        .ao-quicklink-left { display:flex; align-items:center; gap:14px; }
+        .ao-quicklink-icon { width:34px; height:34px; border-radius:6px; background:var(--paper); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--mid); transition:background .2s, color .2s; }
+        .ao-quicklink:hover .ao-quicklink-icon { background:var(--ink); color:#fff; border-color:var(--ink); }
+        .ao-quicklink-label { font-size:13px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; }
+        .ao-quicklink-arrow { color:var(--mid); opacity:0; transition:opacity .2s, transform .2s; }
+        .ao-quicklink:hover .ao-quicklink-arrow { opacity:1; transform:translate(2px,-2px); }
+
+        /* Orders table */
+        .ao-orders { }
+        .ao-order-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; padding:16px 28px; border-bottom:1px solid var(--border); transition:background .15s; }
+        .ao-order-row:last-child { border-bottom:none; }
+        .ao-order-row:hover { background:var(--paper); }
+        .ao-order-id { width:40px; height:40px; border-radius:6px; background:var(--paper); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--mid); flex-shrink:0; }
+        .ao-order-name { font-size:14px; font-weight:500; line-height:1.2; }
+        .ao-order-email { font-size:11px; font-weight:300; color:var(--mid); }
+        .ao-order-amount { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:900; }
+        .ao-order-date { font-size:11px; font-weight:300; color:var(--mid); }
+        .ao-status-badge { display:inline-flex; align-items:center; padding:4px 12px; border-radius:4px; font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; }
+
+        /* All orders link */
+        .ao-view-all { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--mid); text-decoration:none; transition:color .2s; }
+        .ao-view-all:hover { color:var(--ink); }
+
+        /* Empty */
+        .ao-empty { padding:48px 24px; text-align:center; }
+        .ao-empty-icon { width:48px; height:48px; border-radius:8px; background:var(--paper); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; color:var(--mid); }
+        .ao-empty p { font-size:13px; font-weight:300; color:var(--mid); }
+
+        /* Skeleton */
+        .ao-skeleton { background:rgba(10,10,10,.06); border-radius:6px; animation:ao-sk 1.4s ease-in-out infinite; }
+        @keyframes ao-sk { 0%,100%{opacity:.6} 50%{opacity:1} }
+      `}</style>
+
+      <div className="ao-wrap">
+
+        {/* ── HEADER ─────────────────────────────────────────── */}
+        <div className="ao-header">
+          <div>
+            <span className="ao-header-tag">Dashboard</span>
+            <h1 className="ao-header-title">Overview</h1>
+            <p className="ao-header-sub">Your store&apos;s performance at a glance.</p>
+          </div>
+          <div className="ao-live-dot">
+            <span className="ao-dot" />
+            Live
+          </div>
         </div>
-    );
+
+        {/* ── KPIs ───────────────────────────────────────────── */}
+        <div className="ao-kpis">
+          {kpis.map((kpi, i) => (
+            <motion.div
+              key={kpi.title}
+              className="ao-kpi"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }}
+            >
+              <span className="ao-kpi-label">{kpi.title}</span>
+              <p className="ao-kpi-val">{loading ? "—" : kpi.value}</p>
+              <p className="ao-kpi-trend">{kpi.trend}</p>
+              <kpi.icon size={80} className="ao-kpi-icon" />
+            </motion.div>
+          ))}
+        </div>
+
+        {/* ── MAIN GRID ──────────────────────────────────────── */}
+        <div className="ao-grid">
+
+          {/* Chart + Recent Orders stacked left */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Bar chart */}
+            <motion.div className="ao-panel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .2 }}>
+              <div className="ao-panel-head">
+                <div>
+                  <p className="ao-panel-title"><TrendingUp size={18} /> Sales (Last 24h)</p>
+                  <p className="ao-panel-sub">Hourly order volume</p>
+                </div>
+              </div>
+              <div style={{ padding: "24px 24px 16px" }}>
+                <div className="ao-chart-bars">
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="ao-bar"
+                      initial={{ height: 0 }}
+                      animate={{ height: `${Math.random() * 80 + 10}%` }}
+                      transition={{ delay: .3 + i * 0.02, type: "spring", stiffness: 60 }}
+                    />
+                  ))}
+                </div>
+                <div className="ao-chart-labels">
+                  <span className="ao-chart-label">Yesterday</span>
+                  <span className="ao-chart-label">Midday</span>
+                  <span className="ao-chart-label">Now</span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Recent orders */}
+            <motion.div className="ao-panel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .35 }}>
+              <div className="ao-panel-head">
+                <div>
+                  <p className="ao-panel-title">Recent Orders</p>
+                  <p className="ao-panel-sub">Latest activity</p>
+                </div>
+                <Link href="/admin/orders" className="ao-view-all">
+                  View All <ArrowUpRight size={13} />
+                </Link>
+              </div>
+              <div className="ao-orders">
+                {loading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} style={{ padding: "12px 28px" }}>
+                      <div className="ao-skeleton" style={{ height: 44 }} />
+                    </div>
+                  ))
+                ) : recentOrders.length > 0 ? (
+                  recentOrders.map((order, i) => {
+                    const s = STATUS_STYLE[order.status] || { color: "var(--mid)", bg: "var(--paper)" };
+                    return (
+                      <motion.div
+                        key={order.id}
+                        className="ao-order-row"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: .4 + i * 0.05 }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                          <div className="ao-order-id">#{order.id.slice(-3)}</div>
+                          <div>
+                            <p className="ao-order-name">{order.user?.name || "Guest"}</p>
+                            <p className="ao-order-email">{order.user?.email}</p>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <div style={{ textAlign: "right" }}>
+                            <p className="ao-order-amount">${(order.totalAmount || 0).toFixed(2)}</p>
+                            <p className="ao-order-date">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <span className="ao-status-badge" style={{ background: s.bg, color: s.color }}>
+                            {order.status}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                ) : (
+                  <div className="ao-empty">
+                    <div className="ao-empty-icon"><Clock size={22} /></div>
+                    <p>No orders yet. They&apos;ll appear here when customers start buying.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Quick links right */}
+          <motion.div className="ao-panel" style={{ height: "fit-content" }} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: .3 }}>
+            <div className="ao-panel-head">
+              <div>
+                <p className="ao-panel-title">Quick Access</p>
+                <p className="ao-panel-sub">Jump to a section</p>
+              </div>
+            </div>
+            <div className="ao-quicklinks">
+              {quickLinks.map((item) => (
+                <Link key={item.href} href={item.href} className="ao-quicklink">
+                  <div className="ao-quicklink-left">
+                    <div className="ao-quicklink-icon"><item.icon size={16} /></div>
+                    <span className="ao-quicklink-label">{item.label}</span>
+                  </div>
+                  <ArrowUpRight size={14} className="ao-quicklink-arrow" />
+                </Link>
+              ))}
+            </div>
+
+            {/* Pending orders callout */}
+            {stats.pendingOrders > 0 && (
+              <div style={{ margin: "0 16px 16px", padding: "16px", borderRadius: 6, background: "#fffbeb", border: "1px solid #fde68a" }}>
+                <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: ".08em", textTransform: "uppercase", color: "#d97706", marginBottom: 6 }}>
+                  Action Required
+                </p>
+                <p style={{ fontSize: 22, fontWeight: 900, fontFamily: "'Barlow Condensed',sans-serif", lineHeight: 1, color: "var(--ink)", marginBottom: 8 }}>
+                  {stats.pendingOrders} Pending
+                </p>
+                <Link href="/admin/orders" style={{ fontSize: 12, fontWeight: 500, letterSpacing: ".08em", textTransform: "uppercase", color: "#d97706", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                  Review Orders <ArrowUpRight size={12} />
+                </Link>
+              </div>
+            )}
+          </motion.div>
+
+        </div>
+      </div>
+    </>
+  );
 }

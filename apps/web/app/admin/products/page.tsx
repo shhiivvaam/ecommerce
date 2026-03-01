@@ -1,252 +1,308 @@
-"use client";
+ "use client";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Plus, Search, Trash2, RefreshCw, Pencil, Package, AlertTriangle, CheckCircle, ExternalLink, Clock, Zap } from "lucide-react";
+import { PRODUCTS_API_PATH } from "@/lib/paths";
+import { Plus, Search, Trash2, RefreshCw, Pencil, Package, AlertTriangle, CheckCircle, ExternalLink, Clock } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 
 interface Product {
-    id: string;
-    title: string;
-    price: number;
-    stock: number;
-    category?: { name: string };
-    gallery: string[];
+  id: string;
+  title: string;
+  price: number;
+  stock: number;
+  category?: { name: string };
+  gallery: string[];
 }
 
 export default function AdminProductsPage() {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [stats, setStats] = useState({
-        total: 0,
-        outOfStock: 0,
-        lowStock: 0
-    });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [stats, setStats] = useState({ total: 0, outOfStock: 0, lowStock: 0 });
 
-    const fetchProducts = async (q = "") => {
-        setLoading(true);
-        try {
-            const { data } = await api.get(`/products?limit=100${q ? `&search=${encodeURIComponent(q)}` : ""}`);
-            setProducts(data.products);
+  const fetchProducts = async (q = "") => {
+    setLoading(true);
+    try {
+      const url = `${PRODUCTS_API_PATH}?limit=100${q ? `&search=${encodeURIComponent(q)}` : ""}`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setProducts(data.products ?? []);
+      if (!q) {
+        const { data: s } = await api.get("/admin/stats");
+        setStats({ total: s.totalProducts, outOfStock: s.outOfStockCount, lowStock: s.lowStockCount });
+      } else {
+        setStats({
+          total: data.total,
+          outOfStock: data.products.filter((p: Product) => p.stock === 0).length,
+          lowStock: data.products.filter((p: Product) => p.stock > 0 && p.stock < 10).length,
+        });
+      }
+    } catch { toast.error("Failed to load products"); }
+    finally { setLoading(false); }
+  };
 
-            if (!q) {
-                const { data: adminStats } = await api.get('/admin/stats');
-                setStats({
-                    total: adminStats.totalProducts,
-                    outOfStock: adminStats.outOfStockCount,
-                    lowStock: adminStats.lowStockCount
-                });
-            } else {
-                setStats({
-                    total: data.total,
-                    outOfStock: data.products.filter((p: Product) => p.stock === 0).length,
-                    lowStock: data.products.filter((p: Product) => p.stock > 0 && p.stock < 10).length
-                });
-            }
-        } catch {
-            toast.error("Failed to synchronize product catalog");
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => { fetchProducts(); }, []);
 
-    useEffect(() => { fetchProducts(); }, []);
+  const handleDelete = async (id: string) => {
+    if (!confirm("Permanently delete this product? This cannot be undone.")) return;
+    try {
+      await api.delete(`/products/${id}`);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Product deleted");
+      fetchProducts(search);
+    } catch { toast.error("Could not delete product"); }
+  };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("This action is irreversible. Permanently purge this product from the database?")) return;
-        try {
-            await api.delete(`/products/${id}`);
-            setProducts(prev => prev.filter(p => p.id !== id));
-            toast.success("Product successfully removed");
-            fetchProducts(search);
-        } catch {
-            toast.error("Critical: Deletion request failed");
-        }
-    };
+  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); fetchProducts(search); };
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        fetchProducts(search);
-    };
+  const stockStatus = (stock: number) => {
+    if (stock === 0) return { label: "Out of Stock", color: "#e11d48", bg: "#fff0f3", icon: <AlertTriangle size={12} /> };
+    if (stock < 10) return { label: "Low Stock", color: "#d97706", bg: "#fffbeb", icon: <Clock size={12} /> };
+    return { label: "In Stock", color: "#16a34a", bg: "#f0fdf4", icon: <CheckCircle size={12} /> };
+  };
 
-    return (
-        <div className="space-y-16 pb-20">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-                <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                        <span className="h-px w-12 bg-black/10 dark:bg-white/10" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Inventory Engine</span>
-                    </div>
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black dark:text-white">Catalog <br />Intelligence</h2>
-                    <p className="text-lg font-medium text-slate-400 dark:text-slate-500 italic max-w-xl">Manage, track, and deploy your sovereign product manifest across the platform.</p>
-                </div>
-                <div className="flex gap-4 pt-4">
-                    <Button variant="outline" size="icon" onClick={() => fetchProducts(search)} className="rounded-2xl h-16 w-16 border-4 border-slate-50 dark:border-slate-800 active:scale-90 transition-all">
-                        <RefreshCw className={`h-6 w-6 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
-                    <Link href="/admin/products/new">
-                        <Button className="rounded-[24px] h-16 px-10 gap-4 shadow-2xl shadow-primary/20 font-black uppercase tracking-[0.2em] text-[11px] active:scale-95 transition-all">
-                            <Plus className="h-5 w-5" /> Initialize Product
-                        </Button>
-                    </Link>
-                </div>
-            </header>
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
+        :root { --ink:#0a0a0a; --paper:#f5f3ef; --accent:#c8ff00; --mid:#8a8a8a; --border:rgba(10,10,10,0.1); --card:#fff; }
 
-            {/* Catalog Health KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {[
-                    { label: "Total Catalog", value: stats.total, icon: Package, color: "bg-blue-600 dark:bg-blue-500" },
-                    { label: "Critical Stock", value: stats.outOfStock, icon: AlertTriangle, color: "bg-rose-600 dark:bg-rose-500", sub: "Purged Items" },
-                    { label: "Replenish Soon", value: stats.lowStock, icon: Zap, color: "bg-amber-600 dark:bg-amber-500", sub: "Under 10 Units" },
-                ].map((stat, i) => (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        key={stat.label}
-                        className="bg-white dark:bg-[#0a0a0a] border-4 border-slate-50 dark:border-slate-800 rounded-[40px] p-10 flex items-center gap-8 shadow-sm transition-all hover:shadow-2xl"
-                    >
-                        <div className={`h-20 w-20 rounded-[28px] ${stat.color} text-white flex items-center justify-center shadow-2xl`}>
-                            <stat.icon className="h-10 w-10" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] italic mb-1">{stat.label}</p>
-                            <div className="flex items-baseline gap-3">
-                                <h4 className="text-5xl font-black tracking-tighter text-black dark:text-white">{stat.value}</h4>
-                                {stat.sub && <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">{stat.sub}</span>}
-                            </div>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+        .ap-wrap { font-family:'DM Sans',sans-serif; color:var(--ink); padding-bottom:80px; }
 
-            <div className="bg-white dark:bg-[#0a0a0a] border-4 border-slate-50 dark:border-slate-800 rounded-[56px] overflow-hidden shadow-2xl transition-colors">
-                <div className="p-10 border-b-4 border-slate-50 dark:border-slate-900 flex flex-col md:flex-row gap-8 items-center justify-between bg-slate-50/30 dark:bg-white/5">
-                    <form onSubmit={handleSearch} className="relative w-full md:max-w-xl group">
-                        <Search className="absolute left-8 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300 dark:text-slate-700 transition-colors group-focus-within:text-primary" />
-                        <Input
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder="QUERY MANIFEST SIGNATURE..."
-                            className="pl-20 h-20 bg-white dark:bg-black rounded-[30px] border-4 dark:border-slate-800 text-xs font-black uppercase tracking-widest focus-visible:ring-primary/20 transition-all"
-                        />
-                    </form>
-                    <div className="flex items-center gap-6 text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.3em] italic">
-                        <span>LATEST SYNC: {new Date().toLocaleTimeString()}</span>
-                    </div>
-                </div>
+        /* ── HEADER ── */
+        .ap-header { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:36px; }
+        .ap-header-tag { font-size:11px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--mid); display:block; margin-bottom:10px; }
+        .ap-header-title { font-family:'Barlow Condensed',sans-serif; font-size:clamp(40px,6vw,64px); font-weight:900; text-transform:uppercase; line-height:1; letter-spacing:-.01em; }
+        .ap-header-sub { font-size:14px; font-weight:300; color:var(--mid); margin-top:8px; }
+        .ap-header-actions { display:flex; gap:10px; align-items:center; }
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50/50 dark:bg-white/5 border-b-4 border-slate-50 dark:border-slate-900">
-                                <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-left">Product Entity</th>
-                                <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-left">Classification</th>
-                                <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-right">Liability</th>
-                                <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-center">Stock status</th>
-                                <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-right">Settings</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y-4 divide-slate-50 dark:divide-slate-900">
-                            {loading ? (
-                                Array.from({ length: 6 }).map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td colSpan={5} className="p-10"><div className="h-24 bg-slate-50 dark:bg-slate-900/50 rounded-[40px]" /></td>
-                                    </tr>
-                                ))
-                            ) : products.length > 0 ? (
-                                products.map(p => (
-                                    <motion.tr
-                                        layout
-                                        key={p.id}
-                                        className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
-                                    >
-                                        <td className="px-10 py-10">
-                                            <div className="flex items-center gap-8">
-                                                <div className="h-24 w-24 rounded-[32px] bg-slate-50 dark:bg-black overflow-hidden border-4 border-slate-100 dark:border-slate-800 group-hover:border-primary/20 transition-all flex-shrink-0 shadow-inner">
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img
-                                                        src={p.gallery?.[0] || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=200&auto=format&fit=crop'}
-                                                        alt={p.title}
-                                                        className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-700"
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 space-y-2">
-                                                    <p className="font-black text-xl text-black dark:text-white leading-tight uppercase tracking-tight truncate">{p.title}</p>
-                                                    <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.2em] italic">Node: {p.id.slice(-12).toUpperCase()}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-10">
-                                            <span className="inline-flex items-center px-5 py-2 bg-slate-100 dark:bg-white/5 border-2 border-slate-100 dark:border-slate-800 rounded-full text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em] italic">
-                                                {p.category?.name || "UNCLASSIFIED"}
-                                            </span>
-                                        </td>
-                                        <td className="px-10 py-10 text-right font-black text-3xl text-black dark:text-white tracking-tighter tabular-nums">
-                                            ${p.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                        </td>
-                                        <td className="px-10 py-10 text-center">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <span className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] border-2 shadow-sm transition-colors ${p.stock === 0
-                                                    ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-950/30"
-                                                    : p.stock < 10
-                                                        ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-950/30"
-                                                        : "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-950/30"
-                                                    }`}>
-                                                    {p.stock === 0 ? <AlertTriangle className="h-4 w-4" /> : p.stock < 10 ? <Clock className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                                                    {p.stock === 0 ? "MANIFEST PURGED" : p.stock < 10 ? "CRITICAL LOAD" : "NOMINAL LOAD"}
-                                                </span>
-                                                <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-widest italic">{p.stock} UNITS IN GRID</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-10 text-right">
-                                            <div className="flex justify-end gap-3">
-                                                <Link href={`/products/${p.id}`} target="_blank">
-                                                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-white/5 transition-all text-slate-300 dark:text-slate-700 hover:text-primary">
-                                                        <ExternalLink className="h-6 w-6" />
-                                                    </Button>
-                                                </Link>
-                                                <Link href={`/admin/products/${p.id}/edit`}>
-                                                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-white/5 transition-all text-slate-300 dark:text-slate-700 hover:text-black dark:hover:text-white">
-                                                        <Pencil className="h-6 w-6" />
-                                                    </Button>
-                                                </Link>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-14 w-14 rounded-2xl border-2 border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 hover:border-rose-100 dark:hover:border-rose-950/20 transition-all"
-                                                    onClick={() => handleDelete(p.id)}
-                                                >
-                                                    <Trash2 className="h-6 w-6" />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </motion.tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={5} className="py-40 text-center">
-                                        <div className="flex flex-col items-center justify-center space-y-8">
-                                            <div className="h-24 w-24 bg-slate-50 dark:bg-white/5 rounded-[32px] flex items-center justify-center text-slate-100 dark:text-slate-900 border-2 border-slate-50 dark:border-slate-900">
-                                                <Package className="h-12 w-12" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <h4 className="text-3xl font-black uppercase tracking-tighter text-black dark:text-white">Manifest Empty</h4>
-                                                <p className="text-sm font-medium text-slate-400 dark:text-slate-600 italic">No products detected in the current query stream.</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        .ap-icon-btn { width:44px; height:44px; border-radius:6px; border:1.5px solid var(--border); background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--mid); transition:border-color .2s,color .2s; }
+        .ap-icon-btn:hover { border-color:var(--ink); color:var(--ink); }
+        .ap-primary-btn { display:inline-flex; align-items:center; gap:8px; padding:0 22px; height:44px; border-radius:6px; border:none; background:var(--ink); color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; transition:background .2s; text-decoration:none; }
+        .ap-primary-btn:hover { background:#222; }
+
+        /* ── STATS ── */
+        .ap-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:32px; }
+        .ap-stat { background:var(--card); padding:22px 24px; }
+        .ap-stat-label { font-size:10px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--mid); display:block; margin-bottom:6px; }
+        .ap-stat-val { font-family:'Barlow Condensed',sans-serif; font-size:40px; font-weight:900; line-height:1; }
+        .ap-stat-sub { font-size:11px; color:var(--mid); font-weight:300; margin-top:3px; }
+
+        /* ── TABLE PANEL ── */
+        .ap-panel { background:var(--card); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+
+        .ap-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; padding:20px 24px; border-bottom:1px solid var(--border); background:var(--paper); }
+        .ap-search { display:flex; align-items:center; gap:0; background:#fff; border:1.5px solid var(--border); border-radius:6px; height:42px; overflow:hidden; flex:1; max-width:480px; transition:border-color .2s; }
+        .ap-search:focus-within { border-color:var(--ink); }
+        .ap-search-icon { padding:0 12px; color:var(--mid); flex-shrink:0; }
+        .ap-search input { flex:1; background:transparent; border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--ink); height:100%; }
+        .ap-search input::placeholder { color:rgba(10,10,10,.3); }
+        .ap-sync-label { font-size:11px; font-weight:300; color:var(--mid); white-space:nowrap; }
+
+        /* ── TABLE ── */
+        .ap-table { width:100%; border-collapse:collapse; font-size:13px; }
+        .ap-table thead th { padding:12px 20px; font-size:10px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--mid); border-bottom:1px solid var(--border); background:var(--paper); white-space:nowrap; }
+        .ap-table thead th:first-child { padding-left:24px; }
+        .ap-table thead th:last-child { padding-right:24px; }
+
+        .ap-table tbody tr { border-bottom:1px solid var(--border); transition:background .15s; }
+        .ap-table tbody tr:last-child { border-bottom:none; }
+        .ap-table tbody tr:hover { background:var(--paper); }
+        .ap-table td { padding:16px 20px; vertical-align:middle; }
+        .ap-table td:first-child { padding-left:24px; }
+        .ap-table td:last-child { padding-right:24px; }
+
+        /* Product cell */
+        .ap-product-img { width:56px; height:70px; border-radius:6px; overflow:hidden; background:#ede9e3; flex-shrink:0; }
+        .ap-product-img img { width:100%; height:100%; object-fit:cover; transition:transform .5s; }
+        tr:hover .ap-product-img img { transform:scale(1.06); }
+        .ap-product-title { font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; line-height:1.1; }
+        .ap-product-id { font-size:10px; color:var(--mid); font-weight:300; margin-top:3px; }
+
+        /* Category pill */
+        .ap-cat-pill { display:inline-flex; align-items:center; padding:4px 12px; border-radius:4px; border:1px solid var(--border); background:var(--paper); font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:var(--mid); white-space:nowrap; }
+
+        /* Price */
+        .ap-price { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:900; }
+
+        /* Stock badge */
+        .ap-stock-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:4px; font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; }
+        .ap-stock-units { font-size:11px; font-weight:300; color:var(--mid); margin-top:3px; display:block; }
+
+        /* Action btns */
+        .ap-action-btn { width:34px; height:34px; border-radius:6px; border:1.5px solid var(--border); background:transparent; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--mid); transition:border-color .2s,color .2s,background .2s; text-decoration:none; }
+        .ap-action-btn:hover { border-color:var(--ink); color:var(--ink); background:var(--paper); }
+        .ap-action-btn.del:hover { border-color:#e11d48; color:#e11d48; background:#fff0f3; }
+
+        /* Skeleton */
+        .ap-skeleton { background:rgba(10,10,10,.06); border-radius:6px; animation:ap-pulse 1.4s ease-in-out infinite; }
+        @keyframes ap-pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
+
+        /* Empty */
+        .ap-empty { padding:80px 24px; text-align:center; }
+        .ap-empty-icon { width:56px; height:56px; border-radius:8px; background:var(--paper); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; margin:0 auto 20px; color:var(--mid); }
+        .ap-empty h4 { font-family:'Barlow Condensed',sans-serif; font-size:28px; font-weight:900; text-transform:uppercase; margin-bottom:8px; }
+        .ap-empty p { font-size:13px; font-weight:300; color:var(--mid); }
+      `}</style>
+
+      <div className="ap-wrap">
+
+        {/* ── HEADER ─────────────────────────────────────────── */}
+        <div className="ap-header">
+          <div>
+            <span className="ap-header-tag">Inventory Management</span>
+            <h1 className="ap-header-title">Products</h1>
+            <p className="ap-header-sub">Manage your product catalog, stock levels, and pricing.</p>
+          </div>
+          <div className="ap-header-actions">
+            <button className="ap-icon-btn" onClick={() => fetchProducts(search)} title="Refresh" aria-label="Refresh">
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            </button>
+            <Link href="/admin/products/new" className="ap-primary-btn">
+              <Plus size={15} /> Add Product
+            </Link>
+          </div>
         </div>
-    );
+
+        {/* ── STATS ──────────────────────────────────────────── */}
+        <div className="ap-stats">
+          {[
+            { label: "Total Products", val: stats.total, sub: "In catalog" },
+            { label: "Out of Stock",   val: stats.outOfStock, sub: "Need restocking" },
+            { label: "Low Stock",      val: stats.lowStock,   sub: "Under 10 units" },
+          ].map(({ label, val, sub }) => (
+            <div key={label} className="ap-stat">
+              <span className="ap-stat-label">{label}</span>
+              <span className="ap-stat-val">{val}</span>
+              <p className="ap-stat-sub">{sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── TABLE PANEL ────────────────────────────────────── */}
+        <div className="ap-panel">
+
+          {/* Toolbar */}
+          <div className="ap-toolbar">
+            <form onSubmit={handleSearch} className="ap-search" style={{ flex: 1, maxWidth: 480 }}>
+              <span className="ap-search-icon"><Search size={15} /></span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products…"
+              />
+            </form>
+            <span className="ap-sync-label">Last synced: {new Date().toLocaleTimeString()}</span>
+          </div>
+
+          {/* Table */}
+          <div style={{ overflowX: "auto" }}>
+            <table className="ap-table">
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left" }}>Product</th>
+                  <th style={{ textAlign: "left" }}>Category</th>
+                  <th style={{ textAlign: "right" }}>Price</th>
+                  <th style={{ textAlign: "center" }}>Stock</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i}>
+                      <td colSpan={5} style={{ padding: "10px 24px" }}>
+                        <div className="ap-skeleton" style={{ height: 56 }} />
+                      </td>
+                    </tr>
+                  ))
+                ) : products.length > 0 ? (
+                  products.map((p, i) => {
+                    const status = stockStatus(p.stock);
+                    return (
+                      <motion.tr
+                        key={p.id}
+                        layout
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: Math.min(i * 0.03, 0.3) }}
+                      >
+                        {/* Product */}
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                            <div className="ap-product-img">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={p.gallery?.[0] || "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=200&auto=format&fit=crop"}
+                                alt={p.title}
+                              />
+                            </div>
+                            <div>
+                              <p className="ap-product-title">{p.title}</p>
+                              <p className="ap-product-id">{p.id.slice(0, 12).toUpperCase()}</p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Category */}
+                        <td>
+                          <span className="ap-cat-pill">{p.category?.name || "Uncategorized"}</span>
+                        </td>
+
+                        {/* Price */}
+                        <td style={{ textAlign: "right" }}>
+                          <span className="ap-price">${p.price.toFixed(2)}</span>
+                        </td>
+
+                        {/* Stock */}
+                        <td style={{ textAlign: "center" }}>
+                          <span
+                            className="ap-stock-badge"
+                            style={{ background: status.bg, color: status.color }}
+                          >
+                            {status.icon} {status.label}
+                          </span>
+                          <span className="ap-stock-units">{p.stock} units</span>
+                        </td>
+
+                        {/* Actions */}
+                        <td>
+                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                            <Link href={`/products/${p.id}`} target="_blank" className="ap-action-btn" aria-label="View">
+                              <ExternalLink size={14} />
+                            </Link>
+                            <Link href={`/admin/products/${p.id}/edit`} className="ap-action-btn" aria-label="Edit">
+                              <Pencil size={14} />
+                            </Link>
+                            <button className="ap-action-btn del" onClick={() => handleDelete(p.id)} aria-label="Delete">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={5}>
+                      <div className="ap-empty">
+                        <div className="ap-empty-icon"><Package size={24} /></div>
+                        <h4>No Products Found</h4>
+                        <p>Try adjusting your search, or add your first product.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </>
+  );
 }

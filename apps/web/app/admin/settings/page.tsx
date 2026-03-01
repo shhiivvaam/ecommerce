@@ -2,12 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Save, RefreshCw, LayoutGrid, Target, DollarSign, Percent, Globe, Zap, Shield, ChevronDown } from "lucide-react";
+import {
+    Save, RefreshCw, LayoutGrid, Target, DollarSign,
+    Percent, Globe, Zap, Shield, ChevronDown
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
+// ─── Reyva Design Tokens ─────────────────────────────────────────────────────
+// --ink:    #0a0a0a
+// --paper:  #f5f3ef
+// --accent: #c8ff00
+// --mid:    #8a8a8a
+// --border: rgba(10,10,10,0.1)
+// Fonts: Barlow Condensed 900 (display), DM Sans 300/400/500 (body)
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function AdminSettingsPage() {
     const [loading, setLoading] = useState(true);
@@ -24,7 +34,7 @@ export default function AdminSettingsPage() {
     const fetchSettings = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/settings');
+            const { data } = await api.get("/settings");
             setForm({
                 storeName: data.storeName ?? "",
                 storeMode: data.storeMode ?? "multi",
@@ -34,7 +44,7 @@ export default function AdminSettingsPage() {
                 currency: data.currency ?? "USD",
             });
         } catch {
-            toast.error("Failed to recover system configuration");
+            toast.error("Failed to load settings.");
         } finally {
             setLoading(false);
         }
@@ -55,216 +65,567 @@ export default function AdminSettingsPage() {
             if (form.storeMode === "single" && form.singleProductId) {
                 payload.singleProductId = form.singleProductId;
             }
-            await api.patch('/settings', payload);
-            toast.success("Global parameters synchronized");
+            await api.patch("/settings", payload);
+            toast.success("Settings saved.");
         } catch {
-            toast.error("Protocol commit rejected");
+            toast.error("Failed to save settings.");
         } finally {
             setSaving(false);
         }
     };
 
+    // ── Shared field styles ──────────────────────────────────────────────────
+    const inputCls =
+        "h-14 rounded-[6px] bg-[#f5f3ef] border border-[rgba(10,10,10,0.15)] " +
+        "text-[#0a0a0a] font-['DM_Sans'] font-medium text-sm px-4 " +
+        "placeholder:text-[#8a8a8a] focus-visible:ring-0 focus-visible:border-[#0a0a0a] " +
+        "transition-colors duration-150";
+
+    const labelCls =
+        "block text-[10px] font-['DM_Sans'] font-500 uppercase tracking-[0.18em] text-[#8a8a8a] mb-2";
+
+    // ── Loading skeleton ─────────────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="space-y-12 max-w-5xl">
-                <div className="h-32 bg-slate-50/50 dark:bg-white/5 animate-pulse rounded-[48px] border-4 border-slate-50 dark:border-slate-900" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                    <div className="h-[500px] bg-slate-50/50 dark:bg-white/5 animate-pulse rounded-[56px] border-4 border-slate-50 dark:border-slate-900" />
-                    <div className="h-[500px] bg-slate-50/50 dark:bg-white/5 animate-pulse rounded-[56px] border-4 border-slate-50 dark:border-slate-900" />
-                </div>
+            <div className="max-w-5xl space-y-8 animate-pulse">
+                <div className="h-24 bg-[rgba(10,10,10,0.05)] rounded-[8px]" />
+                <div className="h-64 bg-[rgba(10,10,10,0.05)] rounded-[8px]" />
+                <div className="h-64 bg-[rgba(10,10,10,0.05)] rounded-[8px]" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-16 pb-20 max-w-6xl transition-colors duration-500">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-                <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                        <span className="h-px w-12 bg-black/10 dark:bg-white/10" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">System Core</span>
+        <>
+            {/* Google Fonts */}
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@900&family=DM+Sans:wght@300;400;500&display=swap');
+                * { font-family: 'DM Sans', sans-serif; }
+            `}</style>
+
+            <div
+                className="pb-24 max-w-5xl"
+                style={{ backgroundColor: "#f5f3ef", minHeight: "100vh" }}
+            >
+                {/* ── Page Header ──────────────────────────────────────────── */}
+                <div
+                    className="px-10 pt-12 pb-10 mb-10 border-b"
+                    style={{
+                        backgroundColor: "#0a0a0a",
+                        borderColor: "rgba(255,255,255,0.08)",
+                        margin: "0 0 0 0",
+                        padding: "48px 48px 40px",
+                    }}
+                >
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+                        <div>
+                            {/* Eyebrow tag */}
+                            <div
+                                className="inline-flex items-center gap-2 px-3 py-1 mb-5 text-[#0a0a0a] text-[10px] tracking-[0.22em] uppercase"
+                                style={{
+                                    backgroundColor: "#c8ff00",
+                                    fontFamily: "'DM Sans', sans-serif",
+                                    fontWeight: 500,
+                                    borderRadius: "4px",
+                                }}
+                            >
+                                <Globe className="h-3 w-3" />
+                                Store Configuration
+                            </div>
+
+                            <h1
+                                style={{
+                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                    fontWeight: 900,
+                                    fontSize: "clamp(48px, 7vw, 80px)",
+                                    lineHeight: 0.9,
+                                    letterSpacing: "-0.02em",
+                                    color: "#f5f3ef",
+                                    textTransform: "uppercase",
+                                }}
+                            >
+                                Global<br />Parameters
+                            </h1>
+
+                            <p
+                                className="mt-4 max-w-md"
+                                style={{
+                                    fontFamily: "'DM Sans', sans-serif",
+                                    fontWeight: 300,
+                                    fontSize: "14px",
+                                    color: "#8a8a8a",
+                                    lineHeight: 1.6,
+                                }}
+                            >
+                                Configure store identity, operational mode, and financial settings applied globally across the platform.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={fetchSettings}
+                                className="h-12 w-12 flex items-center justify-center border transition-colors duration-150"
+                                style={{
+                                    borderRadius: "6px",
+                                    borderColor: "rgba(255,255,255,0.15)",
+                                    backgroundColor: "transparent",
+                                    color: "#f5f3ef",
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.borderColor = "#c8ff00")}
+                                onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)")}
+                            >
+                                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                            </button>
+
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="h-12 px-8 flex items-center gap-2 text-[#0a0a0a] text-[11px] font-medium uppercase tracking-[0.18em] transition-all duration-150 disabled:opacity-60"
+                                style={{
+                                    backgroundColor: "#c8ff00",
+                                    borderRadius: "6px",
+                                    fontFamily: "'DM Sans', sans-serif",
+                                }}
+                                onMouseEnter={e => !saving && (e.currentTarget.style.backgroundColor = "#d4ff33")}
+                                onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#c8ff00")}
+                            >
+                                <Save className="h-4 w-4" />
+                                {saving ? "Saving..." : "Save Changes"}
+                            </button>
+                        </div>
                     </div>
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black dark:text-white">Global <br />Parameters</h2>
-                    <p className="text-lg font-medium text-slate-400 dark:text-slate-500 italic max-w-xl">Architect the global behavior, financial manifestations, and interface modes of your ecosystem.</p>
                 </div>
-                <div className="flex gap-4 pt-4">
-                    <Button variant="outline" size="icon" onClick={fetchSettings} className="rounded-2xl h-16 w-16 border-4 border-slate-50 dark:border-slate-800 active:scale-95 transition-all">
-                        <RefreshCw className={`h-6 w-6 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
-                    <Button onClick={handleSave} disabled={saving} className="rounded-[24px] h-16 px-10 gap-4 shadow-2xl shadow-primary/20 font-black uppercase tracking-[0.2em] text-[11px] active:scale-95 transition-all">
-                        <Save className="h-5 w-5" />
-                        {saving ? "SYCHRONIZING..." : "Save Configuration"}
-                    </Button>
-                </div>
-            </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                {/* Visual Identity & Core Info */}
-                <div className="lg:col-span-12">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                {/* ── Content ──────────────────────────────────────────────── */}
+                <div className="px-10 space-y-8">
+
+                    {/* Section: Global Identity */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white dark:bg-[#0a0a0a] border-4 border-slate-50 dark:border-slate-800 rounded-[56px] p-12 shadow-sm relative overflow-hidden transition-colors"
+                        transition={{ duration: 0.35, ease: "easeOut" }}
+                        className="bg-white border"
+                        style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)" }}
                     >
-                        <div className="absolute top-0 right-0 p-20 opacity-[0.05] pointer-events-none dark:invert">
-                            <Globe className="h-64 w-64 rotate-12" />
+                        {/* Section Header Bar */}
+                        <div
+                            className="px-8 py-5 border-b flex items-center gap-3"
+                            style={{ borderColor: "rgba(10,10,10,0.08)" }}
+                        >
+                            <span
+                                className="text-[10px] uppercase tracking-[0.22em]"
+                                style={{
+                                    fontFamily: "'DM Sans', sans-serif",
+                                    fontWeight: 500,
+                                    color: "#c8ff00",
+                                    backgroundColor: "#0a0a0a",
+                                    padding: "2px 8px",
+                                    borderRadius: "4px",
+                                }}
+                            >
+                                01
+                            </span>
+                            <h2
+                                style={{
+                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                    fontWeight: 900,
+                                    fontSize: "20px",
+                                    letterSpacing: "0.04em",
+                                    textTransform: "uppercase",
+                                    color: "#0a0a0a",
+                                }}
+                            >
+                                Store Identity
+                            </h2>
                         </div>
-                        <div className="flex-1 space-y-10 z-10 relative">
-                            <h3 className="text-3xl font-black uppercase flex items-center gap-4 text-black dark:text-white">
-                                <span className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-primary/20"><Globe className="h-7 w-7 text-primary" /></span>
-                                Global Identity manifest
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 ml-2 italic">Entity Designation (Store Name)</label>
-                                    <Input
-                                        value={form.storeName}
-                                        onChange={e => setForm({ ...form, storeName: e.target.value })}
-                                        placeholder="E.G. NEXUS COMMAND"
-                                        className="h-20 rounded-[28px] bg-slate-50 dark:bg-black border-4 border-slate-50 dark:border-slate-800 text-2xl font-black uppercase tracking-tighter focus-visible:ring-primary/20 transition-all px-10 text-black dark:text-white"
+
+                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className={labelCls}>Store Name</label>
+                                <Input
+                                    value={form.storeName}
+                                    onChange={e => setForm({ ...form, storeName: e.target.value })}
+                                    placeholder="e.g. REYVA"
+                                    className={inputCls}
+                                />
+                            </div>
+
+                            <div>
+                                <label className={labelCls}>Settlement Currency</label>
+                                <div className="relative">
+                                    <select
+                                        value={form.currency}
+                                        onChange={e => setForm({ ...form, currency: e.target.value })}
+                                        className="w-full h-14 pl-4 pr-10 border text-[#0a0a0a] text-sm font-medium appearance-none focus:outline-none focus:border-[#0a0a0a] transition-colors duration-150"
+                                        style={{
+                                            borderRadius: "6px",
+                                            backgroundColor: "#f5f3ef",
+                                            borderColor: "rgba(10,10,10,0.15)",
+                                            fontFamily: "'DM Sans', sans-serif",
+                                        }}
+                                    >
+                                        <option value="USD">USD — US Dollar ($)</option>
+                                        <option value="EUR">EUR — Euro (€)</option>
+                                        <option value="GBP">GBP — British Pound (£)</option>
+                                        <option value="INR">INR — Indian Rupee (₹)</option>
+                                    </select>
+                                    <ChevronDown
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+                                        style={{ color: "#8a8a8a" }}
                                     />
                                 </div>
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 ml-2 italic">Standard Settlement Currency</label>
-                                    <div className="relative group">
-                                        <select
-                                            value={form.currency}
-                                            onChange={e => setForm({ ...form, currency: e.target.value })}
-                                            className="w-full h-20 border-4 border-slate-50 dark:border-slate-800 rounded-[28px] px-16 text-xl font-black bg-slate-50 dark:bg-black text-black dark:text-white focus:outline-none focus:ring-4 focus:ring-primary/10 appearance-none transition-all uppercase tracking-widest outline-none"
+                            </div>
+                        </div>
+                    </motion.section>
+
+                    {/* Section: Operational Mode */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, ease: "easeOut", delay: 0.08 }}
+                        className="bg-white border"
+                        style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)" }}
+                    >
+                        <div
+                            className="px-8 py-5 border-b flex items-center gap-3"
+                            style={{ borderColor: "rgba(10,10,10,0.08)" }}
+                        >
+                            <span
+                                className="text-[10px] uppercase tracking-[0.22em]"
+                                style={{
+                                    fontFamily: "'DM Sans', sans-serif",
+                                    fontWeight: 500,
+                                    color: "#c8ff00",
+                                    backgroundColor: "#0a0a0a",
+                                    padding: "2px 8px",
+                                    borderRadius: "4px",
+                                }}
+                            >
+                                02
+                            </span>
+                            <h2
+                                style={{
+                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                    fontWeight: 900,
+                                    fontSize: "20px",
+                                    letterSpacing: "0.04em",
+                                    textTransform: "uppercase",
+                                    color: "#0a0a0a",
+                                }}
+                            >
+                                Operational Mode
+                            </h2>
+                        </div>
+
+                        <div className="p-8">
+                            <p
+                                className="mb-6 text-sm"
+                                style={{
+                                    fontFamily: "'DM Sans', sans-serif",
+                                    fontWeight: 300,
+                                    color: "#8a8a8a",
+                                    lineHeight: 1.6,
+                                }}
+                            >
+                                Choose how the storefront is presented. Multi-Catalog enables full product browsing; Single-Asset redirects all traffic to one focused product page.
+                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {[
+                                    {
+                                        id: "multi",
+                                        label: "Multi-Catalog",
+                                        desc: "Full browseable product catalog",
+                                        icon: LayoutGrid,
+                                    },
+                                    {
+                                        id: "single",
+                                        label: "Single-Asset",
+                                        desc: "Focused single-product landing",
+                                        icon: Target,
+                                    },
+                                ].map(mode => {
+                                    const active = form.storeMode === mode.id;
+                                    return (
+                                        <button
+                                            key={mode.id}
+                                            onClick={() => setForm({ ...form, storeMode: mode.id })}
+                                            className="relative p-6 text-left border transition-all duration-150"
+                                            style={{
+                                                borderRadius: "8px",
+                                                borderColor: active ? "#0a0a0a" : "rgba(10,10,10,0.1)",
+                                                backgroundColor: active ? "#0a0a0a" : "#f5f3ef",
+                                            }}
                                         >
-                                            <option value="USD">USD — DOLLAR ($)</option>
-                                            <option value="EUR">EUR — EURO (€)</option>
-                                            <option value="GBP">GBP — POUND (£)</option>
-                                            <option value="INR">INR — RUPEE (₹)</option>
-                                        </select>
-                                        <DollarSign className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300 dark:text-slate-700 pointer-events-none group-hover:text-primary transition-colors" />
-                                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 dark:text-slate-700 pointer-events-none group-hover:text-primary transition-colors" />
-                                    </div>
-                                </div>
+                                            {active && (
+                                                <span
+                                                    className="absolute top-4 right-4 text-[10px] font-medium uppercase tracking-[0.18em] px-2 py-0.5"
+                                                    style={{
+                                                        backgroundColor: "#c8ff00",
+                                                        color: "#0a0a0a",
+                                                        borderRadius: "4px",
+                                                        fontFamily: "'DM Sans', sans-serif",
+                                                    }}
+                                                >
+                                                    Active
+                                                </span>
+                                            )}
+                                            <mode.icon
+                                                className="h-6 w-6 mb-4"
+                                                style={{ color: active ? "#c8ff00" : "#8a8a8a" }}
+                                            />
+                                            <p
+                                                style={{
+                                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                                    fontWeight: 900,
+                                                    fontSize: "22px",
+                                                    letterSpacing: "0.02em",
+                                                    textTransform: "uppercase",
+                                                    color: active ? "#f5f3ef" : "#0a0a0a",
+                                                }}
+                                            >
+                                                {mode.label}
+                                            </p>
+                                            <p
+                                                className="mt-1 text-xs"
+                                                style={{
+                                                    fontFamily: "'DM Sans', sans-serif",
+                                                    fontWeight: 400,
+                                                    color: active ? "#8a8a8a" : "#8a8a8a",
+                                                }}
+                                            >
+                                                {mode.desc}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        </div>
-                    </motion.div>
-                </div>
 
-                {/* Operations Mode */}
-                <div className="lg:col-span-12">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="bg-white dark:bg-[#0a0a0a] border-4 border-slate-50 dark:border-slate-800 rounded-[56px] p-12 shadow-sm space-y-10 relative overflow-hidden transition-colors"
-                    >
-                        <h3 className="text-3xl font-black uppercase flex items-center gap-4 text-black dark:text-white">
-                            <span className="h-14 w-14 rounded-2xl bg-amber-500/10 flex items-center justify-center border-2 border-amber-500/20"><Target className="h-7 w-7 text-amber-500" /></span>
-                            Ecosystem Architect
-                        </h3>
-                        <p className="text-slate-400 dark:text-slate-600 font-bold leading-relaxed italic max-w-2xl px-2">Define the operational interaction protocol. Multi-Catalog provides a sovereign browseable manifest, while Single-Protocol forces focused landing injection for a specific asset.</p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {[
-                                { id: "multi", label: "Multi-Catalog Protocol", desc: "Full sovereign manifest access", icon: LayoutGrid, color: "text-blue-500" },
-                                { id: "single", label: "Single-Asset Protocol", desc: "Targeted landing page injection", icon: Target, color: "text-amber-500" },
-                            ].map(mode => (
-                                <button
-                                    key={mode.id}
-                                    onClick={() => setForm({ ...form, storeMode: mode.id })}
-                                    className={`relative p-10 rounded-[40px] border-4 text-left transition-all group overflow-hidden ${form.storeMode === mode.id
-                                        ? "border-primary bg-primary/5 dark:bg-primary/5 shadow-2xl"
-                                        : "border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-black/50 grayscale hover:grayscale-0 hover:border-primary/20"}`}
-                                >
-                                    <div className={`h-16 w-16 mb-6 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 ${form.storeMode === mode.id ? "bg-primary text-white" : "bg-white dark:bg-black text-slate-300 dark:text-slate-700"}`}>
-                                        <mode.icon className="h-8 w-8" />
-                                    </div>
-                                    <p className={`font-black uppercase tracking-tight text-3xl transition-colors ${form.storeMode === mode.id ? "text-black dark:text-white" : "text-slate-300 dark:text-slate-700"}`}>{mode.label}</p>
-                                    <p className="text-xs font-black uppercase tracking-widest opacity-40 mt-3 italic">{mode.desc}</p>
-                                    {form.storeMode === mode.id && <div className="absolute top-6 right-6 h-3 w-3 rounded-full bg-primary animate-pulse shadow-[0_0_15px_rgba(var(--primary),0.5)]" />}
-                                </button>
-                            ))}
-                        </div>
-
-                        <AnimatePresence>
-                            {form.storeMode === "single" && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="space-y-6 pt-10 border-t-4 border-dashed border-slate-50 dark:border-slate-900 overflow-hidden"
-                                >
-                                    <div className="space-y-4">
-                                        <label className="text-[10px] font-black uppercase tracking-[0.4em] text-primary ml-2 italic">Target Asset Signature (Product ID)</label>
-                                        <Input
-                                            value={form.singleProductId}
-                                            onChange={e => setForm({ ...form, singleProductId: e.target.value })}
-                                            placeholder="PASTE PRODUCT ID SIGNATURE..."
-                                            className="h-20 rounded-[28px] bg-primary/5 border-4 border-primary/20 text-xs font-black tracking-widest focus-visible:ring-primary/40 transition-all px-10 text-primary"
-                                        />
-                                        <div className="flex items-center gap-3 justify-center text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-widest italic group">
-                                            <Zap className="h-4 w-4 animate-pulse text-amber-500" />
-                                            Active Redirection Protocol: All homepage traffic will inject into this specific asset manifest.
+                            {/* Single Product ID Field */}
+                            <AnimatePresence>
+                                {form.storeMode === "single" && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div
+                                            className="mt-6 pt-6 border-t"
+                                            style={{ borderColor: "rgba(10,10,10,0.08)" }}
+                                        >
+                                            <label className={labelCls}>
+                                                Target Product ID
+                                            </label>
+                                            <div className="relative">
+                                                <Input
+                                                    value={form.singleProductId}
+                                                    onChange={e => setForm({ ...form, singleProductId: e.target.value })}
+                                                    placeholder="Paste product ID..."
+                                                    className={inputCls + " pr-32"}
+                                                />
+                                                <span
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.15em] px-2.5 py-1"
+                                                    style={{
+                                                        backgroundColor: "#0a0a0a",
+                                                        color: "#c8ff00",
+                                                        borderRadius: "4px",
+                                                        fontFamily: "'DM Sans', sans-serif",
+                                                    }}
+                                                >
+                                                    <Zap className="h-3 w-3" />
+                                                    Active
+                                                </span>
+                                            </div>
+                                            <p
+                                                className="mt-2 text-xs"
+                                                style={{
+                                                    fontFamily: "'DM Sans', sans-serif",
+                                                    fontWeight: 300,
+                                                    color: "#8a8a8a",
+                                                }}
+                                            >
+                                                All homepage traffic will redirect to this product.
+                                            </p>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </motion.div>
-                </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </motion.section>
 
-                {/* Fiscal & Shipping */}
-                <div className="lg:col-span-12">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                    {/* Section: Economic Metrics */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-white dark:bg-[#0a0a0a] border-4 border-slate-50 dark:border-slate-800 rounded-[56px] p-12 shadow-sm space-y-12 relative overflow-hidden transition-colors"
+                        transition={{ duration: 0.35, ease: "easeOut", delay: 0.16 }}
+                        className="bg-white border"
+                        style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)" }}
                     >
-                        <h3 className="text-3xl font-black uppercase flex items-center gap-4 text-black dark:text-white">
-                            <span className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center border-2 border-emerald-500/20"><DollarSign className="h-7 w-7 text-emerald-500" /></span>
-                            Economic Metrics
-                        </h3>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between px-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 italic">Sales Tax Threshold</label>
-                                    <span className="text-3xl font-black text-emerald-500 tabular-nums">{form.taxRate}%</span>
-                                </div>
-                                <div className="relative group">
-                                    <Input
-                                        type="number" min={0} max={100} step={0.01}
-                                        value={form.taxRate}
-                                        onChange={e => setForm({ ...form, taxRate: parseFloat(e.target.value) || 0 })}
-                                        className="h-20 pl-20 rounded-[28px] bg-slate-50 dark:bg-black border-4 border-slate-50 dark:border-slate-800 text-3xl font-black tabular-nums focus-visible:ring-primary/20 transition-all text-black dark:text-white"
-                                    />
-                                    <Percent className="absolute left-6 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-100 dark:text-slate-900 group-focus-within:text-emerald-500 transition-colors" />
-                                </div>
-                                <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-widest italic px-2">Global taxation manifest applied to all checkout sequences.</p>
-                            </div>
-
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between px-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 italic">Static Logistics Fee</label>
-                                    <span className="text-3xl font-black text-primary tabular-nums">{form.currency} {form.shippingRate.toFixed(2)}</span>
-                                </div>
-                                <div className="relative group">
-                                    <Input
-                                        type="number" min={0} step={0.01}
-                                        value={form.shippingRate}
-                                        onChange={e => setForm({ ...form, shippingRate: parseFloat(e.target.value) || 0 })}
-                                        className="h-20 pl-20 rounded-[28px] bg-slate-50 dark:bg-black border-4 border-slate-50 dark:border-slate-800 text-3xl font-black tabular-nums focus-visible:ring-primary/20 transition-all text-black dark:text-white"
-                                    />
-                                    <DollarSign className="absolute left-6 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-100 dark:text-slate-900 group-focus-within:text-primary transition-colors" />
-                                </div>
-                                <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-widest italic px-2">Flat deployment liability for all physical assets.</p>
-                            </div>
+                        <div
+                            className="px-8 py-5 border-b flex items-center gap-3"
+                            style={{ borderColor: "rgba(10,10,10,0.08)" }}
+                        >
+                            <span
+                                className="text-[10px] uppercase tracking-[0.22em]"
+                                style={{
+                                    fontFamily: "'DM Sans', sans-serif",
+                                    fontWeight: 500,
+                                    color: "#c8ff00",
+                                    backgroundColor: "#0a0a0a",
+                                    padding: "2px 8px",
+                                    borderRadius: "4px",
+                                }}
+                            >
+                                03
+                            </span>
+                            <h2
+                                style={{
+                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                    fontWeight: 900,
+                                    fontSize: "20px",
+                                    letterSpacing: "0.04em",
+                                    textTransform: "uppercase",
+                                    color: "#0a0a0a",
+                                }}
+                            >
+                                Economic Settings
+                            </h2>
                         </div>
 
-                        <div className="p-10 bg-slate-50/50 dark:bg-black/50 border-4 border-dashed border-slate-100 dark:border-slate-900 rounded-[40px] flex items-center gap-6">
-                            <Shield className="h-10 w-10 text-emerald-500 shrink-0" />
-                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 leading-relaxed uppercase tracking-[0.1em] italic">Operational Protocol: These Economic Metrics are applied with absolute priority during the automated checkout sequence and financial settlement phase.</p>
+                        <div className="p-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                {/* Tax Rate */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className={labelCls} style={{ marginBottom: 0 }}>Sales Tax Rate</label>
+                                        <span
+                                            style={{
+                                                fontFamily: "'Barlow Condensed', sans-serif",
+                                                fontWeight: 900,
+                                                fontSize: "28px",
+                                                color: "#0a0a0a",
+                                                letterSpacing: "-0.01em",
+                                            }}
+                                        >
+                                            {form.taxRate}%
+                                        </span>
+                                    </div>
+                                    <div className="relative mt-3">
+                                        <Input
+                                            type="number" min={0} max={100} step={0.01}
+                                            value={form.taxRate}
+                                            onChange={e => setForm({ ...form, taxRate: parseFloat(e.target.value) || 0 })}
+                                            className={inputCls + " pl-10"}
+                                        />
+                                        <Percent
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                                            style={{ color: "#8a8a8a" }}
+                                        />
+                                    </div>
+                                    <p
+                                        className="mt-2 text-xs"
+                                        style={{
+                                            fontFamily: "'DM Sans', sans-serif",
+                                            fontWeight: 300,
+                                            color: "#8a8a8a",
+                                        }}
+                                    >
+                                        Applied to all checkout transactions globally.
+                                    </p>
+                                </div>
+
+                                {/* Shipping Rate */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className={labelCls} style={{ marginBottom: 0 }}>Flat Shipping Fee</label>
+                                        <span
+                                            style={{
+                                                fontFamily: "'Barlow Condensed', sans-serif",
+                                                fontWeight: 900,
+                                                fontSize: "28px",
+                                                color: "#0a0a0a",
+                                                letterSpacing: "-0.01em",
+                                            }}
+                                        >
+                                            {form.currency} {form.shippingRate.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="relative mt-3">
+                                        <Input
+                                            type="number" min={0} step={0.01}
+                                            value={form.shippingRate}
+                                            onChange={e => setForm({ ...form, shippingRate: parseFloat(e.target.value) || 0 })}
+                                            className={inputCls + " pl-10"}
+                                        />
+                                        <DollarSign
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                                            style={{ color: "#8a8a8a" }}
+                                        />
+                                    </div>
+                                    <p
+                                        className="mt-2 text-xs"
+                                        style={{
+                                            fontFamily: "'DM Sans', sans-serif",
+                                            fontWeight: 300,
+                                            color: "#8a8a8a",
+                                        }}
+                                    >
+                                        Fixed logistics fee applied per order.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Info bar */}
+                            <div
+                                className="flex items-start gap-4 p-5 border"
+                                style={{
+                                    borderRadius: "6px",
+                                    backgroundColor: "#f5f3ef",
+                                    borderColor: "rgba(10,10,10,0.08)",
+                                }}
+                            >
+                                <Shield
+                                    className="h-5 w-5 mt-0.5 shrink-0"
+                                    style={{ color: "#0a0a0a" }}
+                                />
+                                <p
+                                    className="text-xs leading-relaxed"
+                                    style={{
+                                        fontFamily: "'DM Sans', sans-serif",
+                                        fontWeight: 400,
+                                        color: "#8a8a8a",
+                                    }}
+                                >
+                                    These values are applied automatically during checkout. Tax is calculated as a percentage of the order subtotal; shipping is a flat fee per order regardless of quantity.
+                                </p>
+                            </div>
                         </div>
+                    </motion.section>
+
+                    {/* Bottom Save Bar */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="flex justify-end pt-2"
+                    >
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="h-12 px-10 flex items-center gap-2 text-[#0a0a0a] text-[11px] font-medium uppercase tracking-[0.18em] transition-all duration-150 disabled:opacity-60"
+                            style={{
+                                backgroundColor: "#c8ff00",
+                                borderRadius: "6px",
+                                fontFamily: "'DM Sans', sans-serif",
+                            }}
+                        >
+                            <Save className="h-4 w-4" />
+                            {saving ? "Saving..." : "Save All Changes"}
+                        </button>
                     </motion.div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }

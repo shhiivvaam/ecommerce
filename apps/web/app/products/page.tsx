@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ProductCard } from "@/components/ProductCard";
 import { api } from "@/lib/api";
@@ -38,15 +39,21 @@ type ExternalProduct = {
   category?: { id: string; name: string; slug: string } | null;
 };
 
-export default function ProductsPage() {
+function ProductsPageContent() {
+  const searchParams = useSearchParams();
+  const categoryFromUrl = searchParams.get("category");
   const [categories, setCategories] = useState<Category[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl ?? "all");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
+
+  useEffect(() => {
+    if (categoryFromUrl) setSelectedCategory(categoryFromUrl);
+  }, [categoryFromUrl]);
 
   useEffect(() => {
     api.get("/categories").then(({ data }) => setCategories(data)).catch(() => {});
@@ -55,7 +62,7 @@ export default function ProductsPage() {
   const { data: rawProducts = [], isLoading } = useQuery<ExternalProduct[]>({
     queryKey: ["products-all"],
     queryFn: async () => {
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/product");
       if (!res.ok) throw new Error("Failed to fetch products");
       const data: { products?: ExternalProduct[] } = await res.json();
       return data.products ?? [];
@@ -451,5 +458,21 @@ export default function ProductsPage() {
 
       </div>
     </>
+  );
+}
+
+function ProductsPageFallback() {
+  return (
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#f5f3ef", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ textAlign: "center", color: "#8a8a8a" }}>Loading products…</div>
+    </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<ProductsPageFallback />}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }

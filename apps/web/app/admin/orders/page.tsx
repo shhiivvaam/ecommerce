@@ -3,10 +3,18 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { ChevronDown, RefreshCw, ShoppingBag, Clock, CheckCircle2, Package, X, MapPin, User, DollarSign, ExternalLink, Zap, Activity } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+    ChevronDown, RefreshCw, ShoppingBag, Clock,
+    Package, X, MapPin, User, DollarSign,
+    ExternalLink, Zap, Activity
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+
+// ─── Reyva Tokens ─────────────────────────────────────────────────────────────
+// ink: #0a0a0a | paper: #f5f3ef | accent: #c8ff00 | mid: #8a8a8a
+// Barlow Condensed 900 (display) · DM Sans 300/400/500 (body)
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface OrderItem {
     id: string;
@@ -33,13 +41,18 @@ interface Order {
 }
 
 const STATUS_OPTIONS = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
-const STATUS_COLORS: Record<string, string> = {
-    PENDING: "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/30",
-    PROCESSING: "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30",
-    SHIPPED: "bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/30",
-    DELIVERED: "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30",
-    CANCELLED: "bg-rose-100 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-950/30",
+
+// Reyva-aligned status styles: no color-coded pastels — use ink/paper/accent language
+const STATUS_META: Record<string, { bg: string; text: string; dot: string }> = {
+    PENDING:    { bg: "#fff8e1", text: "#7a5c00", dot: "#f5b800" },
+    PROCESSING: { bg: "#e8f0fe", text: "#1a3e8c", dot: "#3b6ff5" },
+    SHIPPED:    { bg: "#f3e8ff", text: "#5b21b6", dot: "#8b5cf6" },
+    DELIVERED:  { bg: "#e6f9f0", text: "#14532d", dot: "#22c55e" },
+    CANCELLED:  { bg: "#fce8e8", text: "#7f1d1d", dot: "#ef4444" },
 };
+
+const labelCls =
+    "block text-[10px] font-['DM_Sans'] font-500 uppercase tracking-[0.18em] text-[#8a8a8a] mb-2";
 
 export default function AdminOrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -50,10 +63,10 @@ export default function AdminOrdersPage() {
     const fetchOrders = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/orders/admin/all');
+            const { data } = await api.get("/orders/admin/all");
             setOrders(data);
         } catch {
-            toast.error("Cloud synchronization failed");
+            toast.error("Failed to load orders.");
         } finally {
             setLoading(false);
         }
@@ -65,12 +78,10 @@ export default function AdminOrdersPage() {
         try {
             await api.patch(`/orders/${orderId}/status`, { status });
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-            if (selectedOrder?.id === orderId) {
-                setSelectedOrder({ ...selectedOrder, status });
-            }
-            toast.success(`Order transition: ${status}`);
+            if (selectedOrder?.id === orderId) setSelectedOrder(prev => prev ? { ...prev, status } : null);
+            toast.success("Status updated.");
         } catch {
-            toast.error("Status update rejected");
+            toast.error("Failed to update status.");
         }
     };
 
@@ -82,330 +93,599 @@ export default function AdminOrdersPage() {
         processing: orders.filter(o => o.status === "PROCESSING").length,
     };
 
-    return (
-        <div className="space-y-16 pb-20 relative min-h-screen transition-colors duration-500">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-                <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                        <span className="h-px w-12 bg-black/10 dark:bg-white/10" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Logistics Core</span>
-                    </div>
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black dark:text-white">Transaction <br />Logistics</h2>
-                    <p className="text-lg font-medium text-slate-400 dark:text-slate-500 italic max-w-xl">Control tower for global order flow and fulfillment intelligence.</p>
-                </div>
-                <div className="flex gap-4 pt-4">
-                    <Button variant="outline" onClick={fetchOrders} className="rounded-[20px] h-16 px-10 gap-3 border-4 border-slate-50 dark:border-slate-800 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all">
-                        <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} /> Sync Logistics
-                    </Button>
-                </div>
-            </header>
+    const StatusBadge = ({ status }: { status: string }) => {
+        const meta = STATUS_META[status] ?? { bg: "#f5f3ef", text: "#8a8a8a", dot: "#8a8a8a" };
+        return (
+            <span
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em]"
+                style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    backgroundColor: meta.bg,
+                    color: meta.text,
+                    borderRadius: "4px",
+                }}
+            >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.dot }} />
+                {status}
+            </span>
+        );
+    };
 
-            {/* Global Order Health */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {[
-                    { label: "Active Volume", value: stats.total, icon: ShoppingBag, color: "bg-blue-600 dark:bg-blue-500" },
-                    { label: "Awaiting Action", value: stats.pending, icon: Clock, color: "bg-amber-600 dark:bg-amber-500" },
-                    { label: "Transit Flow", value: stats.processing, icon: Activity, color: "bg-indigo-600 dark:bg-indigo-500" },
-                ].map((stat, i) => (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        key={stat.label}
-                        className="bg-white dark:bg-[#0a0a0a] border-4 border-slate-50 dark:border-slate-800 rounded-[40px] p-10 flex items-center gap-8 shadow-sm transition-all hover:shadow-2xl"
-                    >
-                        <div className={`h-20 w-20 rounded-[28px] ${stat.color} text-white flex items-center justify-center shadow-2xl`}>
-                            <stat.icon className="h-10 w-10" />
-                        </div>
+    return (
+        <>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@900&family=DM+Sans:wght@300;400;500&display=swap');
+                * { font-family: 'DM Sans', sans-serif; }
+                .reyva-scrollbar::-webkit-scrollbar { width: 4px; }
+                .reyva-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .reyva-scrollbar::-webkit-scrollbar-thumb { background: rgba(10,10,10,0.12); border-radius: 4px; }
+            `}</style>
+
+            <div style={{ backgroundColor: "#f5f3ef", minHeight: "100vh" }}>
+
+                {/* ── Page Header (ink) ────────────────────────────────────── */}
+                <div style={{ backgroundColor: "#0a0a0a", padding: "48px 48px 40px" }}>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 max-w-7xl">
                         <div>
-                            <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] italic mb-1">{stat.label}</p>
-                            <h4 className="text-5xl font-black tracking-tighter text-black dark:text-white tabular-nums">{stat.value}</h4>
+                            <div
+                                className="inline-flex items-center gap-2 px-3 py-1 mb-5 text-[10px] uppercase tracking-[0.22em]"
+                                style={{ backgroundColor: "#c8ff00", color: "#0a0a0a", borderRadius: "4px", fontWeight: 500 }}
+                            >
+                                <Activity className="h-3 w-3" />
+                                Order Management
+                            </div>
+                            <h1
+                                style={{
+                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                    fontWeight: 900,
+                                    fontSize: "clamp(48px, 7vw, 80px)",
+                                    lineHeight: 0.9,
+                                    letterSpacing: "-0.02em",
+                                    color: "#f5f3ef",
+                                    textTransform: "uppercase",
+                                }}
+                            >
+                                Transaction<br />Logistics
+                            </h1>
+                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "14px", color: "#8a8a8a", marginTop: "16px", lineHeight: 1.6 }}>
+                                Monitor, filter, and fulfill all customer orders across the platform.
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={fetchOrders}
+                            className="h-12 px-6 flex items-center gap-2 uppercase tracking-[0.18em] text-[11px] transition-all duration-150 border"
+                            style={{
+                                borderRadius: "6px",
+                                borderColor: "rgba(255,255,255,0.15)",
+                                backgroundColor: "transparent",
+                                color: "#f5f3ef",
+                                fontFamily: "'DM Sans', sans-serif",
+                                fontWeight: 500,
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = "#c8ff00")}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)")}
+                        >
+                            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div className="px-12 py-10 max-w-7xl space-y-8">
+
+                    {/* ── Stat Cards ───────────────────────────────────────── */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        {[
+                            { label: "Total Orders", value: stats.total, icon: ShoppingBag },
+                            { label: "Awaiting Action", value: stats.pending, icon: Clock },
+                            { label: "In Progress", value: stats.processing, icon: Activity },
+                        ].map((stat, i) => (
+                            <motion.div
+                                key={stat.label}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: i * 0.07 }}
+                                className="bg-white border flex items-center gap-6 p-6"
+                                style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)" }}
+                            >
+                                <div
+                                    className="h-12 w-12 flex items-center justify-center shrink-0"
+                                    style={{ backgroundColor: "#0a0a0a", borderRadius: "6px" }}
+                                >
+                                    <stat.icon className="h-5 w-5" style={{ color: "#c8ff00" }} />
+                                </div>
+                                <div>
+                                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400, fontSize: "12px", color: "#8a8a8a", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                                        {stat.label}
+                                    </p>
+                                    <p
+                                        style={{
+                                            fontFamily: "'Barlow Condensed', sans-serif",
+                                            fontWeight: 900,
+                                            fontSize: "40px",
+                                            lineHeight: 1,
+                                            color: "#0a0a0a",
+                                            letterSpacing: "-0.02em",
+                                        }}
+                                    >
+                                        {stat.value}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* ── Filter Tabs ──────────────────────────────────────── */}
+                    <div className="flex flex-wrap gap-2">
+                        {["ALL", ...STATUS_OPTIONS].map(s => {
+                            const active = filter === s;
+                            return (
+                                <button
+                                    key={s}
+                                    onClick={() => setFilter(s)}
+                                    className="px-4 py-2 text-[11px] uppercase tracking-[0.15em] transition-all duration-150 border"
+                                    style={{
+                                        borderRadius: "6px",
+                                        fontFamily: "'DM Sans', sans-serif",
+                                        fontWeight: 500,
+                                        backgroundColor: active ? "#0a0a0a" : "white",
+                                        color: active ? "#c8ff00" : "#8a8a8a",
+                                        borderColor: active ? "#0a0a0a" : "rgba(10,10,10,0.1)",
+                                    }}
+                                >
+                                    {s}
+                                    {s !== "ALL" && (
+                                        <span className="ml-2 opacity-50 tabular-nums">
+                                            {orders.filter(o => o.status === s).length}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* ── Orders Table ─────────────────────────────────────── */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.15 }}
+                        className="bg-white border overflow-hidden"
+                        style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)" }}
+                    >
+                        {/* Table header */}
+                        <div
+                            className="grid border-b px-6"
+                            style={{
+                                gridTemplateColumns: "1.5fr 1.5fr 80px 120px 130px 140px",
+                                borderColor: "rgba(10,10,10,0.08)",
+                                backgroundColor: "#f5f3ef",
+                            }}
+                        >
+                            {["Order ID", "Customer", "Items", "Total", "Status", "Update"].map(h => (
+                                <div
+                                    key={h}
+                                    className="py-4 text-[10px] uppercase tracking-[0.18em]"
+                                    style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, color: "#8a8a8a" }}
+                                >
+                                    {h}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="divide-y" style={{ borderColor: "rgba(10,10,10,0.06)" }}>
+                            <AnimatePresence mode="popLayout">
+                                {loading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <div key={i} className="px-6 py-5 animate-pulse">
+                                            <div className="h-10 rounded-[6px]" style={{ backgroundColor: "#f5f3ef" }} />
+                                        </div>
+                                    ))
+                                ) : filtered.length === 0 ? (
+                                    <div className="py-24 flex flex-col items-center gap-4">
+                                        <ShoppingBag className="h-10 w-10" style={{ color: "#8a8a8a" }} />
+                                        <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: "24px", textTransform: "uppercase", letterSpacing: "0.02em", color: "#0a0a0a" }}>
+                                            No Orders Found
+                                        </p>
+                                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "13px", color: "#8a8a8a" }}>
+                                            Try adjusting your filter.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    filtered.map(order => (
+                                        <motion.div
+                                            layout
+                                            key={order.id}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="grid px-6 py-4 cursor-pointer transition-colors duration-150 items-center"
+                                            style={{
+                                                gridTemplateColumns: "1.5fr 1.5fr 80px 120px 130px 140px",
+                                            }}
+                                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#f5f3ef")}
+                                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
+                                            onClick={() => setSelectedOrder(order)}
+                                        >
+                                            {/* Order ID */}
+                                            <div>
+                                                <p
+                                                    className="text-[11px] uppercase tracking-[0.12em]"
+                                                    style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, color: "#0a0a0a" }}
+                                                >
+                                                    #{order.id.slice(-8).toUpperCase()}
+                                                </p>
+                                                <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "11px", color: "#8a8a8a", marginTop: "2px" }}>
+                                                    {new Date(order.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                                                </p>
+                                            </div>
+
+                                            {/* Customer */}
+                                            <div>
+                                                <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: "13px", color: "#0a0a0a" }}>
+                                                    {order.user?.name || "Guest"}
+                                                </p>
+                                                <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "11px", color: "#8a8a8a", marginTop: "2px" }}>
+                                                    {order.user?.email}
+                                                </p>
+                                            </div>
+
+                                            {/* Items */}
+                                            <div
+                                                className="text-[12px]"
+                                                style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400, color: "#8a8a8a" }}
+                                            >
+                                                {order.items?.reduce((s, i) => s + (i.quantity || 0), 0) || 0}
+                                            </div>
+
+                                            {/* Total */}
+                                            <div
+                                                style={{
+                                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                                    fontWeight: 900,
+                                                    fontSize: "20px",
+                                                    color: "#0a0a0a",
+                                                    letterSpacing: "-0.01em",
+                                                }}
+                                            >
+                                                ${(order.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </div>
+
+                                            {/* Status */}
+                                            <div onClick={e => e.stopPropagation()}>
+                                                <StatusBadge status={order.status} />
+                                            </div>
+
+                                            {/* Status Select */}
+                                            <div onClick={e => e.stopPropagation()} className="relative">
+                                                <select
+                                                    value={order.status}
+                                                    onChange={e => handleStatusChange(order.id, e.target.value)}
+                                                    className="w-full appearance-none text-[11px] uppercase tracking-[0.1em] border px-3 py-2 pr-8 focus:outline-none transition-colors duration-150"
+                                                    style={{
+                                                        borderRadius: "6px",
+                                                        borderColor: "rgba(10,10,10,0.15)",
+                                                        backgroundColor: "#f5f3ef",
+                                                        fontFamily: "'DM Sans', sans-serif",
+                                                        fontWeight: 500,
+                                                        color: "#0a0a0a",
+                                                    }}
+                                                >
+                                                    {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none" style={{ color: "#8a8a8a" }} />
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                )}
+                            </AnimatePresence>
                         </div>
                     </motion.div>
-                ))}
-            </div>
-
-            <div className="space-y-10">
-                {/* Filtration Matrix */}
-                <div className="flex flex-wrap gap-3 bg-slate-100/50 dark:bg-white/5 p-3 rounded-[32px] w-fit border-4 border-slate-50 dark:border-slate-900 transition-colors">
-                    {["ALL", ...STATUS_OPTIONS].map(s => (
-                        <button
-                            key={s}
-                            onClick={() => setFilter(s)}
-                            className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${filter === s
-                                ? "bg-white dark:bg-black text-primary shadow-xl scale-[1.05] border-2 border-primary/10"
-                                : "text-slate-400 dark:text-slate-600 hover:text-black dark:hover:text-white"
-                                }`}
-                        >
-                            {s} {s !== "ALL" && <span className="ml-2 opacity-30 tabular-nums">{orders.filter(o => o.status === s).length}</span>}
-                        </button>
-                    ))}
                 </div>
 
-                <div className="bg-white dark:bg-[#0a0a0a] border-4 border-slate-50 dark:border-slate-800 rounded-[56px] overflow-hidden shadow-2xl transition-colors">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/50 dark:bg-white/5 border-b-4 border-slate-50 dark:border-slate-900">
-                                    <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-left">Transaction ID</th>
-                                    <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-left">Customer Profile</th>
-                                    <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-center">Payload</th>
-                                    <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-right">Net Liability</th>
-                                    <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-center">Status</th>
-                                    <th className="h-20 px-10 font-black text-black dark:text-white uppercase text-[10px] tracking-[0.4em] text-right">Settings</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y-4 divide-slate-50 dark:divide-slate-900">
-                                <AnimatePresence mode="popLayout">
-                                    {loading ? (
-                                        Array.from({ length: 5 }).map((_, i) => (
-                                            <tr key={i} className="animate-pulse">
-                                                <td colSpan={6} className="p-10"><div className="h-20 bg-slate-50 dark:bg-slate-900/50 rounded-[32px]" /></td>
-                                            </tr>
-                                        ))
-                                    ) : filtered.length > 0 ? (
-                                        filtered.map(order => (
-                                            <motion.tr
-                                                layout
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                key={order.id}
-                                                className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer"
-                                                onClick={() => setSelectedOrder(order)}
-                                            >
-                                                <td className="px-10 py-10">
-                                                    <span className="font-black text-[10px] bg-slate-100 dark:bg-white/5 px-4 py-2 rounded-xl text-slate-400 dark:text-slate-600 group-hover:bg-primary/10 group-hover:text-primary transition-all uppercase tracking-widest border-2 border-transparent group-hover:border-primary/20 italic shadow-inner">#{(order.id || "").slice(-8).toUpperCase()}</span>
-                                                    <p className="text-[10px] text-slate-300 dark:text-slate-700 mt-4 font-black uppercase tracking-[0.2em] italic transition-colors group-hover:text-primary/50">{new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                                                </td>
-                                                <td className="px-10 py-10">
-                                                    <p className="font-black text-lg text-black dark:text-white leading-none uppercase tracking-tight">{order.user?.name || "Independent Node"}</p>
-                                                    <p className="text-xs text-slate-400 dark:text-slate-600 mt-2 font-medium italic">{order.user?.email}</p>
-                                                </td>
-                                                <td className="px-10 py-10 text-center">
-                                                    <div className="inline-flex items-center gap-3 text-slate-300 dark:text-slate-700 font-black text-[10px] uppercase tracking-widest bg-slate-50/50 dark:bg-white/5 px-4 py-2 rounded-2xl border-2 border-slate-50 dark:border-slate-800 italic group-hover:border-primary/20 transition-all">
-                                                        <Package className="h-4 w-4" />
-                                                        {order.items?.reduce((s, i) => s + (i.quantity || 0), 0) || 0} Entities
-                                                    </div>
-                                                </td>
-                                                <td className="px-10 py-10 text-right">
-                                                    <p className="font-black text-3xl tracking-tighter text-black dark:text-white tabular-nums">${(order.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                                                    <div className="flex items-center justify-end gap-2 text-[9px] font-black text-emerald-500 uppercase tracking-widest mt-2 italic">
-                                                        <CheckCircle2 className="h-3 w-3" /> Node Secure
-                                                    </div>
-                                                </td>
-                                                <td className="px-10 py-10 text-center">
-                                                    <span className={`px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border-2 shadow-sm transition-colors ${STATUS_COLORS[order.status] || "bg-muted text-muted-foreground"}`}>
-                                                        {order.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-10 py-10 text-right" onClick={e => e.stopPropagation()}>
-                                                    <div className="relative group/select">
-                                                        <select
-                                                            value={order.status}
-                                                            onChange={e => handleStatusChange(order.id, e.target.value)}
-                                                            className="appearance-none text-[10px] font-black border-4 border-slate-50 dark:border-slate-800 rounded-2xl px-6 py-3 pr-12 bg-white dark:bg-black text-black dark:text-white cursor-pointer group-hover/select:border-primary/20 transition-all focus:outline-none tracking-widest uppercase italic outline-none"
-                                                        >
-                                                            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                                        </select>
-                                                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 dark:text-slate-700 pointer-events-none group-hover/select:text-primary transition-colors" />
-                                                    </div>
-                                                </td>
-                                            </motion.tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={6} className="py-40 text-center">
-                                                <div className="flex flex-col items-center justify-center space-y-8">
-                                                    <div className="h-24 w-24 bg-slate-50 dark:bg-white/5 rounded-[32px] flex items-center justify-center text-slate-100 dark:text-slate-900 border-2 border-slate-50 dark:border-slate-900">
-                                                        <ShoppingBag className="h-12 w-12" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <h4 className="text-3xl font-black uppercase tracking-tighter text-black dark:text-white">Log Void</h4>
-                                                        <p className="text-sm font-medium text-slate-400 dark:text-slate-600 italic">Adjust your status parameters to detect sequences.</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </AnimatePresence>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            {/* Order Detail Slide-over */}
-            <AnimatePresence>
-                {selectedOrder && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={() => setSelectedOrder(null)}
-                            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100]"
-                        />
-                        <motion.div
-                            initial={{ x: "100%" }}
-                            animate={{ x: 0 }}
-                            exit={{ x: "100%" }}
-                            transition={{ type: "spring", damping: 35, stiffness: 250 }}
-                            className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white dark:bg-[#0a0a0a] border-l-4 border-slate-50 dark:border-slate-900 shadow-3xl z-[101] flex flex-col"
-                        >
-                            {/* Header */}
-                            <div className="p-12 border-b-4 border-slate-50 dark:border-slate-900 flex items-center justify-between bg-slate-50/50 dark:bg-white/5 relative transition-colors">
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-4">
-                                        <h3 className="text-3xl font-black uppercase tracking-tighter text-black dark:text-white leading-none">Manifest Details</h3>
-                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border-2 shadow-sm ${STATUS_COLORS[selectedOrder.status]}`}>
-                                            {selectedOrder.status}
-                                        </span>
-                                    </div>
-                                    <p className="text-[10px] font-black font-mono text-slate-300 dark:text-slate-700 uppercase tracking-widest italic">ID REFERENCE: {selectedOrder.id}</p>
-                                </div>
-                                <Button variant="ghost" size="icon" onClick={() => setSelectedOrder(null)} className="rounded-2xl h-14 w-14 border-4 border-slate-100 dark:border-slate-800 transition-all hover:bg-slate-100 dark:hover:bg-slate-800">
-                                    <X className="h-8 w-8 text-black dark:text-white" />
-                                </Button>
-                            </div>
-
-                            {/* Scrollable Content */}
-                            <div className="flex-1 overflow-y-auto p-12 space-y-12 custom-scrollbar transition-colors">
-                                {/* Section: Logistics Progress */}
-                                <div className="space-y-8">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 italic flex items-center gap-4 px-2">
-                                        <Zap className="h-5 w-5 text-primary" /> Fulfillment Phase
-                                    </h4>
-                                    <div className="flex justify-between items-center relative px-4">
-                                        <div className="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-1.5 bg-slate-50 dark:bg-white/5 rounded-full" />
-                                        {STATUS_OPTIONS.slice(0, 4).map((s, idx) => {
-                                            const activeIdx = STATUS_OPTIONS.indexOf(selectedOrder.status);
-                                            const isDone = STATUS_OPTIONS.indexOf(s) <= activeIdx;
-                                            return (
-                                                <div key={s} className="relative z-10 flex flex-col items-center gap-4 bg-white dark:bg-[#0a0a0a] transition-colors p-2">
-                                                    <div className={`h-12 w-12 rounded-full border-4 flex items-center justify-center transition-all duration-500 ${isDone ? 'bg-primary border-primary text-white scale-125 shadow-2xl' : 'bg-white dark:bg-[#0a0a0a] border-slate-50 dark:border-slate-900 text-slate-200 dark:text-slate-800'}`}>
-                                                        {isDone ? <CheckCircle2 className="h-6 w-6" /> : <span className="text-xs font-black">{idx + 1}</span>}
-                                                    </div>
-                                                    <span className={`text-[9px] font-black tracking-widest uppercase italic transition-colors ${isDone ? 'text-black dark:text-white' : 'text-slate-100 dark:text-slate-900'}`}>{s}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                    <div className="bg-slate-50 dark:bg-white/5 border-4 border-dashed border-slate-100 dark:border-slate-900 rounded-[32px] p-8 flex items-center justify-between transition-colors">
-                                        <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-widest italic">Transition Phase:</p>
-                                        <div className="relative group/select">
-                                            <select
-                                                value={selectedOrder.status}
-                                                onChange={e => handleStatusChange(selectedOrder.id, e.target.value)}
-                                                className="appearance-none text-[10px] font-black border-4 border-slate-100 dark:border-slate-800 rounded-2xl px-6 py-3 pr-12 bg-white dark:bg-black text-black dark:text-white cursor-pointer transition-all uppercase tracking-widest outline-none italic shadow-xl"
-                                            >
-                                                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 dark:text-slate-700 pointer-events-none group-hover/select:text-primary transition-colors" />
+                {/* ── Order Detail Slide-over ───────────────────────────── */}
+                <AnimatePresence>
+                    {selectedOrder && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                onClick={() => setSelectedOrder(null)}
+                                className="fixed inset-0 z-[100]"
+                                style={{ backgroundColor: "rgba(10,10,10,0.5)", backdropFilter: "blur(4px)" }}
+                            />
+                            <motion.div
+                                initial={{ x: "100%" }}
+                                animate={{ x: 0 }}
+                                exit={{ x: "100%" }}
+                                transition={{ type: "spring", damping: 36, stiffness: 260 }}
+                                className="fixed right-0 top-0 h-full z-[101] flex flex-col"
+                                style={{
+                                    width: "min(580px, 100vw)",
+                                    backgroundColor: "white",
+                                    borderLeft: "1px solid rgba(10,10,10,0.1)",
+                                    boxShadow: "-24px 0 60px rgba(10,10,10,0.12)",
+                                }}
+                            >
+                                {/* Drawer Header */}
+                                <div
+                                    className="px-8 py-6 flex items-start justify-between border-b"
+                                    style={{ backgroundColor: "#0a0a0a", borderColor: "rgba(255,255,255,0.06)" }}
+                                >
+                                    <div>
+                                        <div
+                                            className="inline-flex items-center gap-1.5 px-2 py-0.5 mb-3 text-[10px] uppercase tracking-[0.18em]"
+                                            style={{ backgroundColor: "#c8ff00", color: "#0a0a0a", borderRadius: "4px", fontWeight: 500 }}
+                                        >
+                                            <Zap className="h-3 w-3" />
+                                            Order Detail
                                         </div>
+                                        <h3
+                                            style={{
+                                                fontFamily: "'Barlow Condensed', sans-serif",
+                                                fontWeight: 900,
+                                                fontSize: "32px",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "-0.01em",
+                                                color: "#f5f3ef",
+                                                lineHeight: 0.95,
+                                            }}
+                                        >
+                                            #{selectedOrder.id.slice(-8).toUpperCase()}
+                                        </h3>
+                                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "12px", color: "#8a8a8a", marginTop: "6px" }}>
+                                            {new Date(selectedOrder.createdAt).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                                        </p>
                                     </div>
+                                    <button
+                                        onClick={() => setSelectedOrder(null)}
+                                        className="h-10 w-10 flex items-center justify-center border transition-colors"
+                                        style={{ borderRadius: "6px", borderColor: "rgba(255,255,255,0.12)", backgroundColor: "transparent", color: "#8a8a8a" }}
+                                        onMouseEnter={e => (e.currentTarget.style.borderColor = "#c8ff00")}
+                                        onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
                                 </div>
 
-                                {/* Section: Entity Information */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="bg-white dark:bg-[#0a0a0a] rounded-[40px] p-10 border-4 border-slate-50 dark:border-slate-900 space-y-6 hover:border-primary/20 transition-all shadow-sm">
-                                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 dark:text-slate-700 flex items-center gap-3 italic">
-                                            <User className="h-5 w-5" /> Customer Entity
-                                        </h4>
-                                        <div className="space-y-2">
-                                            <p className="text-2xl font-black text-black dark:text-white uppercase tracking-tight leading-none">{selectedOrder.user?.name || "Independent Node"}</p>
-                                            <p className="text-sm font-medium text-slate-400 dark:text-slate-600 italic">{selectedOrder.user?.email}</p>
-                                        </div>
-                                        <div className="pt-2">
-                                            <Link href={`/admin/customers`} className="inline-flex items-center gap-3 text-[10px] font-black uppercase text-primary tracking-widest italic hover:gap-5 transition-all">
-                                                Entity Profile <ExternalLink className="h-4 w-4" />
-                                            </Link>
-                                        </div>
-                                    </div>
-                                    <div className="bg-white dark:bg-[#0a0a0a] rounded-[40px] p-10 border-4 border-slate-50 dark:border-slate-900 space-y-6 hover:border-primary/20 transition-all shadow-sm">
-                                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 dark:text-slate-700 flex items-center gap-3 italic">
-                                            <MapPin className="h-5 w-5" /> Deployment Node
-                                        </h4>
-                                        {selectedOrder.address ? (
-                                            <div className="space-y-2">
-                                                <p className="text-sm font-black text-black dark:text-white uppercase tracking-widest leading-tight">{selectedOrder.address.street}</p>
-                                                <p className="text-xs font-bold text-slate-400 dark:text-slate-600 uppercase italic leading-relaxed">{selectedOrder.address.city}, {selectedOrder.address.state} {selectedOrder.address.zipCode}</p>
-                                                <div className="pt-2">
-                                                    <span className="text-[9px] font-black bg-slate-50 dark:bg-white/5 px-3 py-1 rounded-full text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] border-2 border-slate-50 dark:border-slate-900">{selectedOrder.address.country}</span>
+                                {/* Scrollable Body */}
+                                <div className="flex-1 overflow-y-auto reyva-scrollbar" style={{ backgroundColor: "#f5f3ef" }}>
+                                    <div className="p-8 space-y-6">
+
+                                        {/* Status + Update */}
+                                        <div
+                                            className="bg-white border p-6 space-y-4"
+                                            style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)" }}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className={labelCls}>Current Status</p>
+                                                    <StatusBadge status={selectedOrder.status} />
+                                                </div>
+                                                <div className="relative">
+                                                    <select
+                                                        value={selectedOrder.status}
+                                                        onChange={e => handleStatusChange(selectedOrder.id, e.target.value)}
+                                                        className="appearance-none text-[11px] uppercase tracking-[0.1em] border px-4 py-2.5 pr-8 focus:outline-none transition-colors"
+                                                        style={{
+                                                            borderRadius: "6px",
+                                                            borderColor: "#0a0a0a",
+                                                            backgroundColor: "#0a0a0a",
+                                                            fontFamily: "'DM Sans', sans-serif",
+                                                            fontWeight: 500,
+                                                            color: "#c8ff00",
+                                                        }}
+                                                    >
+                                                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                    </select>
+                                                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none" style={{ color: "#c8ff00" }} />
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <p className="text-xs font-black text-slate-100 dark:text-slate-900 italic uppercase">Log void: No address.</p>
-                                        )}
-                                    </div>
-                                </div>
 
-                                {/* Section: Itemized Manifest */}
-                                <div className="space-y-8">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 italic flex items-center gap-4 px-4">
-                                        <Package className="h-5 w-5 text-indigo-500" /> itemized Manifest
-                                    </h4>
-                                    <div className="bg-white dark:bg-[#050505] border-4 border-slate-50 dark:border-slate-900 rounded-[40px] overflow-hidden transition-colors shadow-inner">
-                                        <div className="divide-y-4 divide-slate-50 dark:divide-slate-900">
-                                            {selectedOrder.items.map((item) => (
-                                                <div key={item.id} className="p-10 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                                                    <div className="flex items-center gap-8">
-                                                        <div className="h-20 w-20 rounded-[28px] bg-slate-50 dark:bg-black flex items-center justify-center font-black text-[10px] text-slate-100 dark:text-slate-900 border-2 border-slate-50 dark:border-slate-900 shadow-inner group-hover:text-primary transition-colors italic">
-                                                            P-IMG
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <p className="font-black text-lg text-black dark:text-white uppercase tracking-tighter group-hover:text-primary transition-colors">{item.productTitle}</p>
-                                                            <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase italic tracking-widest">SKU: {item.sku || "PROT-UNIDENTIFIED"}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right space-y-2">
-                                                        <p className="text-2xl font-black text-black dark:text-white tabular-nums tracking-tighter">${(item.price * item.quantity).toFixed(2)}</p>
-                                                        <p className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-widest italic">{item.quantity} UNITS @ ${item.price.toFixed(2)}</p>
-                                                    </div>
+                                            {/* Progress bar */}
+                                            <div>
+                                                <div className="flex justify-between mb-2">
+                                                    {STATUS_OPTIONS.slice(0, 4).map(s => {
+                                                        const idx = STATUS_OPTIONS.indexOf(s);
+                                                        const cur = STATUS_OPTIONS.indexOf(selectedOrder.status);
+                                                        const done = idx <= cur && selectedOrder.status !== "CANCELLED";
+                                                        return (
+                                                            <div key={s} className="flex flex-col items-center gap-1">
+                                                                <div
+                                                                    className="h-2 w-2 rounded-full transition-all"
+                                                                    style={{ backgroundColor: done ? "#0a0a0a" : "rgba(10,10,10,0.12)" }}
+                                                                />
+                                                                <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400, fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.12em", color: done ? "#0a0a0a" : "#8a8a8a" }}>
+                                                                    {s}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(10,10,10,0.08)" }}>
+                                                    <div
+                                                        className="h-full transition-all duration-500"
+                                                        style={{
+                                                            backgroundColor: selectedOrder.status === "CANCELLED" ? "#ef4444" : "#0a0a0a",
+                                                            width: selectedOrder.status === "CANCELLED" ? "100%" :
+                                                                `${(STATUS_OPTIONS.indexOf(selectedOrder.status) / 3) * 100}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Customer + Address */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {[
+                                                {
+                                                    title: "Customer",
+                                                    icon: User,
+                                                    content: (
+                                                        <>
+                                                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: "14px", color: "#0a0a0a" }}>{selectedOrder.user?.name || "Guest"}</p>
+                                                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "12px", color: "#8a8a8a", marginTop: "2px" }}>{selectedOrder.user?.email}</p>
+                                                            <Link href="/admin/customers" className="inline-flex items-center gap-1 mt-3 text-[10px] uppercase tracking-[0.15em] transition-colors" style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, color: "#0a0a0a" }}>
+                                                                View profile <ExternalLink className="h-3 w-3" />
+                                                            </Link>
+                                                        </>
+                                                    ),
+                                                },
+                                                {
+                                                    title: "Shipping Address",
+                                                    icon: MapPin,
+                                                    content: selectedOrder.address ? (
+                                                        <>
+                                                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: "13px", color: "#0a0a0a" }}>{selectedOrder.address.street}</p>
+                                                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "12px", color: "#8a8a8a", marginTop: "2px" }}>
+                                                                {selectedOrder.address.city}, {selectedOrder.address.state} {selectedOrder.address.zipCode}
+                                                            </p>
+                                                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400, fontSize: "11px", color: "#8a8a8a", marginTop: "4px", textTransform: "uppercase", letterSpacing: "0.1em" }}>{selectedOrder.address.country}</p>
+                                                        </>
+                                                    ) : (
+                                                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "12px", color: "#8a8a8a" }}>No address provided.</p>
+                                                    ),
+                                                },
+                                            ].map(({ title, icon: Icon, content }) => (
+                                                <div
+                                                    key={title}
+                                                    className="bg-white border p-5"
+                                                    style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)" }}
+                                                >
+                                                    <p className={labelCls + " flex items-center gap-1.5"}>
+                                                        <Icon className="h-3 w-3" />
+                                                        {title}
+                                                    </p>
+                                                    {content}
                                                 </div>
                                             ))}
                                         </div>
-                                    </div>
-                                </div>
 
-                                {/* Section: Financial Settlement */}
-                                <div className="bg-slate-50 dark:bg-white/5 rounded-[48px] p-12 border-4 border-slate-100 dark:border-slate-900 space-y-10 transition-colors shadow-inner">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 flex items-center gap-4 italic px-2">
-                                        <DollarSign className="h-5 w-5 text-emerald-500" /> Settlement Summary
-                                    </h4>
-                                    <div className="space-y-6">
-                                        <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600 px-2 italic">
-                                            <span>Subtotal Phase</span>
-                                            <span className="tabular-nums">${(selectedOrder.totalAmount * 0.9).toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600 px-2 italic">
-                                            <span>Logistics Fee</span>
-                                            <span className="tabular-nums text-emerald-500">SYSTEM SUBSIDY</span>
-                                        </div>
-                                        <div className="pt-10 border-t-4 border-white dark:border-black flex justify-between items-end px-2">
-                                            <div className="space-y-2">
-                                                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700 italic">Net Capture</span>
-                                                <p className="text-xl font-black text-black dark:text-white uppercase tracking-tighter leading-none opacity-40">Final Settlement</p>
+                                        {/* Items */}
+                                        <div
+                                            className="bg-white border overflow-hidden"
+                                            style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)" }}
+                                        >
+                                            <div
+                                                className="px-5 py-3 border-b flex items-center gap-2"
+                                                style={{ borderColor: "rgba(10,10,10,0.08)", backgroundColor: "#f5f3ef" }}
+                                            >
+                                                <Package className="h-3.5 w-3.5" style={{ color: "#8a8a8a" }} />
+                                                <span
+                                                    className="text-[10px] uppercase tracking-[0.18em]"
+                                                    style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, color: "#8a8a8a" }}
+                                                >
+                                                    {selectedOrder.items.length} Item{selectedOrder.items.length !== 1 ? "s" : ""}
+                                                </span>
                                             </div>
-                                            <span className="text-6xl font-black tabular-nums tracking-tighter text-black dark:text-white">${selectedOrder.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                            <div className="divide-y" style={{ borderColor: "rgba(10,10,10,0.06)" }}>
+                                                {selectedOrder.items.map(item => (
+                                                    <div key={item.id} className="flex items-center justify-between px-5 py-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <div
+                                                                className="h-12 w-12 flex items-center justify-center shrink-0"
+                                                                style={{ backgroundColor: "#f5f3ef", borderRadius: "6px", border: "1px solid rgba(10,10,10,0.08)" }}
+                                                            >
+                                                                <Package className="h-5 w-5" style={{ color: "#8a8a8a" }} />
+                                                            </div>
+                                                            <div>
+                                                                <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: "13px", color: "#0a0a0a" }}>{item.productTitle}</p>
+                                                                <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "11px", color: "#8a8a8a", marginTop: "1px" }}>
+                                                                    SKU: {item.sku || "—"} · Qty: {item.quantity}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: "18px", color: "#0a0a0a", letterSpacing: "-0.01em" }}>
+                                                                ${(item.price * item.quantity).toFixed(2)}
+                                                            </p>
+                                                            <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: "11px", color: "#8a8a8a" }}>
+                                                                ${item.price.toFixed(2)} each
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Financial Summary */}
+                                        <div
+                                            className="border"
+                                            style={{ borderRadius: "8px", borderColor: "rgba(10,10,10,0.1)", overflow: "hidden" }}
+                                        >
+                                            <div
+                                                className="px-5 py-3 border-b flex items-center gap-2"
+                                                style={{ borderColor: "rgba(10,10,10,0.08)", backgroundColor: "#f5f3ef" }}
+                                            >
+                                                <DollarSign className="h-3.5 w-3.5" style={{ color: "#8a8a8a" }} />
+                                                <span
+                                                    className="text-[10px] uppercase tracking-[0.18em]"
+                                                    style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, color: "#8a8a8a" }}
+                                                >
+                                                    Payment Summary
+                                                </span>
+                                            </div>
+                                            <div className="bg-white p-5 space-y-3">
+                                                {[
+                                                    { label: "Subtotal", value: `$${(selectedOrder.totalAmount * 0.9).toFixed(2)}` },
+                                                    { label: "Shipping", value: "Included" },
+                                                    { label: "Tax", value: `$${(selectedOrder.totalAmount * 0.1).toFixed(2)}` },
+                                                ].map(row => (
+                                                    <div key={row.label} className="flex justify-between">
+                                                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400, fontSize: "13px", color: "#8a8a8a" }}>{row.label}</span>
+                                                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: "13px", color: "#0a0a0a" }}>{row.value}</span>
+                                                    </div>
+                                                ))}
+                                                <div className="pt-3 border-t flex justify-between items-center" style={{ borderColor: "rgba(10,10,10,0.1)" }}>
+                                                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: "13px", color: "#0a0a0a" }}>Total</span>
+                                                    <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: "28px", color: "#0a0a0a", letterSpacing: "-0.02em" }}>
+                                                        ${selectedOrder.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Footer Actions */}
-                            <div className="p-12 border-t-4 border-slate-50 dark:border-slate-900 bg-slate-50/50 dark:bg-[#050505] grid grid-cols-2 gap-8 transition-colors">
-                                <Button variant="outline" className="h-20 rounded-[30px] font-black uppercase tracking-[0.2em] text-[11px] border-4 border-slate-100 dark:border-slate-800 transition-all active:scale-95" onClick={() => setSelectedOrder(null)}>
-                                    Exit Manifest
-                                </Button>
-                                <Button className="h-20 rounded-[30px] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl shadow-primary/20 transition-all active:scale-95" onClick={() => {
-                                    toast.loading("INITIALIZING PACKING SEQUENCE...", { duration: 2000 });
-                                }}>
-                                    Execute Fulfillment
-                                </Button>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-        </div>
+                                {/* Drawer Footer */}
+                                <div
+                                    className="p-6 border-t grid grid-cols-2 gap-3"
+                                    style={{ borderColor: "rgba(10,10,10,0.08)", backgroundColor: "white" }}
+                                >
+                                    <button
+                                        onClick={() => setSelectedOrder(null)}
+                                        className="h-11 border uppercase tracking-[0.15em] text-[11px] transition-colors"
+                                        style={{
+                                            borderRadius: "6px",
+                                            borderColor: "rgba(10,10,10,0.15)",
+                                            backgroundColor: "transparent",
+                                            fontFamily: "'DM Sans', sans-serif",
+                                            fontWeight: 500,
+                                            color: "#0a0a0a",
+                                        }}
+                                    >
+                                        Close
+                                    </button>
+                                    <button
+                                        onClick={() => toast.loading("Processing fulfillment...", { duration: 2000 })}
+                                        className="h-11 uppercase tracking-[0.15em] text-[11px] transition-all"
+                                        style={{
+                                            borderRadius: "6px",
+                                            backgroundColor: "#0a0a0a",
+                                            color: "#c8ff00",
+                                            fontFamily: "'DM Sans', sans-serif",
+                                            fontWeight: 500,
+                                        }}
+                                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#1a1a1a")}
+                                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#0a0a0a")}
+                                    >
+                                        Fulfill Order
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
+            </div>
+        </>
     );
 }

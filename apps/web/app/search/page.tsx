@@ -60,7 +60,7 @@ function SearchResults() {
     queryKey: ["search-products", query],
     enabled: !!query.trim(),
     queryFn: async () => {
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/product");
       if (!res.ok) throw new Error("Failed to fetch products");
       return res.json();
     },
