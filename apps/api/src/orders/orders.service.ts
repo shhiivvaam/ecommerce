@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -11,6 +12,8 @@ import { CreateOrderDto } from './dto/order.dto';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
@@ -232,7 +235,14 @@ export class OrdersService {
           result.order.id,
           result.order.totalAmount,
         )
-        .catch((err) => console.error('Failed to send order email:', err));
+        .catch((err) => {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          this.logger.error('Failed to send order email', {
+            error: errorMessage,
+            orderId: result.order.id,
+            userEmail: result.userEmail,
+          });
+        });
     }
 
     return result.order;

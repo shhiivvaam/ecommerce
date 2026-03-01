@@ -1,22 +1,24 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
   Param,
   Patch,
-  UseGuards,
+  Post,
+  Query,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiBody,
-  ApiResponse,
   ApiBearerAuth,
-  ApiParam,
-  ApiUnauthorizedResponse,
+  ApiBody,
   ApiNotFoundResponse,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -137,8 +139,23 @@ export class OrdersController {
     description: 'List of all orders',
     type: [OrderResponseDto],
   })
-  findAllAdmin() {
-    return this.ordersService.findAll();
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (default: 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Items per page (default: 20, max: 100)',
+    example: 20,
+  })
+  findAllAdmin(@Query('page') page = '1', @Query('limit') limit = '20') {
+    const pageNumber = Number(page) || 1;
+    const rawLimit = Number(limit) || 20;
+    const limitNumber = Math.min(Math.max(rawLimit, 1), 100);
+    return this.ordersService.findAll(pageNumber, limitNumber);
   }
 
   @Patch(':id/cancel')
