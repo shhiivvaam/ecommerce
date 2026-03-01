@@ -3,51 +3,84 @@ import { PrismaClient } from '@prisma/client';
 
 export type ExtendedPrismaClient = ReturnType<typeof createExtendedClient>;
 
+// Define which models support soft delete
+const SOFT_DELETE_MODELS = ['User', 'Product', 'Category'] as const;
+type SoftDeleteModel = (typeof SOFT_DELETE_MODELS)[number];
+
 function createExtendedClient(prisma: PrismaClient) {
   return prisma.$extends({
     query: {
       $allModels: {
         async findMany({ model, args, query }) {
-          if (['User', 'Product', 'Category'].includes(model)) {
+          if (isSoftDeleteModel(model)) {
             args.where = { ...args.where, deletedAt: null };
           }
           return query(args);
         },
         async findUnique({ model, args, query }) {
-          if (['User', 'Product', 'Category'].includes(model)) {
+          if (isSoftDeleteModel(model)) {
             args.where = { ...args.where, deletedAt: null };
           }
           return query(args);
         },
         async findFirst({ model, args, query }) {
-          if (['User', 'Product', 'Category'].includes(model)) {
+          if (isSoftDeleteModel(model)) {
             args.where = { ...args.where, deletedAt: null };
           }
           return query(args);
         },
         async delete({ model, args, query }) {
-          if (['User', 'Product', 'Category'].includes(model)) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-            return (prisma as any)[model.toLowerCase()].update({
-              ...args,
-              data: { deletedAt: new Date() },
-            });
+          if (isSoftDeleteModel(model)) {
+            switch (model) {
+              case 'User':
+                return prisma.user.update({
+                  ...args,
+                  data: { deletedAt: new Date() },
+                });
+              case 'Product':
+                return prisma.product.update({
+                  ...args,
+                  data: { deletedAt: new Date() },
+                });
+              case 'Category':
+                return prisma.category.update({
+                  ...args,
+                  data: { deletedAt: new Date() },
+                });
+            }
           }
           return query(args);
         },
         async deleteMany({ model, args, query }) {
-          if (['User', 'Product', 'Category'].includes(model)) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-            return (prisma as any)[model.toLowerCase()].updateMany({
-              ...args,
-              data: { deletedAt: new Date() },
-            });
+          if (isSoftDeleteModel(model)) {
+            switch (model) {
+              case 'User':
+                return prisma.user.updateMany({
+                  ...args,
+                  data: { deletedAt: new Date() },
+                });
+              case 'Product':
+                return prisma.product.updateMany({
+                  ...args,
+                  data: { deletedAt: new Date() },
+                });
+              case 'Category':
+                return prisma.category.updateMany({
+                  ...args,
+                  data: { deletedAt: new Date() },
+                });
+            }
           }
           return query(args);
         },
       },
     },
   });
+}
+
+// Type guard for soft delete models
+function isSoftDeleteModel(model: string): model is SoftDeleteModel {
+  return SOFT_DELETE_MODELS.includes(model as SoftDeleteModel);
 }
 
 @Injectable()
