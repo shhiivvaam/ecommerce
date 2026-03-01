@@ -39,4 +39,10 @@ async function bootstrap() {
 
   logger.log(`🚀 E-Commerce API running on port ${port}`);
 }
-bootstrap().catch((err) => console.error(err));
+bootstrap().catch((err) => {
+  const logger = new Logger('Bootstrap');
+  const errorMessage = err instanceof Error ? err.message : String(err);
+  logger.error('Failed to bootstrap application', {
+    error: errorMessage,
+  });
+});
