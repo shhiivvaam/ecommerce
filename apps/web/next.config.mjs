@@ -17,6 +17,8 @@ const nextConfig = {
             { protocol: 'https', hostname: 'static.nike.com' },
             { protocol: 'https', hostname: 'media.endclothing.com' },
             { protocol: 'https', hostname: 'cdn.dribbble.com' },
+            { protocol: 'https', hostname: '*.s3.*.amazonaws.com' },
+            { protocol: 'https', hostname: '*.amazonaws.com' }
         ],
     },
     async headers() {
