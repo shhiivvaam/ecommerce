@@ -14,7 +14,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
-  ) { }
+  ) {}
 
   async create(userId: string, data: CreateOrderDto) {
     if (!data.items || data.items.length === 0) {
@@ -60,8 +60,13 @@ export class OrdersService {
         let pSku = product.sku;
 
         if (item.variantId) {
-          const variant = await tx.variant.findUnique({ where: { id: item.variantId } });
-          if (!variant) throw new BadRequestException(`Variant not found for product: ${product.title}`);
+          const variant = await tx.variant.findUnique({
+            where: { id: item.variantId },
+          });
+          if (!variant)
+            throw new BadRequestException(
+              `Variant not found for product: ${product.title}`,
+            );
 
           const { count: updatedCount } = await tx.variant.updateMany({
             where: { id: variant.id, stock: { gte: item.quantity } },
@@ -69,11 +74,13 @@ export class OrdersService {
           });
 
           if (updatedCount === 0) {
-            throw new BadRequestException(`Insufficient stock for variant of product: ${product.title}`);
+            throw new BadRequestException(
+              `Insufficient stock for variant of product: ${product.title}`,
+            );
           }
 
           currentPrice += variant.priceDiff;
-          pTitle = `${product.title} (${[variant.size, variant.color].filter(Boolean).join(", ")})`;
+          pTitle = `${product.title} (${[variant.size, variant.color].filter(Boolean).join(', ')})`;
           pSku = variant.sku || product.sku;
         } else {
           // ✅ Atomic global stock deduction
@@ -83,7 +90,9 @@ export class OrdersService {
           });
 
           if (updatedCount === 0) {
-            throw new BadRequestException(`Insufficient stock for product: ${product.title}`);
+            throw new BadRequestException(
+              `Insufficient stock for product: ${product.title}`,
+            );
           }
         }
 
@@ -160,8 +169,11 @@ export class OrdersService {
       // Resolve address by cloning to prevent silent mutation of past orders
       let finalAddressObj;
       if (data.addressId) {
-        const existingAddress = await tx.address.findUnique({ where: { id: data.addressId } });
-        if (!existingAddress) throw new BadRequestException('Address not found');
+        const existingAddress = await tx.address.findUnique({
+          where: { id: data.addressId },
+        });
+        if (!existingAddress)
+          throw new BadRequestException('Address not found');
         finalAddressObj = {
           userId,
           street: existingAddress.street,
@@ -185,7 +197,9 @@ export class OrdersService {
         throw new BadRequestException('Address could not be resolved');
       }
 
-      const snapshotAddress = await tx.address.create({ data: finalAddressObj });
+      const snapshotAddress = await tx.address.create({
+        data: finalAddressObj,
+      });
       const createdAddressId = snapshotAddress.id;
 
       const grandTotal =
@@ -213,7 +227,11 @@ export class OrdersService {
     // Send confirmation email — fire and forget, only runs if transaction committed successfully
     if (result.userEmail) {
       this.emailService
-        .sendOrderConfirmation(result.userEmail, result.order.id, result.order.totalAmount)
+        .sendOrderConfirmation(
+          result.userEmail,
+          result.order.id,
+          result.order.totalAmount,
+        )
         .catch((err) => console.error('Failed to send order email:', err));
     }
 

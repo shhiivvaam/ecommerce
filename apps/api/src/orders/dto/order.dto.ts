@@ -23,7 +23,10 @@ export class OrderItemDto {
   @IsString()
   productId: string;
 
-  @ApiPropertyOptional({ example: 'clx_variant_id_456', description: 'Product Variant ID if applicable' })
+  @ApiPropertyOptional({
+    example: 'clx_variant_id_456',
+    description: 'Product Variant ID if applicable',
+  })
   @IsString()
   @IsOptional()
   variantId?: string;

@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
 
 @Injectable()
 export class CartService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getCart(userId: string) {
     let cart = await this.prisma.cart.findUnique({
@@ -58,7 +62,7 @@ export class CartService {
 
     let availableStock = product.stock;
     if (data.variantId) {
-      const variant = product.variants.find(v => v.id === data.variantId);
+      const variant = product.variants.find((v) => v.id === data.variantId);
       if (!variant) throw new BadRequestException('Invalid variant selected');
       availableStock = variant.stock;
     }
@@ -74,7 +78,9 @@ export class CartService {
 
     if (existingItem) {
       if (existingItem.quantity + data.quantity > availableStock) {
-        throw new BadRequestException(`Cannot add more than ${availableStock} items of this product`);
+        throw new BadRequestException(
+          `Cannot add more than ${availableStock} items of this product`,
+        );
       }
       await this.prisma.cartItem.update({
         where: { id: existingItem.id },
@@ -82,7 +88,9 @@ export class CartService {
       });
     } else {
       if (data.quantity > availableStock) {
-        throw new BadRequestException(`Cannot add more than ${availableStock} items of this product`);
+        throw new BadRequestException(
+          `Cannot add more than ${availableStock} items of this product`,
+        );
       }
       await this.prisma.cartItem.create({
         data: {
@@ -107,10 +115,14 @@ export class CartService {
     });
     if (!item) throw new NotFoundException('Cart item not found');
 
-    const availableStock = item.variant ? item.variant.stock : item.product.stock;
+    const availableStock = item.variant
+      ? item.variant.stock
+      : item.product.stock;
 
     if (data.quantity > availableStock) {
-      throw new BadRequestException(`Cannot set quantity to more than ${availableStock} items`);
+      throw new BadRequestException(
+        `Cannot set quantity to more than ${availableStock} items`,
+      );
     }
 
     await this.prisma.cartItem.update({
