@@ -8,7 +8,7 @@ import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
 
 @Injectable()
 export class CartService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getCart(userId: string) {
     let cart = await this.prisma.cart.findUnique({
