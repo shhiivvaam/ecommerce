@@ -281,7 +281,7 @@ sudo tee /etc/letsencrypt/renewal-hooks/deploy/tls-harden.sh > /dev/null << HOOK
 # Adds ssl-hardening.conf snippet into the Certbot-managed HTTPS server block.
 set -euo pipefail
 
-SITE="/etc/nginx/sites-available/api.reyva.co.in"
+SITE="/etc/nginx/sites-available/${API_DOMAIN}"
 SNIPPET="include /etc/nginx/snippets/ssl-hardening.conf;"
 
 # Only inject if not already present

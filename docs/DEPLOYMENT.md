@@ -111,7 +111,7 @@ services:
   api:
     image: ${DOCKERHUB_USERNAME}/ecommerce-api:latest
     container_name: ecommerce-api
-    restart: always
+    restart: unless-stopped
     env_file: .env
     ports:
       - "127.0.0.1:3001:3001"
