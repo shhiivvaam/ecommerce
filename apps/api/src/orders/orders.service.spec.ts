@@ -96,7 +96,7 @@ describe('OrdersService', () => {
 
       $transaction: jest
         .fn()
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+
         .mockImplementation(async (cb: any) => await cb(prismaMock)),
     };
 
