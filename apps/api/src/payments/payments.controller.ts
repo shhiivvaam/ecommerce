@@ -78,7 +78,6 @@ export class PaymentsController {
   ) {
     let event;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const rawBody = req.rawBody || req.body;
       event = this.paymentsService.constructEvent(
         rawBody as string | Buffer,

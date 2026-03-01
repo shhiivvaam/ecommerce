@@ -29,7 +29,6 @@ export class AuthService {
     });
 
     if (user && (await bcrypt.compare(pass, user.password))) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
       return result;
     }
@@ -76,7 +75,6 @@ export class AuthService {
       include: { role: true },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...safeUser } = user;
     return this.login(safeUser);
   }

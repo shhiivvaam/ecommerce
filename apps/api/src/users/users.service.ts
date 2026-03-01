@@ -29,7 +29,7 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
 
     // exclude password
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { password, ...result } = user;
     return result;
   }
@@ -46,7 +46,6 @@ export class UsersService {
       include: { role: true },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...result } = updated;
     return result;
   }
@@ -79,7 +78,6 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const sanitized = users.map(({ password: _, ...u }) => u);
     return { users: sanitized, total, page, limit };
   }
@@ -95,7 +93,6 @@ export class UsersService {
       include: { role: true },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...result } = updated;
     return result;
   }
@@ -119,7 +116,6 @@ export class UsersService {
       include: { role: true },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...result } = updated;
     return result;
   }
