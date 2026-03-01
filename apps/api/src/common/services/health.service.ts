@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as fs from 'fs';
 
 export interface HealthCheckResult {
   status: 'healthy' | 'unhealthy';
@@ -35,7 +36,7 @@ export class HealthService {
     const checks = {
       database: await this.checkDatabase(),
       memory: this.checkMemory(),
-      disk: await this.checkDisk(),
+      disk: this.checkDisk(),
     };
 
     const allHealthy = Object.values(checks).every(
@@ -98,10 +99,9 @@ export class HealthService {
     };
   }
 
-  private async checkDisk(): Promise<HealthCheck> {
+  private checkDisk(): HealthCheck {
     try {
-      const fs = require('fs');
-      const stats = fs.statSync('.');
+      fs.statSync('.');
 
       return {
         status: 'healthy',
@@ -122,7 +122,7 @@ export class HealthService {
   }
 
   // Liveness probe - simple check if app is running
-  async checkLiveness(): Promise<{ status: string; timestamp: string }> {
+  checkLiveness(): { status: string; timestamp: string } {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),

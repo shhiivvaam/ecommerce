@@ -30,7 +30,7 @@ export class UsersService {
 
     // exclude password
 
-    const { password, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 
@@ -46,7 +46,7 @@ export class UsersService {
       include: { role: true },
     });
 
-    const { password, ...result } = updated;
+    const { password: _password, ...result } = updated;
     return result;
   }
 
@@ -78,7 +78,7 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
-    const sanitized = users.map(({ password: _, ...u }) => u);
+    const sanitized = users.map(({ password: _password, ...u }) => u);
     return { users: sanitized, total, page, limit };
   }
 
@@ -93,7 +93,7 @@ export class UsersService {
       include: { role: true },
     });
 
-    const { password, ...result } = updated;
+    const { password: _password, ...result } = updated;
     return result;
   }
 
@@ -116,7 +116,7 @@ export class UsersService {
       include: { role: true },
     });
 
-    const { password, ...result } = updated;
+    const { password: _password, ...result } = updated;
     return result;
   }
 }

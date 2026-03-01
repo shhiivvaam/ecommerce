@@ -22,7 +22,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
-    let errorDetails: any = {};
+    let errorDetails: Record<string, unknown> = {};
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -31,8 +31,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
       } else {
-        message = (exceptionResponse as any).message || message;
-        errorDetails = (exceptionResponse as any).error || {};
+        const resObj = exceptionResponse as Record<string, unknown>;
+        message = (resObj.message as string) || message;
+        errorDetails = (resObj.error as Record<string, unknown>) || {};
       }
     } else if (exception instanceof Error) {
       message = exception.message;

@@ -49,8 +49,9 @@ export const defaultMonitoringConfig: MonitoringConfig = {
     environment: process.env.NODE_ENV || 'development',
   },
   logging: {
-    level: (process.env.LOG_LEVEL as any) || 'info',
-    format: (process.env.LOG_FORMAT as any) || 'pretty',
+    level:
+      (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || 'info',
+    format: (process.env.LOG_FORMAT as 'json' | 'pretty') || 'pretty',
     enableConsole: process.env.LOG_CONSOLE !== 'false',
     enableFile: process.env.LOG_FILE === 'true',
     enableExternal: process.env.LOG_EXTERNAL === 'true',

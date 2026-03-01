@@ -6,15 +6,16 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { Request } from 'express';
 import { LoggingService } from '../services/logging.service';
 
 @Injectable()
 export class PerformanceInterceptor implements NestInterceptor {
   constructor(private readonly loggingService: LoggingService) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const now = Date.now();
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const { method, url } = request;
 
     const operation = `${method} ${url}`;

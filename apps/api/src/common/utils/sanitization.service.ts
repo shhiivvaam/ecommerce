@@ -101,10 +101,10 @@ export class SanitizationService {
   /**
    * Validate and sanitize object keys recursively
    */
-  static sanitizeObject(obj: Record<string, any>): Record<string, any> {
+  static sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
     if (!obj || typeof obj !== 'object') return {};
 
-    const sanitized: Record<string, any> = {};
+    const sanitized: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
       const sanitizedKey = this.sanitizeString(key);
@@ -116,9 +116,11 @@ export class SanitizationService {
       } else if (typeof value === 'number') {
         sanitized[sanitizedKey] = this.sanitizeNumber(value);
       } else if (Array.isArray(value)) {
-        sanitized[sanitizedKey] = this.sanitizeStringArray(value);
+        sanitized[sanitizedKey] = this.sanitizeStringArray(value as string[]);
       } else if (typeof value === 'object' && value !== null) {
-        sanitized[sanitizedKey] = this.sanitizeObject(value);
+        sanitized[sanitizedKey] = this.sanitizeObject(
+          value as Record<string, unknown>,
+        );
       } else {
         sanitized[sanitizedKey] = value;
       }

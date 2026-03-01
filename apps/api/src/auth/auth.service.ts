@@ -29,7 +29,7 @@ export class AuthService {
     });
 
     if (user && (await bcrypt.compare(pass, user.password))) {
-      const { password, ...result } = user;
+      const { password: _password, ...result } = user;
       return result;
     }
     return null;
@@ -75,7 +75,7 @@ export class AuthService {
       include: { role: true },
     });
 
-    const { password, ...safeUser } = user;
+    const { password: _password, ...safeUser } = user;
     return this.login(safeUser);
   }
 

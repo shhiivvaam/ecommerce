@@ -10,7 +10,7 @@ export interface LogContext {
   url?: string;
   statusCode?: number;
   duration?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface LogEntry {
@@ -136,7 +136,7 @@ export class LoggingService {
   }
 
   // Log business events
-  logBusinessEvent(event: string, data: any, context?: LogContext): void {
+  logBusinessEvent(event: string, data: unknown, context?: LogContext): void {
     this.info(`Business Event: ${event}`, {
       ...context,
       businessEvent: true,

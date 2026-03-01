@@ -1,4 +1,10 @@
-import { Injectable, NestMiddleware, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NestMiddleware,
+  ForbiddenException,
+  CanActivate,
+  ExecutionContext,
+} from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { randomBytes } from 'crypto';
 
@@ -75,9 +81,9 @@ export class CsrfMiddleware implements NestMiddleware {
  * CSRF Guard for protecting specific routes
  */
 @Injectable()
-export class CsrfGuard {
-  canActivate(context: any): boolean {
-    const request = context.switchToHttp().getRequest();
+export class CsrfGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest<Request>();
     const method = request.method;
 
     // Skip CSRF for safe methods

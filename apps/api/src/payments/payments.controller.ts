@@ -76,7 +76,7 @@ export class PaymentsController {
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,
   ) {
-    let event;
+    let event: any;
     try {
       const rawBody = req.rawBody || req.body;
       event = this.paymentsService.constructEvent(

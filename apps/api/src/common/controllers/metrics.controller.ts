@@ -2,7 +2,6 @@ import { Controller, Get, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { MetricsService } from '../services/metrics.service';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { ApiResponse as ApiResponseSchema } from '@nestjs/swagger';
 
 @ApiTags('Metrics')
 @Controller('metrics')
@@ -30,7 +29,7 @@ http_request_duration_ms_sum{service="reyva-api",method="GET",route="/health"} 4
       },
     },
   })
-  async getMetrics(@Res() res: Response): Promise<void> {
+  getMetrics(@Res() res: Response): void {
     const metrics = this.metricsService.getMetrics();
     const prometheusFormat = this.formatForPrometheus(metrics);
 
@@ -38,7 +37,9 @@ http_request_duration_ms_sum{service="reyva-api",method="GET",route="/health"} 4
     res.send(prometheusFormat);
   }
 
-  private formatForPrometheus(metrics: Record<string, any>): string {
+  private formatForPrometheus(
+    metrics: Record<string, number | number[]>,
+  ): string {
     const lines: string[] = [];
 
     for (const [key, value] of Object.entries(metrics)) {

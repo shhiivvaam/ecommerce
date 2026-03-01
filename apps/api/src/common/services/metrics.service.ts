@@ -23,7 +23,7 @@ export interface HistogramMetric extends MetricData {
 
 @Injectable()
 export class MetricsService {
-  private readonly metrics: Map<string, any> = new Map();
+  private readonly metrics: Map<string, number | number[]> = new Map();
   private readonly serviceName: string;
 
   constructor(private configService: ConfigService) {
@@ -41,12 +41,13 @@ export class MetricsService {
   ): void {
     const key = this.createKey(name, tags);
     const current = this.metrics.get(key) || 0;
-    this.metrics.set(key, current + value);
+    const currentNum = typeof current === 'number' ? current : 0;
+    this.metrics.set(key, currentNum + value);
 
     this.recordMetric({
       type: 'counter',
       name,
-      value: current + value,
+      value: currentNum + value,
       tags,
     });
   }
@@ -68,8 +69,10 @@ export class MetricsService {
   histogram(name: string, value: number, tags?: Record<string, string>): void {
     const key = this.createKey(name, tags);
     const current = this.metrics.get(key) || [];
-    current.push(value);
-    this.metrics.set(key, current);
+    if (Array.isArray(current)) {
+      current.push(value);
+      this.metrics.set(key, current);
+    }
 
     this.recordMetric({
       type: 'histogram',
@@ -164,8 +167,8 @@ export class MetricsService {
   }
 
   // Get metrics for monitoring
-  getMetrics(): Record<string, any> {
-    const result: Record<string, any> = {};
+  getMetrics(): Record<string, number | number[]> {
+    const result: Record<string, number | number[]> = {};
 
     for (const [key, value] of this.metrics.entries()) {
       result[key] = value;

@@ -2,6 +2,7 @@ import {
   ValidationPipe,
   BadRequestException,
   ArgumentMetadata,
+  ValidationPipeOptions,
 } from '@nestjs/common';
 import { SanitizationService } from '../utils/sanitization.service';
 
@@ -9,7 +10,7 @@ import { SanitizationService } from '../utils/sanitization.service';
  * Enhanced Validation Pipe with Input Sanitization
  */
 export class SanitizedValidationPipe extends ValidationPipe {
-  constructor(options?: any) {
+  constructor(options?: ValidationPipeOptions) {
     super({
       whitelist: true, // Strips out properties without decorators
       transform: true, // Automatically transform payload to DTO instances
@@ -29,21 +30,17 @@ export class SanitizedValidationPipe extends ValidationPipe {
     });
   }
 
-  async transform(value: any, metadata: ArgumentMetadata) {
+  async transform(value: unknown, metadata: ArgumentMetadata) {
     // Sanitize input before validation
     const sanitizedValue = this.sanitizeInput(value, metadata);
 
-    try {
-      return await super.transform(sanitizedValue, metadata);
-    } catch (error) {
-      throw error;
-    }
+    return super.transform(sanitizedValue, metadata);
   }
 
   /**
    * Sanitize input based on metadata type
    */
-  private sanitizeInput(value: any, metadata: ArgumentMetadata): any {
+  private sanitizeInput(value: unknown, metadata: ArgumentMetadata): unknown {
     if (!value || typeof value !== 'object') {
       return value;
     }
@@ -59,8 +56,8 @@ export class SanitizedValidationPipe extends ValidationPipe {
     }
 
     // For objects, sanitize each property
-    const sanitized: Record<string, any> = {};
-    for (const [key, val] of Object.entries(value)) {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
       if (typeof val === 'string') {
         sanitized[key] = SanitizationService.sanitizeString(val);
       } else if (typeof val === 'number') {
@@ -89,23 +86,27 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 export const SanitizedBody = createParamDecorator(
   (data: string, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest();
-    const body = request.body;
+    const request = ctx
+      .switchToHttp()
+      .getRequest<{ body: Record<string, unknown> }>();
+    const bodyStr = request.body;
 
-    if (!body) return body;
+    if (!bodyStr) return bodyStr;
 
     // If specific field is requested, sanitize only that field
     if (data) {
-      const value = body[data];
+      const value = bodyStr[data];
       if (typeof value === 'string') {
-        body[data] = SanitizationService.sanitizeString(value);
+        bodyStr[data] = SanitizationService.sanitizeString(value);
       } else if (Array.isArray(value)) {
-        body[data] = SanitizationService.sanitizeStringArray(value);
+        bodyStr[data] = SanitizationService.sanitizeStringArray(
+          value as string[],
+        );
       }
-      return body;
+      return bodyStr;
     }
 
     // Sanitize entire body
-    return SanitizationService.sanitizeObject(body);
+    return SanitizationService.sanitizeObject(bodyStr);
   },
 );
