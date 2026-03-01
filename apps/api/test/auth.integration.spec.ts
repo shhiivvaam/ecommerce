@@ -2,13 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import * as request from 'supertest';
+
+import request from 'supertest';
 
 describe('Authentication Flow (Integration)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
 
   let testUser: any;
   let authToken: string;
@@ -21,7 +20,6 @@ describe('Authentication Flow (Integration)', () => {
 
     app = moduleFixture.createNestApplication();
     prisma = moduleFixture.get<PrismaService>(PrismaService);
-    jwtService = moduleFixture.get<JwtService>(JwtService);
 
     await app.init();
   });

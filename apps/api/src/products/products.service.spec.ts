@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import {
   CreateProductDto,
   UpdateProductDto,
@@ -12,7 +12,6 @@ import {
 describe('ProductsService', () => {
   let service: ProductsService;
   let prismaService: jest.Mocked<PrismaService>;
-  let settingsService: jest.Mocked<SettingsService>;
 
   beforeEach(async () => {
     const mockPrismaService = {
@@ -53,7 +52,6 @@ describe('ProductsService', () => {
 
     service = module.get<ProductsService>(ProductsService);
     prismaService = module.get(PrismaService);
-    settingsService = module.get(SettingsService);
   });
 
   it('should be defined', () => {
@@ -154,7 +152,7 @@ describe('ProductsService', () => {
       prismaService.product.findMany.mockResolvedValue(mockProducts);
       prismaService.product.count.mockResolvedValue(1);
 
-      const result = await service.findAll(query);
+      await service.findAll(query);
 
       expect(prismaService.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

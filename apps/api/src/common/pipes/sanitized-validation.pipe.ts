@@ -30,7 +30,10 @@ export class SanitizedValidationPipe extends ValidationPipe {
     });
   }
 
-  async transform(value: unknown, metadata: ArgumentMetadata) {
+  async transform(
+    value: unknown,
+    metadata: ArgumentMetadata,
+  ): Promise<unknown> {
     // Sanitize input before validation
     const sanitizedValue = this.sanitizeInput(value, metadata);
 
@@ -63,7 +66,7 @@ export class SanitizedValidationPipe extends ValidationPipe {
       } else if (typeof val === 'number') {
         sanitized[key] = SanitizationService.sanitizeNumber(val);
       } else if (Array.isArray(val)) {
-        sanitized[key] = val.map((item) =>
+        sanitized[key] = (val as unknown[]).map((item) =>
           typeof item === 'string'
             ? SanitizationService.sanitizeString(item)
             : item,
