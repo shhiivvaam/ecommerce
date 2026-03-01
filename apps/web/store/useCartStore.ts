@@ -2,16 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/lib/api';
 import { useAuthStore } from './useAuthStore';
+import type { CartItem, ApiCartItem } from '@repo/types';
 
-export interface CartItem {
-    id: string; // Internal cart item id or backend ID
-    productId: string;
-    variantId?: string;
-    title: string;
-    price: number;
-    quantity: number;
-    image?: string;
-}
+export type { CartItem };
 
 interface CartState {
     items: CartItem[];
@@ -23,19 +16,6 @@ interface CartState {
     fetchCart: () => Promise<void>;
 }
 
-interface ApiResponseCartItem {
-    id: string;
-    productId: string;
-    variantId?: string;
-    quantity: number;
-    product: {
-        title: string;
-        price: number;
-        discounted?: number;
-        gallery?: string[];
-    };
-}
-
 export const useCartStore = create<CartState>()(
     persist(
         (set, get) => ({
@@ -45,7 +25,7 @@ export const useCartStore = create<CartState>()(
                 if (!useAuthStore.getState().isAuthenticated) return;
                 try {
                     const { data } = await api.get('/cart');
-                    const items = data.items.map((i: ApiResponseCartItem) => ({
+                    const items = data.items.map((i: ApiCartItem) => ({
                         id: i.id,
                         productId: i.productId,
                         variantId: i.variantId,
@@ -146,7 +126,6 @@ export const useCartStore = create<CartState>()(
         }),
         {
             name: 'ecommerce-cart',
-            // Do not persist these remote logic functions, but only local items
             partialize: (state) => ({ items: state.items, total: state.total }),
         }
     )

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-const EXTERNAL_PRODUCTS_URL = "https://api.reyva.co.in/api/products";
+const EXTERNAL_PRODUCTS_URL =
+    process.env.PRODUCTS_API_URL ?? "https://api.reyva.co.in/api/products";
 
 export async function GET() {
     try {

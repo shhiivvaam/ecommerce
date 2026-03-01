@@ -40,7 +40,7 @@ export function Navbar() {
     }
   };
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "ADMIN";
   if (pathname?.startsWith("/admin")) return null;
 
   const navItems = [

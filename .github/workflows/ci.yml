@@ -1,0 +1,53 @@
+name: CI — Lint & Build (PR Check)
+
+# ─────────────────────────────────────────────────────────────────
+# Runs on every pull request targeting main.
+# Uses Turborepo for fast, cached, ordered builds.
+# Blocks merge if lint or build fails.
+# ─────────────────────────────────────────────────────────────────
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2      # needed for turbo's change detection
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Lint (all workspaces)
+        run: npx turbo lint
+
+      - name: Build (all workspaces)
+        run: npx turbo build
+        env:
+          # Provide a dummy DATABASE_URL so Prisma generate doesn't fail in CI
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+          JWT_SECRET: "ci-secret"
+          NEXT_PUBLIC_API_URL: "http://localhost:3001/api"
+          PRODUCTS_API_URL: "https://api.reyva.co.in/api/products"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## CI Result" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
