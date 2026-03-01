@@ -10,11 +10,16 @@ export class BannersService {
     return this.prisma.banner.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'desc' },
+      take: 50,
     });
   }
 
-  async findAll() {
-    return this.prisma.banner.findMany({ orderBy: { createdAt: 'desc' } });
+  async findAll(limit = 100) {
+    const safeLimit = Math.min(Math.max(limit, 1), 500);
+    return this.prisma.banner.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+    });
   }
 
   async findOne(id: string) {
