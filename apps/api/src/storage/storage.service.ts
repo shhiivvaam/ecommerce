@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,6 +12,7 @@ import * as path from 'path';
 export class StorageService {
   private s3Client: S3Client;
   private bucketName: string;
+  private readonly logger = new Logger(StorageService.name);
 
   constructor(private configService: ConfigService) {
     this.bucketName =
@@ -48,7 +53,14 @@ export class StorageService {
         this.configService.get<string>('AWS_REGION') || 'ap-south-1';
       return `https://${this.bucketName}.s3.${region}.amazonaws.com/${filename}`;
     } catch (error) {
-      console.error('Error uploading file to S3:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Error uploading file to S3', {
+        error: errorMessage,
+        filename: file.originalname,
+        folder,
+        bucket: this.bucketName,
+      });
       throw new InternalServerErrorException('Failed to upload file to S3');
     }
   }
