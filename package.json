@@ -2,17 +2,20 @@
   "name": "e-commerce-monorepo",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "npm@11.7.0",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test"
   },
   "devDependencies": {
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "turbo": "^2.8.12"
   }
 }
