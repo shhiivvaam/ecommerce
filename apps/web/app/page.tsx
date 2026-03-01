@@ -1,8 +1,4 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { StoreModeRedirect } from "@/components/home/StoreModeRedirect";
 import { HeroSection } from "@/components/home/HeroSection";
 import { CategoryGrid } from "@/components/home/CategoryGrid";
 import { ProductGrid } from "@/components/home/ProductGrid";
@@ -11,25 +7,10 @@ import { ValueProps } from "@/components/home/ValueProps";
 import { JoinCTA } from "@/components/home/JoinCTA";
 
 export default function Home() {
-  const router = useRouter();
-
-  // Single-product store mode: redirect if the store is configured for one product
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await api.get("/settings").catch(() => ({ data: null }));
-        if (res.data?.storeMode === "single" && res.data?.singleProductId) {
-          router.push(`/products/${res.data.singleProductId}`);
-        }
-      } catch {
-        // Silently ignore — settings are optional
-      }
-    };
-    fetchSettings();
-  }, [router]);
 
   return (
     <div className="font-body" style={{ background: "var(--paper)", color: "var(--ink)", minHeight: "100vh" }}>
+      <StoreModeRedirect />
       <HeroSection />
 
       {/* Marquee Strip */}

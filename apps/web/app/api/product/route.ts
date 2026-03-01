@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 
 // ✅ Use own backend API for products instead of external third-party URL.
 // Falls back to the external URL only if NEXT_PUBLIC_API_URL is not set.
+const FALLBACK_URL = "https://api.reyva.co.in/api/products";
 const PRODUCTS_URL = process.env.NEXT_PUBLIC_API_URL
     ? `${process.env.NEXT_PUBLIC_API_URL}/products`
-    : (process.env.PRODUCTS_API_URL ?? "https://api.reyva.co.in/api/products");
+    : (process.env.PRODUCTS_API_URL ?? FALLBACK_URL);
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
     const { searchParams } = new URL(request.url);
     const page = searchParams.get("page") ?? "1";
     const limit = searchParams.get("limit") ?? "20";
