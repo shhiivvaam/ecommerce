@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
 
 @Injectable()
 export class CartService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getCart(userId: string) {
     let cart = await this.prisma.cart.findUnique({
@@ -51,9 +51,17 @@ export class CartService {
     const cart = await this.getCart(userId);
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
+      include: { variants: true },
     });
 
     if (!product) throw new NotFoundException('Product not found');
+
+    let availableStock = product.stock;
+    if (data.variantId) {
+      const variant = product.variants.find(v => v.id === data.variantId);
+      if (!variant) throw new BadRequestException('Invalid variant selected');
+      availableStock = variant.stock;
+    }
 
     // Check if item already exists in cart with same variance
     const existingItem = await this.prisma.cartItem.findFirst({
@@ -65,11 +73,17 @@ export class CartService {
     });
 
     if (existingItem) {
+      if (existingItem.quantity + data.quantity > availableStock) {
+        throw new BadRequestException(`Cannot add more than ${availableStock} items of this product`);
+      }
       await this.prisma.cartItem.update({
         where: { id: existingItem.id },
         data: { quantity: existingItem.quantity + data.quantity },
       });
     } else {
+      if (data.quantity > availableStock) {
+        throw new BadRequestException(`Cannot add more than ${availableStock} items of this product`);
+      }
       await this.prisma.cartItem.create({
         data: {
           cartId: cart.id,
@@ -89,8 +103,15 @@ export class CartService {
 
     const item = await this.prisma.cartItem.findFirst({
       where: { id: itemId, cartId: cart.id },
+      include: { product: true, variant: true },
     });
     if (!item) throw new NotFoundException('Cart item not found');
+
+    const availableStock = item.variant ? item.variant.stock : item.product.stock;
+
+    if (data.quantity > availableStock) {
+      throw new BadRequestException(`Cannot set quantity to more than ${availableStock} items`);
+    }
 
     await this.prisma.cartItem.update({
       where: { id: itemId },

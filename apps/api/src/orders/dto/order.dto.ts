@@ -23,6 +23,11 @@ export class OrderItemDto {
   @IsString()
   productId: string;
 
+  @ApiPropertyOptional({ example: 'clx_variant_id_456', description: 'Product Variant ID if applicable' })
+  @IsString()
+  @IsOptional()
+  variantId?: string;
+
   @ApiProperty({ example: 2, description: 'Quantity to order' })
   @IsNumber()
   @Min(1)

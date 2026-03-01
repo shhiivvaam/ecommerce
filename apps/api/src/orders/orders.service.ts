@@ -55,28 +55,47 @@ export class OrdersService {
       for (const item of data.items) {
         const product = productMap.get(item.productId)!;
 
-        // ✅ Atomic stock deduction: updateMany with conditional check prevents race conditions.
-        //    If stock < quantity, the row won't match and updatedCount === 0.
-        const { count: updatedCount } = await tx.product.updateMany({
-          where: { id: product.id, stock: { gte: item.quantity } },
-          data: { stock: { decrement: item.quantity } },
-        });
+        let currentPrice = product.discounted ?? product.price;
+        let pTitle = product.title;
+        let pSku = product.sku;
 
-        if (updatedCount === 0) {
-          throw new BadRequestException(
-            `Insufficient stock for product: ${product.title}`,
-          );
+        if (item.variantId) {
+          const variant = await tx.variant.findUnique({ where: { id: item.variantId } });
+          if (!variant) throw new BadRequestException(`Variant not found for product: ${product.title}`);
+
+          const { count: updatedCount } = await tx.variant.updateMany({
+            where: { id: variant.id, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
+          });
+
+          if (updatedCount === 0) {
+            throw new BadRequestException(`Insufficient stock for variant of product: ${product.title}`);
+          }
+
+          currentPrice += variant.priceDiff;
+          pTitle = `${product.title} (${[variant.size, variant.color].filter(Boolean).join(", ")})`;
+          pSku = variant.sku || product.sku;
+        } else {
+          // ✅ Atomic global stock deduction
+          const { count: updatedCount } = await tx.product.updateMany({
+            where: { id: product.id, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
+          });
+
+          if (updatedCount === 0) {
+            throw new BadRequestException(`Insufficient stock for product: ${product.title}`);
+          }
         }
 
-        const currentPrice = product.discounted ?? product.price;
         totalAmount += currentPrice * item.quantity;
 
         orderItemsData.push({
           productId: item.productId,
+          variantId: item.variantId || null,
           quantity: item.quantity,
           price: currentPrice,
-          productTitle: product.title,
-          sku: product.sku,
+          productTitle: pTitle,
+          sku: pSku,
         });
       }
 
@@ -204,7 +223,7 @@ export class OrdersService {
   async findAllByUser(userId: string) {
     return this.prisma.order.findMany({
       where: { userId },
-      include: { items: { include: { product: true } } },
+      include: { items: { include: { product: true, variant: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -213,7 +232,7 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
       include: {
-        items: { include: { product: true } },
+        items: { include: { product: true, variant: true } },
         address: true,
         payment: true,
       },
@@ -264,10 +283,17 @@ export class OrdersService {
     // Restore stock for each item atomically in a transaction
     return this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
-        await tx.product.updateMany({
-          where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
-        });
+        if (item.variantId) {
+          await tx.variant.updateMany({
+            where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } },
+          });
+        } else {
+          await tx.product.updateMany({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
       }
 
       return tx.order.update({
