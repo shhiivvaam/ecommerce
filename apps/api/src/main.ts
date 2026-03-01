@@ -8,23 +8,41 @@ import cookieParser from 'cookie-parser';
 import { getCorsConfig } from './config/cors.config';
 import { setupSwagger } from './config/swagger.config';
 import { PrismaClientExceptionFilter } from './common/filters/prisma-client-exception.filter';
+import { SanitizedValidationPipe } from './common/pipes/sanitized-validation.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+
   // 1. Security & Middleware
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'"],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'"],
+          frameSrc: ["'none'"],
+        },
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    }),
+  );
+
   app.enableCors(getCorsConfig());
   app.use(cookieParser());
 
-  // 1.5 Validation & Error Handling
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // Strips out properties without decorators
-      transform: true, // Automatically transform payload to DTO instances
-      forbidNonWhitelisted: true, // Throw an error if extraneous properties are provided
-    }),
-  );
+  // 1.5 Validation & Error Handling with Sanitization
+  app.useGlobalPipes(new SanitizedValidationPipe());
   app.useGlobalFilters(new PrismaClientExceptionFilter());
 
   // 2. Global Route Prefix
@@ -38,6 +56,9 @@ async function bootstrap() {
   await app.listen(port);
 
   logger.log(`🚀 E-Commerce API running on port ${port}`);
+  logger.log(
+    `🔒 Security features enabled: Helmet, Input Sanitization, CSRF Protection`,
+  );
 }
 bootstrap().catch((err) => {
   const logger = new Logger('Bootstrap');
