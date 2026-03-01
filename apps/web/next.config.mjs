@@ -19,6 +19,46 @@ const nextConfig = {
             { protocol: 'https', hostname: 'cdn.dribbble.com' },
         ],
     },
+    async headers() {
+        return [
+            {
+                // Apply to all routes
+                source: '/(.*)',
+                headers: [
+                    {
+                        key: 'X-Frame-Options',
+                        value: 'SAMEORIGIN',
+                    },
+                    {
+                        key: 'X-Content-Type-Options',
+                        value: 'nosniff',
+                    },
+                    {
+                        key: 'Referrer-Policy',
+                        value: 'strict-origin-when-cross-origin',
+                    },
+                    {
+                        key: 'Permissions-Policy',
+                        value: 'camera=(), microphone=(), geolocation=(self)',
+                    },
+                    {
+                        key: 'Content-Security-Policy',
+                        // Allows: same-origin scripts, Google Fonts, Stripe, Vercel
+                        value: [
+                            "default-src 'self'",
+                            "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+                            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                            "font-src 'self' https://fonts.gstatic.com",
+                            "img-src 'self' data: blob: https:",
+                            "connect-src 'self' https://api.stripe.com",
+                            "frame-src https://js.stripe.com https://hooks.stripe.com",
+                        ].join('; '),
+                    },
+                ],
+            },
+        ];
+    },
 };
 
 export default nextConfig;
+
