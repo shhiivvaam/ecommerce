@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
+import Stripe from 'stripe';
 import {
   ApiTags,
   ApiOperation,
@@ -76,13 +77,10 @@ export class PaymentsController {
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,
   ) {
-    let event: any;
+    let event: Stripe.Event;
     try {
-      const rawBody = req.rawBody || req.body;
-      event = this.paymentsService.constructEvent(
-        rawBody as string | Buffer,
-        signature,
-      );
+      const rawBody: Buffer | string = req.rawBody ?? (req.body as string);
+      event = this.paymentsService.constructEvent(rawBody, signature);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown Error';
       throw new BadRequestException(`Webhook Error: ${msg}`);

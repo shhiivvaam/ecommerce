@@ -19,7 +19,7 @@ export class StorageController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-      fileFilter: (req, file, cb) => {
+      fileFilter: (_req, file, cb) => {
         if (!file.mimetype.match(/\/(jpg|jpeg|png|webp|gif)$/)) {
           return cb(
             new BadRequestException('Only image files are allowed!'),
