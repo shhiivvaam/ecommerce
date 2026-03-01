@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class CreateAddressDto {
+export class OrderAddressDto {
   @ApiProperty() @IsString() street: string;
   @ApiProperty() @IsString() city: string;
   @ApiProperty() @IsString() state: string;
@@ -52,8 +52,8 @@ export class CreateOrderDto {
   })
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateAddressDto)
-  address?: CreateAddressDto;
+  @Type(() => OrderAddressDto)
+  address?: OrderAddressDto;
 
   @ApiPropertyOptional({
     example: 'SAVE10',

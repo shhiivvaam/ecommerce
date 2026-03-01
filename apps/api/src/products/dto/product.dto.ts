@@ -12,7 +12,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class CreateVariantDto {
+export class ProductVariantDto {
   @ApiPropertyOptional({ example: 'L' })
   @IsString()
   @IsOptional()
@@ -88,11 +88,11 @@ export class CreateProductDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ type: [CreateVariantDto] })
+  @ApiPropertyOptional({ type: [ProductVariantDto] })
   @IsOptional()
   @ValidateNested({ each: true })
-  @Type(() => CreateVariantDto)
-  variants?: CreateVariantDto[];
+  @Type(() => ProductVariantDto)
+  variants?: ProductVariantDto[];
 }
 
 export class UpdateProductDto {
@@ -142,11 +142,11 @@ export class UpdateProductDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ type: [CreateVariantDto] })
+  @ApiPropertyOptional({ type: [ProductVariantDto] })
   @IsOptional()
   @ValidateNested({ each: true })
-  @Type(() => CreateVariantDto)
-  variants?: CreateVariantDto[];
+  @Type(() => ProductVariantDto)
+  variants?: ProductVariantDto[];
 }
 
 export class ProductQueryDto {
