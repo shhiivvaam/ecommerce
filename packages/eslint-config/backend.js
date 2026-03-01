@@ -3,11 +3,12 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import tseslint from "typescript-eslint";
 
 /**
- * A shared ESLint configuration for the repository.
+ * ESLint configuration for NestJS backend applications.
+ * Extends base config with backend-specific rules.
  *
  * @type {import("eslint").Linter.Config[]}
  */
-export const config = [
+export const backendConfig = [
     js.configs.recommended,
     eslintConfigPrettier,
     ...tseslint.configs.recommended,
@@ -15,14 +16,22 @@ export const config = [
         rules: {
             "no-unused-vars": "off",
             "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-            // Disallow console methods except for explicit allowlist
+            // Backend-specific console rules - allow console.log/warn/info for debugging
             "no-console": ["error", { 
-                "allow": ["warn", "info", "table", "time", "timeEnd", "group", "groupEnd", "groupCollapsed", "groupCollapsed"],
+                "allow": ["log", "warn", "info", "table", "time", "timeEnd", "group", "groupEnd", "groupCollapsed"],
                 "allowWarn": true 
             }],
+            // Disallow console.error - use Logger instead
+            "no-restricted-properties": [
+                "error",
+                {
+                    "object": "console",
+                    "property": "error",
+                    "message": "Use Nest Logger instead of console.error"
+                }
+            ],
             // Disallow explicit 'any' types
             "@typescript-eslint/no-explicit-any": "error",
-            // Allow 'any' only in specific contexts with comments
             "@typescript-eslint/no-unsafe-assignment": "warn",
             "@typescript-eslint/no-unsafe-call": "warn", 
             "@typescript-eslint/no-unsafe-member-access": "warn",
