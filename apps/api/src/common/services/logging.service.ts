@@ -151,6 +151,7 @@ export class LoggingService {
       // Example: Send to external logging service
       // this.sendToDatadog(logEntry);
       // this.sendToCloudWatch(logEntry);
+      void JSON.stringify(logEntry); // serialise so logEntry is consumed; replace with real call
     }
   }
 

@@ -83,32 +83,43 @@ export class MetricsService {
   }
 
   // Business metrics
+
   recordUserRegistration(userId: string): void {
     this.increment('user_registrations_total', 1, {
       service: this.serviceName,
+      userId,
     });
   }
 
   recordUserLogin(userId: string, success: boolean): void {
     this.increment('user_logins_total', 1, {
       service: this.serviceName,
+      userId,
       success: success.toString(),
     });
   }
 
   recordOrderCreation(orderId: string, amount: number): void {
-    this.increment('orders_total', 1, { service: this.serviceName });
-    this.histogram('order_amount', amount, { service: this.serviceName });
+    this.increment('orders_total', 1, { service: this.serviceName, orderId });
+    this.histogram('order_amount', amount, {
+      service: this.serviceName,
+      orderId,
+    });
   }
 
   recordProductView(productId: string, userId?: string): void {
-    this.increment('product_views_total', 1, { service: this.serviceName });
+    this.increment('product_views_total', 1, {
+      service: this.serviceName,
+      productId,
+      userId: userId || 'anonymous',
+    });
   }
 
   recordCartAction(action: 'add' | 'remove' | 'update', userId?: string): void {
     this.increment('cart_actions_total', 1, {
       service: this.serviceName,
       action,
+      ...(userId && { userId }),
     });
   }
 
@@ -162,6 +173,7 @@ export class MetricsService {
   recordCacheHit(key: string, hit: boolean): void {
     this.increment('cache_requests_total', 1, {
       service: this.serviceName,
+      key,
       hit: hit.toString(),
     });
   }
@@ -206,9 +218,10 @@ export class MetricsService {
   ): void {
     // In production, send to external monitoring service
     if (process.env.NODE_ENV === 'production') {
-      // Example: Send to Prometheus, Datadog, etc.
+      // Replace with real implementation, e.g.:
       // this.sendToPrometheus(metric);
       // this.sendToDatadog(metric);
+      void metric;
     }
   }
 }
