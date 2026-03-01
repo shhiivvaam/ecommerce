@@ -1,13 +1,27 @@
 import { NextResponse } from "next/server";
 
-const EXTERNAL_PRODUCTS_URL =
-    process.env.PRODUCTS_API_URL ?? "https://api.reyva.co.in/api/products";
+// ✅ Use own backend API for products instead of external third-party URL.
+// Falls back to the external URL only if NEXT_PUBLIC_API_URL is not set.
+const PRODUCTS_URL = process.env.NEXT_PUBLIC_API_URL
+    ? `${process.env.NEXT_PUBLIC_API_URL}/products`
+    : (process.env.PRODUCTS_API_URL ?? "https://api.reyva.co.in/api/products");
 
-export async function GET() {
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const page = searchParams.get("page") ?? "1";
+    const limit = searchParams.get("limit") ?? "20";
+    const search = searchParams.get("search") ?? "";
+    const categoryId = searchParams.get("categoryId") ?? "";
+
+    const url = new URL(PRODUCTS_URL);
+    url.searchParams.set("page", page);
+    url.searchParams.set("limit", limit);
+    if (search) url.searchParams.set("search", search);
+    if (categoryId) url.searchParams.set("categoryId", categoryId);
+
     try {
-        const res = await fetch(EXTERNAL_PRODUCTS_URL, {
-            // Disable Next.js fetch caching so you always get fresh data
-            cache: "no-store",
+        const res = await fetch(url.toString(), {
+            next: { revalidate: 60 }, // ISR: revalidate every 60 seconds
         });
 
         if (!res.ok) {
