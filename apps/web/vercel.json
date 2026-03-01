@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && turbo run build --filter=web",
+  "installCommand": "cd ../.. && npm install",
+  "outputDirectory": ".next"
+}

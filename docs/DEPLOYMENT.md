@@ -1,4 +1,4 @@
-# E-Commerce Deployment Guide
+# E-Commerce — Deployment Guide
 
 This guide outlines our production deployment architecture.
 
@@ -114,7 +114,7 @@ services:
     restart: always
     env_file: .env
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
 ```
 
 ### 1.4 GitHub Actions Takes Over
