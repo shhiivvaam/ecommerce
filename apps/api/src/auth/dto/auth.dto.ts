@@ -86,3 +86,37 @@ export class ResetPasswordDto {
   @MinLength(8, { message: 'Password must be at least 8 characters' })
   newPassword: string;
 }
+
+// Enhanced DTOs with explicit sanitization for sensitive operations
+export class CreateProductDto {
+  @ApiProperty({
+    example: 'Premium Wireless Headphones',
+    description: 'Product title (will be sanitized)',
+  })
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @ApiProperty({
+    example: '<p>High-quality wireless headphones with noise cancellation</p>',
+    description: 'Product description (HTML will be sanitized)',
+  })
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+
+  @ApiProperty({
+    example: 299.99,
+    description: 'Product price',
+  })
+  @IsNotEmpty()
+  price: number;
+
+  @ApiProperty({
+    example: 'electronics',
+    description: 'Product category',
+  })
+  @IsString()
+  @IsNotEmpty()
+  category: string;
+}
