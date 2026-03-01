@@ -130,7 +130,7 @@ export default function CheckoutPage() {
         setIsProcessing(true);
         try {
             const orderPayload: Record<string, unknown> = {
-                items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+                items: items.map(i => ({ productId: i.productId, variantId: i.variantId || undefined, quantity: i.quantity })),
                 ...(appliedCoupon && { couponId: appliedCoupon.couponId }),
             };
 

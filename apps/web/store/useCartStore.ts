@@ -29,8 +29,8 @@ export const useCartStore = create<CartState>()(
                         id: i.id,
                         productId: i.productId,
                         variantId: i.variantId,
-                        title: i.product.title,
-                        price: i.product.discounted ?? i.product.price,
+                        title: i.variant ? `${i.product.title} (${[i.variant.size, i.variant.color].filter(Boolean).join(", ")})` : i.product.title,
+                        price: (i.product.discounted ?? i.product.price) + (i.variant?.priceDiff || 0),
                         quantity: i.quantity,
                         image: i.product.gallery && i.product.gallery.length > 0 ? i.product.gallery[0] : undefined,
                     }));
