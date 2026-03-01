@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { analytics } from "@/lib/analytics";
+import { ProductErrorBoundary } from "./ErrorBoundary";
 
 interface ProductCardProps {
   product: {
@@ -23,6 +24,14 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  return (
+    <ProductErrorBoundary>
+      <ProductCardInner product={product} />
+    </ProductErrorBoundary>
+  );
+}
+
+function ProductCardInner({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
   const { isAuthenticated } = useAuthStore();
   const [wishlisted, setWishlisted] = useState(false);
@@ -37,20 +46,25 @@ export function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem({
-      productId: product.id,
-      title: product.title,
-      price: displayPrice,
-      quantity: 1,
-      image: product.image,
-    });
-    analytics.track("ADD_TO_CART", {
-      productId: product.id,
-      title: product.title,
-      price: displayPrice,
-      location: "product_card",
-    });
-    toast.success("Added to bag");
+    try {
+      addItem({
+        productId: product.id,
+        title: product.title,
+        price: displayPrice,
+        quantity: 1,
+        image: product.image,
+      });
+      analytics.track("ADD_TO_CART", {
+        productId: product.id,
+        title: product.title,
+        price: displayPrice,
+        location: "product_card",
+      });
+      toast.success("Added to bag");
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      toast.error("Failed to add to bag. Please try again.");
+    }
   };
 
   const handleToggleWishlist = async (e: React.MouseEvent) => {
