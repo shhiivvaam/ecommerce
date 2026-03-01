@@ -40,6 +40,13 @@ interface Order {
     };
 }
 
+interface OrdersResponse {
+    orders: Order[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
 const STATUS_OPTIONS = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
 // Reyva-aligned status styles: no color-coded pastels — use ink/paper/accent language
@@ -59,12 +66,19 @@ export default function AdminOrdersPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("ALL");
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [page, setPage] = useState(1);
+    const [limit] = useState(20);
+    const [total, setTotal] = useState(0);
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (targetPage = 1) => {
         setLoading(true);
         try {
-            const { data } = await api.get("/orders/admin/all");
-            setOrders(data);
+            const { data } = await api.get<OrdersResponse>("/orders/admin/all", {
+                params: { page: targetPage, limit },
+            });
+            setOrders(data.orders);
+            setPage(data.page);
+            setTotal(data.total);
         } catch {
             toast.error("Failed to load orders.");
         } finally {
@@ -72,7 +86,10 @@ export default function AdminOrdersPage() {
         }
     };
 
-    useEffect(() => { fetchOrders(); }, []);
+    useEffect(() => {
+        fetchOrders(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleStatusChange = async (orderId: string, status: string) => {
         try {
@@ -88,7 +105,7 @@ export default function AdminOrdersPage() {
     const filtered = filter === "ALL" ? orders : orders.filter(o => o.status === filter);
 
     const stats = {
-        total: orders.length,
+        total,
         pending: orders.filter(o => o.status === "PENDING").length,
         processing: orders.filter(o => o.status === "PROCESSING").length,
     };
@@ -153,7 +170,7 @@ export default function AdminOrdersPage() {
                         </div>
 
                         <button
-                            onClick={fetchOrders}
+                            onClick={() => fetchOrders(page)}
                             className="h-12 px-6 flex items-center gap-2 uppercase tracking-[0.18em] text-[11px] transition-all duration-150 border"
                             style={{
                                 borderRadius: "6px",
@@ -379,6 +396,66 @@ export default function AdminOrdersPage() {
                                     ))
                                 )}
                             </AnimatePresence>
+                        </div>
+
+                        {/* Pagination footer */}
+                        <div
+                            className="flex items-center justify-between px-6 py-3 border-t"
+                            style={{ borderColor: "rgba(10,10,10,0.08)", backgroundColor: "#f5f3ef" }}
+                        >
+                            <p
+                                style={{
+                                    fontFamily: "'DM Sans', sans-serif",
+                                    fontWeight: 400,
+                                    fontSize: "12px",
+                                    color: "#8a8a8a",
+                                }}
+                            >
+                                Showing <span className="font-medium text-[#0a0a0a]">{orders.length}</span> of{" "}
+                                <span className="font-medium text-[#0a0a0a]">{total}</span> orders
+                            </p>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    disabled={page <= 1 || loading}
+                                    onClick={() => fetchOrders(page - 1)}
+                                    className="px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] border disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    style={{
+                                        borderRadius: "6px",
+                                        borderColor: "rgba(10,10,10,0.15)",
+                                        backgroundColor: "white",
+                                        fontFamily: "'DM Sans', sans-serif",
+                                        fontWeight: 500,
+                                        color: "#0a0a0a",
+                                    }}
+                                >
+                                    Previous
+                                </button>
+                                <span
+                                    className="text-[11px] uppercase tracking-[0.12em]"
+                                    style={{
+                                        fontFamily: "'DM Sans', sans-serif",
+                                        fontWeight: 500,
+                                        color: "#8a8a8a",
+                                    }}
+                                >
+                                    Page {page}
+                                </span>
+                                <button
+                                    disabled={page * limit >= total || loading}
+                                    onClick={() => fetchOrders(page + 1)}
+                                    className="px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] border disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    style={{
+                                        borderRadius: "6px",
+                                        borderColor: "#0a0a0a",
+                                        backgroundColor: "#0a0a0a",
+                                        fontFamily: "'DM Sans', sans-serif",
+                                        fontWeight: 500,
+                                        color: "#c8ff00",
+                                    }}
+                                >
+                                    Next
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 </div>
