@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import { useCartStore } from "@/store/useCartStore";
 
 const getStatusColor = (status: string) => {
     switch (status) {
@@ -49,6 +50,7 @@ function OrdersPageContent() {
     }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const searchParams = useSearchParams();
+    const { clearCart } = useCartStore();
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -66,8 +68,19 @@ function OrdersPageContent() {
 
         if (searchParams.get('success') === 'true') {
             toast.success('Acquisition authorized. Registry updated.', { icon: '🛡️' });
+            
+            // Clear cart after successful payment
+            clearCart();
+            
+            // Clean up sessionStorage
+            sessionStorage.removeItem('pendingOrderId');
+            
+            // Clear the success parameter from URL to prevent repeated toasts
+            const url = new URL(window.location.href);
+            url.searchParams.delete('success');
+            window.history.replaceState({}, '', url.toString());
         }
-    }, [searchParams]);
+    }, [searchParams, clearCart]);
 
     const handleCancel = async (orderId: string) => {
         if (!confirm('PROTOCOL PROTOCOL: Cancel acquisition authorization?')) return;
