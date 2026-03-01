@@ -17,7 +17,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private settings: SettingsService,
-  ) { }
+  ) {}
 
   private async generateSlug(title: string): Promise<string> {
     const base = title
@@ -62,14 +62,14 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : { set: [] },
       variants: data.variants
         ? {
-          create: data.variants.map((v) => ({
-            size: v.size,
-            color: v.color,
-            sku: v.sku,
-            stock: v.stock,
-            priceDiff: v.priceDiff,
-          })),
-        }
+            create: data.variants.map((v) => ({
+              size: v.size,
+              color: v.color,
+              sku: v.sku,
+              stock: v.stock,
+              priceDiff: v.priceDiff,
+            })),
+          }
         : undefined,
       category: { connect: { id: 'temp' } }, // Will be overwritten below
     };
@@ -179,15 +179,15 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : undefined,
       variants: data.variants
         ? {
-          deleteMany: {},
-          create: data.variants.map((v) => ({
-            size: v.size,
-            color: v.color,
-            sku: v.sku,
-            stock: v.stock,
-            priceDiff: v.priceDiff,
-          })),
-        }
+            deleteMany: {},
+            create: data.variants.map((v) => ({
+              size: v.size,
+              color: v.color,
+              sku: v.sku,
+              stock: v.stock,
+              priceDiff: v.priceDiff,
+            })),
+          }
         : undefined,
     };
 
