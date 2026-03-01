@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # Stage 1: Build
 # ─────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Install OS-level build deps (needed for bcrypt native addon)
 RUN apk add --no-cache python3 make g++
@@ -31,7 +31,7 @@ RUN echo "=== dist/ contents ==" && find apps/api/dist -type f -name '*.js' | he
 # ─────────────────────────────────────────────────────────────
 # Stage 2: Production runtime
 # ─────────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 # tini is needed for proper signal handling, openssl is needed natively by Prisma on Alpine
 RUN apk add --no-cache tini openssl
