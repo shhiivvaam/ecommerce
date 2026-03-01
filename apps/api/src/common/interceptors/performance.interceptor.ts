@@ -30,7 +30,7 @@ export class PerformanceInterceptor implements NestInterceptor {
             success: true,
           });
         },
-        error: (error) => {
+        error: (error: Error) => {
           const duration = Date.now() - now;
           this.loggingService.logPerformance(operation, duration, {
             method,

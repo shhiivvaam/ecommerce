@@ -67,7 +67,7 @@ export class HealthController {
       },
     },
   })
-  async liveness() {
+  liveness() {
     return this.healthService.checkLiveness();
   }
 

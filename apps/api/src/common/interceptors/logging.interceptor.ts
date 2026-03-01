@@ -26,7 +26,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap({
-        next: (_data) => {
+        next: () => {
           const response = context.switchToHttp().getResponse<Response>();
           const { statusCode } = response;
           const delay = Date.now() - now;
@@ -35,7 +35,7 @@ export class LoggingInterceptor implements NestInterceptor {
             `Outgoing Response: ${method} ${url} - Status: ${statusCode} - Duration: ${delay}ms`,
           );
         },
-        error: (error) => {
+        error: (error: Error) => {
           const delay = Date.now() - now;
 
           this.logger.error(

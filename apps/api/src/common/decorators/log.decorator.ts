@@ -1,5 +1,4 @@
 import { Logger } from '@nestjs/common';
-import { LoggingService } from '../services/logging.service';
 
 export interface LogOptions {
   message?: string;
@@ -21,26 +20,33 @@ export function Log(options: LogOptions = {}) {
   } = options;
 
   return function (
-    target: any,
+    target: object,
     propertyName: string,
     descriptor: PropertyDescriptor,
   ) {
-    const method = descriptor.value;
-    const logger = new Logger(`${target.constructor.name}.${propertyName}`);
+    const method = descriptor.value as (...args: unknown[]) => Promise<unknown>;
+    const logger = new Logger(
+      `${(target as { constructor: { name: string } }).constructor.name}.${propertyName}`,
+    );
 
-    descriptor.value = async function (...args: any[]) {
-      const className = target.constructor.name;
+    descriptor.value = async function (...args: unknown[]) {
+      const className = (target as { constructor: { name: string } })
+        .constructor.name;
       const methodName = propertyName;
       const startTime = Date.now();
 
       // Sanitize arguments for logging
       const sanitizedArgs = includeArgs
-        ? sanitizeObject(args, sensitiveArgs)
+        ? sanitizeValue(args, sensitiveArgs)
         : undefined;
 
       // Log method start
       const logMessage = `${message} - ${className}.${methodName}`;
-      logger.log(logMessage, sanitizedArgs);
+
+      if (level === 'warn') logger.warn(logMessage, sanitizedArgs);
+      else if (level === 'error') logger.error(logMessage, sanitizedArgs);
+      else if (level === 'debug') logger.debug(logMessage, sanitizedArgs);
+      else logger.log(logMessage, sanitizedArgs);
 
       try {
         const result = await method.apply(this, args);
@@ -48,7 +54,7 @@ export function Log(options: LogOptions = {}) {
 
         // Sanitize result for logging
         const sanitizedResult = includeResult
-          ? sanitizeObject(result, sensitiveResult)
+          ? sanitizeValue(result, sensitiveResult)
           : undefined;
 
         // Log successful completion
@@ -64,7 +70,7 @@ export function Log(options: LogOptions = {}) {
         // Log error
         logger.error(
           `${logMessage} - Failed (${duration}ms)`,
-          error instanceof Error ? error.stack : error,
+          error instanceof Error ? error.stack : String(error),
           sanitizedArgs,
         );
 
@@ -76,31 +82,33 @@ export function Log(options: LogOptions = {}) {
   };
 }
 
-function sanitizeObject(obj: any, sensitiveFields: string[]): any {
-  if (!obj || typeof obj !== 'object') {
-    return obj;
+function sanitizeValue(value: unknown, sensitiveFields: string[]): unknown {
+  if (value === null || value === undefined) {
+    return value;
   }
 
-  if (Array.isArray(obj)) {
-    return obj.map((item) => sanitizeObject(item, sensitiveFields));
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeValue(item, sensitiveFields));
   }
 
-  const sanitized: any = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (
-      sensitiveFields.some((field) =>
-        key.toLowerCase().includes(field.toLowerCase()),
-      )
-    ) {
-      sanitized[key] = '[REDACTED]';
-    } else if (typeof value === 'object' && value !== null) {
-      sanitized[key] = sanitizeObject(value, sensitiveFields);
-    } else {
-      sanitized[key] = value;
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (
+        sensitiveFields.some((field) =>
+          key.toLowerCase().includes(field.toLowerCase()),
+        )
+      ) {
+        sanitized[key] = '[REDACTED]';
+      } else {
+        sanitized[key] = sanitizeValue(val, sensitiveFields);
+      }
     }
+    return sanitized;
   }
 
-  return sanitized;
+  return value;
 }
 
 // Specialized decorators for common use cases

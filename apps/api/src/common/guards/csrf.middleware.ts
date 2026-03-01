@@ -39,7 +39,8 @@ export class CsrfMiddleware implements NestMiddleware {
    * Generate and set CSRF token in cookie
    */
   private generateCsrfToken(req: Request, res: Response): void {
-    const token = req.cookies?.[this.csrfCookieName] || this.generateToken();
+    const cookies = req.cookies as Record<string, string | undefined>;
+    const token = cookies[this.csrfCookieName] ?? this.generateToken();
 
     // Set CSRF token in HTTP-only cookie
     res.cookie(this.csrfCookieName, token, {
@@ -57,8 +58,9 @@ export class CsrfMiddleware implements NestMiddleware {
    * Validate CSRF token from request
    */
   private validateCsrfToken(req: Request): boolean {
-    const cookieToken = req.cookies?.[this.csrfCookieName];
-    const headerToken = req.headers[this.csrfHeaderName] as string;
+    const cookies = req.cookies as Record<string, string | undefined>;
+    const cookieToken: string | undefined = cookies[this.csrfCookieName];
+    const headerToken = req.headers[this.csrfHeaderName] as string | undefined;
 
     // Allow requests if both tokens are missing (for API usage)
     if (!cookieToken && !headerToken) {
@@ -91,8 +93,9 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
-    const cookieToken = request.cookies?.['x-csrf-token'];
-    const headerToken = request.headers['x-csrf-token'] as string;
+    const cookies = request.cookies as Record<string, string | undefined>;
+    const cookieToken: string | undefined = cookies['x-csrf-token'];
+    const headerToken = request.headers['x-csrf-token'] as string | undefined;
 
     // Allow requests if both tokens are missing (for API usage)
     if (!cookieToken && !headerToken) {
