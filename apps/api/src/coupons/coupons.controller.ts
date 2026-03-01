@@ -14,6 +14,9 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
+import { RoleType } from '@prisma/client';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { CouponsService } from './coupons.service';
 import {
   CreateCouponDto,
@@ -28,7 +31,8 @@ export class CouponsController {
   constructor(private readonly couponsService: CouponsService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List all coupons (admin)' })
   findAll() {
@@ -44,7 +48,8 @@ export class CouponsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a coupon (admin)' })
   create(@Body() dto: CreateCouponDto) {
@@ -52,7 +57,8 @@ export class CouponsController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a coupon (admin)' })
   @ApiParam({ name: 'id', type: String })
@@ -61,7 +67,8 @@ export class CouponsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a coupon (admin)' })
   @ApiParam({ name: 'id', type: String })

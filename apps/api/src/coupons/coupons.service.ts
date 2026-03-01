@@ -15,8 +15,12 @@ import {
 export class CouponsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
+  async findAll(limit = 100) {
+    const safeLimit = Math.min(Math.max(limit, 1), 500);
+    return this.prisma.coupon.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+    });
   }
 
   async findOne(id: string) {
