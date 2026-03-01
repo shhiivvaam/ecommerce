@@ -9,6 +9,8 @@ interface AuthState {
     logout: () => void;
     updateUser: (data: Partial<User>) => void;
     isAuthenticated: boolean;
+    _hasHydrated: boolean;
+    setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -17,12 +19,17 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             token: null,
             isAuthenticated: false,
+            _hasHydrated: false,
             login: (user, token) => set({ user, token, isAuthenticated: true }),
             logout: () => set({ user: null, token: null, isAuthenticated: false }),
             updateUser: (data) => set((state) => ({ user: state.user ? { ...state.user, ...data } : null })),
+            setHasHydrated: (state) => set({ _hasHydrated: state }),
         }),
         {
             name: 'ecommerce-auth',
+            onRehydrateStorage: () => (state) => {
+                state?.setHasHydrated(true);
+            },
         }
     )
 );
