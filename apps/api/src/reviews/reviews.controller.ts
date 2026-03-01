@@ -1,19 +1,21 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
-  UseGuards,
+  Patch,
+  Post,
+  Query,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
   ApiBearerAuth,
+  ApiOperation,
   ApiParam,
+  ApiQuery,
+  ApiTags,
 } from '@nestjs/swagger';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/review.dto';
@@ -29,8 +31,31 @@ export class ReviewsController {
   @Get('products/:productId/reviews')
   @ApiOperation({ summary: 'Get all reviews for a product' })
   @ApiParam({ name: 'productId', type: String })
-  getProductReviews(@Param('productId') productId: string) {
-    return this.reviewsService.getProductReviews(productId);
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (default: 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Items per page (default: 20, max: 100)',
+    example: 20,
+  })
+  getProductReviews(
+    @Param('productId') productId: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    const pageNumber = Number(page) || 1;
+    const rawLimit = Number(limit) || 20;
+    const safeLimit = Math.min(Math.max(rawLimit, 1), 100);
+    return this.reviewsService.getProductReviews(
+      productId,
+      pageNumber,
+      safeLimit,
+    );
   }
 
   @Post('products/:productId/reviews')

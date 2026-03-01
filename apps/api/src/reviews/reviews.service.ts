@@ -11,27 +11,41 @@ import { CreateReviewDto } from './dto/review.dto';
 export class ReviewsService {
   constructor(private prisma: PrismaService) {}
 
-  async getProductReviews(productId: string) {
+  async getProductReviews(productId: string, page = 1, limit = 20) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    const reviews = await this.prisma.review.findMany({
-      where: { productId },
-      orderBy: { createdAt: 'desc' },
-      include: { user: { select: { id: true, name: true, avatar: true } } },
-    });
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const skip = (page - 1) * safeLimit;
 
-    const avgRating =
-      reviews.length > 0
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-        : 0;
+    const [reviews, total, aggregate] = await this.prisma.$transaction([
+      this.prisma.review.findMany({
+        where: { productId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, avatar: true } },
+        },
+        skip,
+        take: safeLimit,
+      }),
+      this.prisma.review.count({ where: { productId } }),
+      this.prisma.review.aggregate({
+        where: { productId },
+        _avg: { rating: true },
+      }),
+    ]);
+
+    const avgRatingRaw = aggregate._avg.rating ?? 0;
+    const avgRating = Math.round(avgRatingRaw * 10) / 10;
 
     return {
       reviews,
-      avgRating: Math.round(avgRating * 10) / 10,
-      total: reviews.length,
+      avgRating,
+      total,
+      page,
+      limit: safeLimit,
     };
   }
 
