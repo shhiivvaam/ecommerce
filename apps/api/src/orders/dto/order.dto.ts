@@ -54,6 +54,14 @@ export class CreateOrderDto {
   @ValidateNested()
   @Type(() => CreateAddressDto)
   address?: CreateAddressDto;
+
+  @ApiPropertyOptional({
+    example: 'SAVE10',
+    description: 'Coupon code to apply to this order',
+  })
+  @IsString()
+  @IsOptional()
+  couponCode?: string;
 }
 
 export class UpdateOrderStatusDto {

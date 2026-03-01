@@ -3,7 +3,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-redis-yet';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -44,11 +43,19 @@ import { AdminModule } from './admin/admin.module';
       useFactory: async (configService: ConfigService) => {
         const url =
           configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-        const store = await redisStore({
-          url: url,
-          ttl: 60 * 60 * 1000, // Default 1 hour TTL
-        });
-        return { store };
+        try {
+          const { redisStore } = await import('cache-manager-redis-yet');
+          const store = await redisStore({ url, ttl: 60 * 60 * 1000 });
+          return { store };
+        } catch (err) {
+          // Redis is unavailable — fall back to in-memory cache.
+          // This is acceptable for development. Log a warning in production.
+          console.warn(
+            '[CacheModule] Redis unavailable, falling back to in-memory cache:',
+            (err as Error).message,
+          );
+          return {}; // Default: NestJS built-in in-memory store
+        }
       },
       inject: [ConfigService],
     }),
