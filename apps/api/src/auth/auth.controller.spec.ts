@@ -40,50 +40,90 @@ describe('AuthController', () => {
 
   describe('login', () => {
     it('should return access token on valid credentials', async () => {
-      const mockUser = { id: '1', email: 'test@example.com', name: 'Test User', role: { name: 'CUSTOMER' } };
+      const mockUser = {
+        id: '1',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: { name: 'CUSTOMER' },
+      };
       const mockToken = 'jwt-token';
-      
-      jest.spyOn(controller['authService'], 'validateUser').mockResolvedValue(mockUser as any);
-      jest.spyOn(controller['authService'], 'login').mockReturnValue({ access_token: mockToken, user: { id: '1', email: 'test@example.com', name: 'Test User' } });
 
-      const result = await controller.login({ email: 'test@example.com', password: 'password' });
-      
-      expect(result).toEqual({ access_token: mockToken, user: { id: '1', email: 'test@example.com', name: 'Test User' } });
-      expect(controller['authService'].validateUser).toHaveBeenCalledWith('test@example.com', 'password');
+      jest
+        .spyOn(controller['authService'], 'validateUser')
+        .mockResolvedValue(mockUser as any);
+      jest.spyOn(controller['authService'], 'login').mockReturnValue({
+        access_token: mockToken,
+        user: { id: '1', email: 'test@example.com', name: 'Test User' },
+      });
+
+      const result = await controller.login({
+        email: 'test@example.com',
+        password: 'password',
+      });
+
+      expect(result).toEqual({
+        access_token: mockToken,
+        user: { id: '1', email: 'test@example.com', name: 'Test User' },
+      });
+      expect(controller['authService'].validateUser).toHaveBeenCalledWith(
+        'test@example.com',
+        'password',
+      );
     });
 
     it('should throw UnauthorizedException on invalid credentials', async () => {
-      jest.spyOn(controller['authService'], 'validateUser').mockResolvedValue(null);
+      jest
+        .spyOn(controller['authService'], 'validateUser')
+        .mockResolvedValue(null);
 
-      await expect(controller.login({ email: 'test@example.com', password: 'wrong' })).rejects.toThrow('Invalid credentials');
+      await expect(
+        controller.login({ email: 'test@example.com', password: 'wrong' }),
+      ).rejects.toThrow('Invalid credentials');
     });
   });
 
   describe('register', () => {
     it('should register a new user', async () => {
-      const registerDto = { email: 'test@example.com', password: 'password', name: 'Test User' };
-      const mockResponse = { access_token: 'jwt-token', user: { id: '1', email: 'test@example.com', name: 'Test User' } };
-      
-      jest.spyOn(controller['authService'], 'register').mockResolvedValue(mockResponse as any);
+      const registerDto = {
+        email: 'test@example.com',
+        password: 'password',
+        name: 'Test User',
+      };
+      const mockResponse = {
+        access_token: 'jwt-token',
+        user: { id: '1', email: 'test@example.com', name: 'Test User' },
+      };
+
+      jest
+        .spyOn(controller['authService'], 'register')
+        .mockResolvedValue(mockResponse as any);
 
       const result = await controller.register(registerDto);
-      
+
       expect(result).toEqual(mockResponse);
-      expect(controller['authService'].register).toHaveBeenCalledWith(registerDto);
+      expect(controller['authService'].register).toHaveBeenCalledWith(
+        registerDto,
+      );
     });
   });
 
   describe('forgotPassword', () => {
     it('should send reset email', async () => {
       const forgotDto = { email: 'test@example.com' };
-      const mockResponse = { message: 'If an account exists, a password reset email has been sent.' };
-      
-      jest.spyOn(controller['authService'], 'forgotPassword').mockResolvedValue(mockResponse as any);
+      const mockResponse = {
+        message: 'If an account exists, a password reset email has been sent.',
+      };
+
+      jest
+        .spyOn(controller['authService'], 'forgotPassword')
+        .mockResolvedValue(mockResponse as any);
 
       const result = await controller.forgotPassword(forgotDto);
-      
+
       expect(result).toEqual(mockResponse);
-      expect(controller['authService'].forgotPassword).toHaveBeenCalledWith(forgotDto);
+      expect(controller['authService'].forgotPassword).toHaveBeenCalledWith(
+        forgotDto,
+      );
     });
   });
 
@@ -91,13 +131,17 @@ describe('AuthController', () => {
     it('should reset password', async () => {
       const resetDto = { token: 'valid-token', newPassword: 'newPassword' };
       const mockResponse = { message: 'Password has been successfully reset' };
-      
-      jest.spyOn(controller['authService'], 'resetPassword').mockResolvedValue(mockResponse as any);
+
+      jest
+        .spyOn(controller['authService'], 'resetPassword')
+        .mockResolvedValue(mockResponse as any);
 
       const result = await controller.resetPassword(resetDto);
-      
+
       expect(result).toEqual(mockResponse);
-      expect(controller['authService'].resetPassword).toHaveBeenCalledWith(resetDto);
+      expect(controller['authService'].resetPassword).toHaveBeenCalledWith(
+        resetDto,
+      );
     });
   });
 });
