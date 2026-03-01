@@ -7,7 +7,7 @@ export const UserSchema = z.object({
     id: z.string().uuid(),
     email: z.string().email(),
     name: z.string().optional(),
-    role: z.enum(["USER", "ADMIN"]).default("USER"),
+    role: z.enum(["ADMIN", "CUSTOMER"]).default("CUSTOMER"),
     avatar: z.string().optional(),
 });
 
