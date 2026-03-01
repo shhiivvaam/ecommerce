@@ -46,7 +46,7 @@ async function bootstrap() {
   app.useGlobalFilters(new PrismaClientExceptionFilter());
 
   // 2. Global Route Prefix
-  app.setGlobalPrefix('api', { exclude: ['health'] });
+  app.setGlobalPrefix('api', { exclude: ['/health'] });
 
   // 3. API Documentation
   setupSwagger(app);

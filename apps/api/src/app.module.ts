@@ -108,6 +108,6 @@ import { CsrfMiddleware } from './common/guards/csrf.middleware';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CsrfMiddleware).forRoutes('*'); // Apply CSRF protection to all routes
+    consumer.apply(CsrfMiddleware).forRoutes('*path'); // Apply CSRF protection to all routes
   }
 }
