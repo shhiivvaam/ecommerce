@@ -14,7 +14,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   async create(userId: string, data: CreateOrderDto) {
     if (!data.items || data.items.length === 0) {
@@ -27,7 +27,7 @@ export class OrdersService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Fetch user email before building the order (avoids Prisma tx type narrowing issues)
       const user = await tx.user.findUnique({
         where: { id: userId },
@@ -138,26 +138,36 @@ export class OrdersService {
         });
       }
 
-      // Resolve address
-      let createdAddressId = data.addressId;
-
-      if (!createdAddressId && data.address) {
-        const newAddress = await tx.address.create({
-          data: {
-            userId,
-            street: data.address.street,
-            city: data.address.city,
-            state: data.address.state,
-            country: data.address.country,
-            zipCode: data.address.zipCode,
-          },
-        });
-        createdAddressId = newAddress.id;
-      }
-
-      if (!createdAddressId) {
+      // Resolve address by cloning to prevent silent mutation of past orders
+      let finalAddressObj;
+      if (data.addressId) {
+        const existingAddress = await tx.address.findUnique({ where: { id: data.addressId } });
+        if (!existingAddress) throw new BadRequestException('Address not found');
+        finalAddressObj = {
+          userId,
+          street: existingAddress.street,
+          city: existingAddress.city,
+          state: existingAddress.state,
+          country: existingAddress.country,
+          zipCode: existingAddress.zipCode,
+          isDefault: false,
+        };
+      } else if (data.address) {
+        finalAddressObj = {
+          userId,
+          street: data.address.street,
+          city: data.address.city,
+          state: data.address.state,
+          country: data.address.country,
+          zipCode: data.address.zipCode,
+          isDefault: false, // snapshots shouldn't be default
+        };
+      } else {
         throw new BadRequestException('Address could not be resolved');
       }
+
+      const snapshotAddress = await tx.address.create({ data: finalAddressObj });
+      const createdAddressId = snapshotAddress.id;
 
       const grandTotal =
         totalAmount + taxAmount + shippingAmount - discountAmount;
@@ -178,13 +188,17 @@ export class OrdersService {
         include: { items: true },
       });
 
-      // Send confirmation email — fire and forget, don't block order creation
-      this.emailService
-        .sendOrderConfirmation(userEmail, order.id, order.totalAmount)
-        .catch((err) => console.error('Failed to send order email:', err));
-
-      return order;
+      return { order, userEmail };
     });
+
+    // Send confirmation email — fire and forget, only runs if transaction committed successfully
+    if (result.userEmail) {
+      this.emailService
+        .sendOrderConfirmation(result.userEmail, result.order.id, result.order.totalAmount)
+        .catch((err) => console.error('Failed to send order email:', err));
+    }
+
+    return result.order;
   }
 
   async findAllByUser(userId: string) {
@@ -250,7 +264,7 @@ export class OrdersService {
     // Restore stock for each item atomically in a transaction
     return this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
-        await tx.product.update({
+        await tx.product.updateMany({
           where: { id: item.productId },
           data: { stock: { increment: item.quantity } },
         });

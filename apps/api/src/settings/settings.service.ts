@@ -4,16 +4,24 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SettingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getSettings() {
-    let settings = await this.prisma.settings.findFirst();
+    let settings = await this.prisma.settings.findFirst({
+      orderBy: { createdAt: 'asc' }
+    });
     if (!settings) {
-      settings = await this.prisma.settings.create({
-        data: { storeMode: StoreMode.MULTI },
-      });
+      try {
+        settings = await this.prisma.settings.create({
+          data: { id: 'global', storeMode: StoreMode.MULTI },
+        });
+      } catch (err) {
+        settings = await this.prisma.settings.findFirst({
+          orderBy: { createdAt: 'asc' }
+        });
+      }
     }
-    return settings;
+    return settings!;
   }
 
   async updateSettings(data: Prisma.SettingsUpdateInput) {

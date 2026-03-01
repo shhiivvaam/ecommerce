@@ -17,7 +17,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private settings: SettingsService,
-  ) {}
+  ) { }
 
   private async generateSlug(title: string): Promise<string> {
     const base = title
@@ -62,14 +62,14 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : { set: [] },
       variants: data.variants
         ? {
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
       category: { connect: { id: 'temp' } }, // Will be overwritten below
     };
@@ -79,11 +79,23 @@ export class ProductsService {
         connect: { id: data.categoryId },
       };
     } else {
-      const defaultCategory = await this.prisma.category.upsert({
+      let defaultCategory = await this.prisma.category.findUnique({
         where: { slug: 'uncategorized' },
-        update: {},
-        create: { name: 'Uncategorized', slug: 'uncategorized' },
+        select: { id: true },
       });
+      if (!defaultCategory) {
+        try {
+          defaultCategory = await this.prisma.category.create({
+            data: { name: 'Uncategorized', slug: 'uncategorized' },
+            select: { id: true },
+          });
+        } catch {
+          defaultCategory = await this.prisma.category.findUniqueOrThrow({
+            where: { slug: 'uncategorized' },
+            select: { id: true },
+          });
+        }
+      }
       productData.category = {
         connect: { id: defaultCategory.id },
       };
@@ -97,10 +109,11 @@ export class ProductsService {
     const singleId = await this.settings.getSingleProductId();
 
     if (isSingle && singleId) {
-      return this.prisma.product.findMany({
+      const products = await this.prisma.product.findMany({
         where: { id: singleId },
         include: { variants: true, category: true },
       });
+      return { products, total: products.length, page: 1, limit: Math.max(1, query.limit || 10) };
     }
 
     // Default multi-product fetching with secure pagination and search parsing
@@ -179,15 +192,15 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : undefined,
       variants: data.variants
         ? {
-            deleteMany: {},
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          deleteMany: {},
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
     };
 
