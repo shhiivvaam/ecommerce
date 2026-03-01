@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('EnvConfig');
 
 export const envValidationSchema = z.object({
   NODE_ENV: z
@@ -52,10 +55,9 @@ export function validateEnv(config: Record<string, unknown>) {
   const parsed = envValidationSchema.safeParse(config);
 
   if (!parsed.success) {
-    console.error(
-      '❌ Invalid environment configuration:',
-      parsed.error.format(),
-    );
+    logger.error('❌ Invalid environment configuration', {
+      errors: parsed.error.format(),
+    });
     throw new Error('Invalid environment configuration');
   }
 
