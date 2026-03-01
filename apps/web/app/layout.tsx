@@ -12,7 +12,7 @@ import { QueryProvider } from '@/components/QueryProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'NexCart | Modern E-Commerce',
+  title: 'REYVA',
   description: 'A fully functional, production-ready, scalable e-commerce platform.',
 };
 
