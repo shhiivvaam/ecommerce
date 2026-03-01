@@ -424,7 +424,7 @@
 
 /* Skeleton */
 .ppSkeleton { 
-  borderRadius: 12px; 
+  border-radius: 12px; 
   background: rgba(10,10,10,.06); 
   animation: ppPulse 1.4s ease-in-out infinite; 
 }
