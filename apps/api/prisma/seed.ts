@@ -35,7 +35,7 @@ async function main() {
 
     // 3. Create Settings (Multi-product by default)
     await prisma.settings.createMany({
-        data: [{ storeMode: 'multi', taxPercent: 5.0, shippingFlat: 10.0 }],
+        data: [{ storeMode: 'MULTI', taxPercent: 5.0, shippingFlat: 10.0 }],
         skipDuplicates: true
     });
 
