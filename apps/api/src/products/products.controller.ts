@@ -105,7 +105,7 @@ export class ProductsController {
     type: [ProductResponseDto],
   })
   @UseInterceptors(CacheInterceptor)
-  @CacheTTL(60000) // 1 minute cache
+  @CacheTTL(300000) // 5 minutes cache for product list
   findAll(@Query() query: ProductQueryDto) {
     return this.productsService.findAll(query);
   }
@@ -123,6 +123,8 @@ export class ProductsController {
     type: ProductResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Product not found' })
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(600000) // 10 minutes cache for individual products
   findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
