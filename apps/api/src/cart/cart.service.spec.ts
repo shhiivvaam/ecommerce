@@ -11,28 +11,28 @@ describe('CartService', () => {
   beforeEach(async () => {
     const mockPrismaService = {
       cart: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
+        findUnique: jest.fn() as any,
+        create: jest.fn() as any,
+        update: jest.fn() as any,
+        delete: jest.fn() as any,
       },
       cartItem: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
-        deleteMany: jest.fn(),
-        findMany: jest.fn(),
+        findUnique: jest.fn() as any,
+        create: jest.fn() as any,
+        update: jest.fn() as any,
+        delete: jest.fn() as any,
+        deleteMany: jest.fn() as any,
+        findMany: jest.fn() as any,
       },
       product: {
-        findUnique: jest.fn(),
-        update: jest.fn(),
+        findUnique: jest.fn() as any,
+        update: jest.fn() as any,
       },
       variant: {
-        findUnique: jest.fn(),
-        update: jest.fn(),
+        findUnique: jest.fn() as any,
+        update: jest.fn() as any,
       },
-      $transaction: jest.fn(),
+      $transaction: jest.fn() as any,
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -46,7 +46,7 @@ describe('CartService', () => {
     }).compile();
 
     service = module.get<CartService>(CartService);
-    prismaService = module.get(PrismaService) as jest.Mocked<PrismaService>;
+    prismaService = module.get(PrismaService);
   });
 
   it('should be defined', () => {
@@ -106,7 +106,12 @@ describe('CartService', () => {
       };
 
       const mockCart = { id: 'cart-1', userId: 'user-1', items: [] };
-      const mockProduct = { id: 'product-1', title: 'Test Product', stock: 10, price: 99.99 };
+      const mockProduct = {
+        id: 'product-1',
+        title: 'Test Product',
+        stock: 10,
+        price: 99.99,
+      };
       const mockVariant = { id: 'variant-1', stock: 5 };
       const mockCartItem = {
         id: 'item-1',
@@ -139,10 +144,15 @@ describe('CartService', () => {
         quantity: 2,
       };
 
-      prismaService.cart.findUnique.mockResolvedValue({ id: 'cart-1', items: [] });
+      prismaService.cart.findUnique.mockResolvedValue({
+        id: 'cart-1',
+        items: [],
+      });
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.addItem('user-1', addItemDto)).rejects.toThrow(NotFoundException);
+      await expect(service.addItem('user-1', addItemDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException if insufficient stock', async () => {
@@ -157,7 +167,9 @@ describe('CartService', () => {
       prismaService.cart.findUnique.mockResolvedValue(mockCart);
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
 
-      await expect(service.addItem('user-1', addItemDto)).rejects.toThrow(BadRequestException);
+      await expect(service.addItem('user-1', addItemDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should update existing item quantity', async () => {
@@ -239,11 +251,15 @@ describe('CartService', () => {
     });
 
     it('should throw NotFoundException if cart item does not exist', async () => {
-      prismaService.cart.findUnique.mockResolvedValue({ id: 'cart-1', items: [] });
+      prismaService.cart.findUnique.mockResolvedValue({
+        id: 'cart-1',
+        items: [],
+      });
       prismaService.cartItem.findUnique.mockResolvedValue(null);
 
-      await expect(service.updateItem('user-1', 'invalid-item', { quantity: 5 }))
-        .rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateItem('user-1', 'invalid-item', { quantity: 5 }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should remove item if quantity is 0', async () => {
@@ -300,11 +316,15 @@ describe('CartService', () => {
     });
 
     it('should throw NotFoundException if item does not exist', async () => {
-      prismaService.cart.findUnique.mockResolvedValue({ id: 'cart-1', items: [] });
+      prismaService.cart.findUnique.mockResolvedValue({
+        id: 'cart-1',
+        items: [],
+      });
       prismaService.cartItem.findUnique.mockResolvedValue(null);
 
-      await expect(service.removeItem('user-1', 'invalid-item'))
-        .rejects.toThrow(NotFoundException);
+      await expect(
+        service.removeItem('user-1', 'invalid-item'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

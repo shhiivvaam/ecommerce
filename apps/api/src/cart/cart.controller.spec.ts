@@ -27,16 +27,14 @@ describe('CartController', () => {
           useValue: mockCartService,
         },
       ],
-      imports: [
-        ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
-      ],
+      imports: [ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }])],
     })
-    .overrideGuard(JwtAuthGuard)
-    .useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<CartController>(CartController);
-    cartService = module.get(CartService) as jest.Mocked<CartService>;
+    cartService = module.get(CartService);
   });
 
   it('should be defined', () => {
@@ -109,11 +107,15 @@ describe('CartController', () => {
       const result = await controller.updateItem(
         { user: mockUser },
         'item-1',
-        updateItemDto
+        updateItemDto,
       );
 
       expect(result).toEqual(mockUpdatedItem);
-      expect(cartService.updateItem).toHaveBeenCalledWith('user-1', 'item-1', updateItemDto);
+      expect(cartService.updateItem).toHaveBeenCalledWith(
+        'user-1',
+        'item-1',
+        updateItemDto,
+      );
     });
   });
 
