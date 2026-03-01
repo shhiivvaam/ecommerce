@@ -28,6 +28,13 @@ export class OrdersService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // Fetch user email before building the order (avoids Prisma tx type narrowing issues)
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
+      const userEmail = user?.email ?? '';
+
       const productIds = data.items.map((item) => item.productId);
 
       const products = await tx.product.findMany({
@@ -48,13 +55,19 @@ export class OrdersService {
       for (const item of data.items) {
         const product = productMap.get(item.productId)!;
 
-        if (product.stock < item.quantity) {
+        // ✅ Atomic stock deduction: updateMany with conditional check prevents race conditions.
+        //    If stock < quantity, the row won't match and updatedCount === 0.
+        const { count: updatedCount } = await tx.product.updateMany({
+          where: { id: product.id, stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } },
+        });
+
+        if (updatedCount === 0) {
           throw new BadRequestException(
             `Insufficient stock for product: ${product.title}`,
           );
         }
 
-        // Use discounted price if available, otherwise regular price
         const currentPrice = product.discounted ?? product.price;
         totalAmount += currentPrice * item.quantity;
 
@@ -65,15 +78,9 @@ export class OrdersService {
           productTitle: product.title,
           sku: product.sku,
         });
-
-        // Deduct stock
-        await tx.product.update({
-          where: { id: product.id },
-          data: { stock: product.stock - item.quantity },
-        });
       }
 
-      // Compute eventual taxes and shipping (can be pulled from Settings later)
+      // Compute taxes and shipping from Settings
       const settings = await tx.settings.findFirst();
       const taxPercent = settings?.taxPercent || 0;
       const shippingFlat = settings?.shippingFlat || 0;
@@ -81,6 +88,57 @@ export class OrdersService {
       const taxAmount = (totalAmount * taxPercent) / 100;
       const shippingAmount = shippingFlat;
 
+      // ✅ Apply coupon discount if a coupon code is provided
+      let discountAmount = 0;
+      let couponId: string | undefined;
+
+      if (data.couponCode) {
+        const coupon = await tx.coupon.findFirst({
+          where: { code: data.couponCode.toUpperCase() },
+        });
+
+        if (!coupon) {
+          throw new BadRequestException(
+            `Coupon code "${data.couponCode}" is not valid`,
+          );
+        }
+
+        if (new Date() > coupon.expiryDate) {
+          throw new BadRequestException(
+            `Coupon "${data.couponCode}" has expired`,
+          );
+        }
+
+        if (
+          coupon.usageLimit !== null &&
+          coupon.usedCount >= coupon.usageLimit
+        ) {
+          throw new BadRequestException(
+            `Coupon "${data.couponCode}" has reached its usage limit`,
+          );
+        }
+
+        if (totalAmount < coupon.minTotal) {
+          throw new BadRequestException(
+            `Order total must be at least $${coupon.minTotal.toFixed(2)} to use this coupon`,
+          );
+        }
+
+        discountAmount = coupon.isFlat
+          ? coupon.discount
+          : (totalAmount * coupon.discount) / 100;
+
+        discountAmount = Math.min(discountAmount, totalAmount); // cap at order total
+        couponId = coupon.id;
+
+        // Increment usage count
+        await tx.coupon.update({
+          where: { id: coupon.id },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+
+      // Resolve address
       let createdAddressId = data.addressId;
 
       if (!createdAddressId && data.address) {
@@ -101,24 +159,28 @@ export class OrdersService {
         throw new BadRequestException('Address could not be resolved');
       }
 
+      const grandTotal =
+        totalAmount + taxAmount + shippingAmount - discountAmount;
+
       const order = await tx.order.create({
         data: {
           userId,
           status: OrderStatus.PENDING,
-          totalAmount: totalAmount + taxAmount + shippingAmount,
+          totalAmount: Math.max(0, grandTotal),
           taxAmount,
           shippingAmount,
           addressId: createdAddressId,
+          couponId: couponId ?? null,
           items: {
             create: orderItemsData,
           },
         },
-        include: { items: true, user: true },
+        include: { items: true },
       });
 
-      // Send confirmation email (async call, don't wait for it if not critical, but here we can)
+      // Send confirmation email — fire and forget, don't block order creation
       this.emailService
-        .sendOrderConfirmation(order.user.email, order.id, order.totalAmount)
+        .sendOrderConfirmation(userEmail, order.id, order.totalAmount)
         .catch((err) => console.error('Failed to send order email:', err));
 
       return order;
@@ -153,15 +215,22 @@ export class OrdersService {
     });
   }
 
-  async findAll() {
-    return this.prisma.order.findMany({
-      include: {
-        user: { select: { name: true, email: true } },
-        items: true,
-        address: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        include: {
+          user: { select: { name: true, email: true } },
+          items: true,
+          address: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.order.count(),
+    ]);
+    return { orders, total, page, limit };
   }
 
   async cancelOrder(id: string, userId: string) {
@@ -178,7 +247,7 @@ export class OrdersService {
       );
     }
 
-    // Restore stock for each item in a transaction
+    // Restore stock for each item atomically in a transaction
     return this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
         await tx.product.update({

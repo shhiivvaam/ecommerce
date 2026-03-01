@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import {
@@ -13,24 +17,35 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private settings: SettingsService,
-  ) {}
+  ) { }
 
-  private generateSlug(title: string): string {
-    return (
-      title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '') +
-      '-' +
-      Math.random().toString(36).substring(2, 8)
-    );
+  private async generateSlug(title: string): Promise<string> {
+    const base = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+
+    // Check for existing slugs with this base and find next available
+    const existing = await this.prisma.product.findMany({
+      where: { slug: { startsWith: base } },
+      select: { slug: true },
+    });
+
+    if (existing.length === 0) return base;
+
+    const suffixes = existing.map((p) => {
+      const match = p.slug.match(/-(\d+)$/);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+
+    return `${base}-${Math.max(...suffixes) + 1}`;
   }
 
   async create(data: CreateProductDto) {
     // Block creation in single product mode
     const isSingle = await this.settings.isSingleProductMode();
     if (isSingle) {
-      throw new Error(
+      throw new ForbiddenException(
         'Cannot create products while store is in single-product mode',
       );
     }
@@ -38,7 +53,7 @@ export class ProductsService {
     // Map DTO 'name' to Prisma 'title', and auto-generate the required unique slug
     const productData: Prisma.ProductCreateInput = {
       title: data.title,
-      slug: this.generateSlug(data.title),
+      slug: await this.generateSlug(data.title),
       description: data.description,
       price: data.price,
       discounted: data.discounted,
@@ -47,14 +62,14 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : { set: [] },
       variants: data.variants
         ? {
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
       category: { connect: { id: 'temp' } }, // Will be overwritten below
     };
@@ -164,20 +179,20 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : undefined,
       variants: data.variants
         ? {
-            deleteMany: {},
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          deleteMany: {},
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
     };
 
     if (data.title && data.title !== product.title) {
-      updateData.slug = this.generateSlug(data.title);
+      updateData.slug = await this.generateSlug(data.title);
     }
 
     if (data.categoryId) {
@@ -197,7 +212,7 @@ export class ProductsService {
     const isSingle = await this.settings.isSingleProductMode();
     const singleId = await this.settings.getSingleProductId();
     if (isSingle && singleId === id) {
-      throw new Error(
+      throw new ForbiddenException(
         'Cannot delete the primary product while store is in single-product mode',
       );
     }

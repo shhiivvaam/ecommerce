@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, StoreMode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -10,7 +10,7 @@ export class SettingsService {
     let settings = await this.prisma.settings.findFirst();
     if (!settings) {
       settings = await this.prisma.settings.create({
-        data: { storeMode: 'multi' },
+        data: { storeMode: StoreMode.MULTI },
       });
     }
     return settings;
@@ -26,12 +26,12 @@ export class SettingsService {
 
   async isSingleProductMode() {
     const settings = await this.getSettings();
-    return settings.storeMode === 'single';
+    return settings.storeMode === StoreMode.SINGLE;
   }
 
   async getSingleProductId() {
     const settings = await this.getSettings();
-    if (settings.storeMode === 'single' && settings.singleProductId) {
+    if (settings.storeMode === StoreMode.SINGLE && settings.singleProductId) {
       return settings.singleProductId;
     }
     return null;

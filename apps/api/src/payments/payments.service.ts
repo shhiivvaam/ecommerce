@@ -1,7 +1,12 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import { PaymentMethod, PaymentStatus, OrderStatus } from '@prisma/client';
 import Stripe from 'stripe';
 
 @Injectable()
@@ -12,13 +17,20 @@ export class PaymentsService {
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    this.stripe = new Stripe(
-      this.configService.get<string>('STRIPE_SECRET_KEY') || 'sk_test_mock',
-      {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        apiVersion: '2023-10-16' as any,
-      } as Stripe.StripeConfig,
-    );
+    const stripeKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    const isProduction = this.configService.get('NODE_ENV') === 'production';
+
+    if (!stripeKey && isProduction) {
+      throw new InternalServerErrorException(
+        'STRIPE_SECRET_KEY is required in production. Set it in your environment.',
+      );
+    }
+
+    // In development, fall back to a placeholder — real payments won't work
+    // but the API will boot successfully for local dev without Stripe keys.
+    this.stripe = new Stripe(stripeKey ?? 'sk_test_placeholder', {
+      apiVersion: '2025-02-24.acacia',
+    });
   }
 
   async createCheckoutSession(
@@ -32,6 +44,13 @@ export class PaymentsService {
     successUrl: string,
     cancelUrl: string,
   ) {
+    const stripeKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    if (!stripeKey) {
+      throw new ForbiddenException(
+        'Payment processing is not configured. Please contact support.',
+      );
+    }
+
     const lineItems = items.map((item) => ({
       price_data: {
         currency: 'usd',
@@ -59,7 +78,10 @@ export class PaymentsService {
 
   constructEvent(payload: string | Buffer, signature: string) {
     const endpointSecret =
-      this.configService.get<string>('STRIPE_WEBHOOK_SECRET') || 'whsec_test';
+      this.configService.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
+    if (!endpointSecret) {
+      throw new ForbiddenException('Stripe webhook secret is not configured.');
+    }
     try {
       return this.stripe.webhooks.constructEvent(
         payload,
@@ -77,7 +99,7 @@ export class PaymentsService {
     transactionId: string,
     method: PaymentMethod = PaymentMethod.STRIPE,
   ) {
-    // Check for idempotency: if payment already exists for this order, ignore
+    // Idempotency: if payment already exists for this order, ignore
     const existingPayment = await this.prisma.payment.findUnique({
       where: { orderId },
     });
@@ -101,9 +123,10 @@ export class PaymentsService {
       },
     });
 
+    // ✅ Use enum instead of raw string
     await this.prisma.order.update({
       where: { id: orderId },
-      data: { status: 'PROCESSING' },
+      data: { status: OrderStatus.PROCESSING },
     });
 
     return payment;
