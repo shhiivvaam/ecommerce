@@ -11,7 +11,23 @@ import {
 
 describe('ProductsService', () => {
   let service: ProductsService;
-  let prismaService: jest.Mocked<PrismaService>;
+  type MockPrismaService = {
+    readonly product: {
+      create: jest.Mock;
+      findMany: jest.Mock;
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+      count: jest.Mock;
+    };
+    readonly category: {
+      findUnique: jest.Mock;
+    };
+    readonly $transaction: jest.Mock;
+  };
+
+  let prismaService: MockPrismaService;
 
   beforeEach(async () => {
     const mockPrismaService = {
@@ -51,7 +67,7 @@ describe('ProductsService', () => {
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
-    prismaService = module.get(PrismaService);
+    prismaService = module.get(PrismaService) as unknown as MockPrismaService;
   });
 
   it('should be defined', () => {
@@ -65,8 +81,8 @@ describe('ProductsService', () => {
         description: 'Test Description',
         price: 99.99,
         categoryId: 'category-1',
-        images: ['image1.jpg'],
-        inventory: 10,
+        gallery: ['image1.jpg'],
+        stock: 10,
       };
 
       const mockCategory = { id: 'category-1', name: 'Test Category' };
@@ -77,8 +93,8 @@ describe('ProductsService', () => {
         price: 99.99,
         description: 'Test Description',
         categoryId: 'category-1',
-        images: ['image1.jpg'],
-        inventory: 10,
+        gallery: ['image1.jpg'],
+        stock: 10,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -105,8 +121,8 @@ describe('ProductsService', () => {
         description: 'Test Description',
         price: 99.99,
         categoryId: 'invalid-category',
-        images: ['image1.jpg'],
-        inventory: 10,
+        gallery: ['image1.jpg'],
+        stock: 10,
       };
 
       prismaService.category.findUnique.mockResolvedValue(null);
