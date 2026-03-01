@@ -23,6 +23,19 @@ interface CartState {
     fetchCart: () => Promise<void>;
 }
 
+interface ApiResponseCartItem {
+    id: string;
+    productId: string;
+    variantId?: string;
+    quantity: number;
+    product: {
+        title: string;
+        price: number;
+        discounted?: number;
+        gallery?: string[];
+    };
+}
+
 export const useCartStore = create<CartState>()(
     persist(
         (set, get) => ({
@@ -32,7 +45,7 @@ export const useCartStore = create<CartState>()(
                 if (!useAuthStore.getState().isAuthenticated) return;
                 try {
                     const { data } = await api.get('/cart');
-                    const items = data.items.map((i: any) => ({
+                    const items = data.items.map((i: ApiResponseCartItem) => ({
                         id: i.id,
                         productId: i.productId,
                         variantId: i.variantId,

@@ -20,8 +20,9 @@ async function getProduct(id: string): Promise<Product | null> {
     }
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-    const product = await getProduct(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const { id } = await params;
+    const product = await getProduct(id);
 
     if (!product) {
         return {
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
         description,
         openGraph: {
             type: 'website',
-            url: `https://nexus-os.com/products/${params.id}`,
+            url: `https://nexus-os.com/products/${id}`,
             title,
             description,
             images: [
@@ -60,8 +61,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     };
 }
 
-export default async function ProductLayout({ children, params }: { children: React.ReactNode, params: { id: string } }) {
-    const product = await getProduct(params.id);
+export default async function ProductLayout({ children, params }: { children: React.ReactNode, params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const product = await getProduct(id);
 
     if (!product) return <>{children}</>;
 
@@ -75,7 +77,7 @@ export default async function ProductLayout({ children, params }: { children: Re
         "category": product.category?.name,
         "offers": {
             "@type": "Offer",
-            "url": `https://nexcart.com/products/${params.id}`,
+            "url": `https://nexcart.com/products/${id}`,
             "priceCurrency": "USD",
             "price": product.discounted ?? product.price,
             "itemCondition": "https://schema.org/NewCondition",

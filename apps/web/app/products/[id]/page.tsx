@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -66,7 +66,8 @@ type ExternalProduct = {
 
 const FALLBACK = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop";
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [userRating, setUserRating] = useState(0);
@@ -83,16 +84,16 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
 
   const fetchReviews = useCallback(async () => {
     try {
-      const { data } = await api.get(`/products/${params.id}/reviews`);
+      const { data } = await api.get(`/products/${id}/reviews`);
       setReviews(data.reviews);
       setAvgRating(data.avgRating);
     } catch (err) {
       console.error("Reviews fetch failed", err);
     }
-  }, [params.id]);
+  }, [id]);
 
   const { data: productsData, isLoading } = useQuery<{ products?: ExternalProduct[] }>({
-    queryKey: ["product-detail", params.id],
+    queryKey: ["product-detail", id],
     queryFn: async () => {
       const res = await fetch("/api/products");
       if (!res.ok) throw new Error("Failed to fetch");
@@ -102,7 +103,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
 
   const product: Product | null = useMemo(() => {
     if (!productsData?.products) return null;
-    const raw = productsData.products.find((p) => p.id === params.id);
+    const raw = productsData.products.find((p) => p.id === id);
     if (!raw) return null;
     return {
       id: raw.id, title: raw.title, description: raw.description,
@@ -113,7 +114,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
       category: raw.category ?? undefined,
       variants: raw.variants ?? [],
     };
-  }, [productsData, params.id]);
+  }, [productsData, id]);
 
   const relatedProducts: RelatedProduct[] = useMemo(() => {
     if (!productsData?.products || !product?.category?.id) return [];
@@ -126,9 +127,9 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   useEffect(() => {
     fetchReviews();
     if (isAuthenticated) {
-      api.get(`/wishlist/${params.id}/check`).then(({ data }) => setWishlisted(data.inWishlist)).catch(() => {});
+      api.get(`/wishlist/${id}/check`).then(({ data }) => setWishlisted(data.inWishlist)).catch(() => { });
     }
-  }, [params.id, isAuthenticated, fetchReviews]);
+  }, [id, isAuthenticated, fetchReviews]);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -158,7 +159,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
     if (!userRating) { toast.error("Please select a rating"); return; }
     setIsSubmittingReview(true);
     try {
-      await api.post(`/products/${params.id}/reviews`, { rating: userRating, comment: userComment });
+      await api.post(`/products/${id}/reviews`, { rating: userRating, comment: userComment });
       toast.success("Review submitted");
       setUserRating(0); setUserComment("");
       await fetchReviews();
