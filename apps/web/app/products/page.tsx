@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ProductCard } from "@/components/ProductCard";
 import { api } from "@/lib/api";
-import { Search, SlidersHorizontal, RotateCcw, ArrowUpDown, ChevronDown, X } from "lucide-react";
+import { Search, SlidersHorizontal, RotateCcw, ArrowUpDown, ChevronDown, X, AlertCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 
 interface Product {
   id: string;
@@ -43,6 +44,8 @@ function ProductsPageContent() {
   const searchParams = useSearchParams();
   const categoryFromUrl = searchParams.get("category");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [isRetryingCategories, setIsRetryingCategories] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl ?? "all");
@@ -55,8 +58,23 @@ function ProductsPageContent() {
     if (categoryFromUrl) setSelectedCategory(categoryFromUrl);
   }, [categoryFromUrl]);
 
+  const fetchCategories = async () => {
+    try {
+      setCategoriesError(null);
+      setIsRetryingCategories(true);
+      const { data } = await api.get("/categories");
+      setCategories(data);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load categories";
+      setCategoriesError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsRetryingCategories(false);
+    }
+  };
+
   useEffect(() => {
-    api.get("/categories").then(({ data }) => setCategories(data)).catch(() => {});
+    fetchCategories();
   }, []);
 
   const { data: rawProducts = [], isLoading } = useQuery<ExternalProduct[]>({
@@ -346,13 +364,53 @@ function ProductsPageContent() {
                 {/* Category */}
                 <div>
                   <span className="pp-label">Category</span>
-                  <div className="pp-select-wrap">
-                    <select className="pp-select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                      <option value="all">All Products</option>
-                      {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <ChevronDown size={14} className="pp-select-chevron" />
-                  </div>
+                  {categoriesError ? (
+                    <div style={{ 
+                      padding: "8px 12px", 
+                      borderRadius: "6px", 
+                      background: "rgba(239, 68, 68, 0.1)", 
+                      border: "1px solid rgba(239, 68, 68, 0.2)",
+                      fontSize: "12px",
+                      color: "#dc2626",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginBottom: "8px"
+                    }}>
+                      <AlertCircle size={14} />
+                      <span>{categoriesError}</span>
+                      <button
+                        onClick={fetchCategories}
+                        disabled={isRetryingCategories}
+                        style={{
+                          marginLeft: "auto",
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          background: "rgba(239, 68, 68, 0.2)",
+                          border: "1px solid rgba(239, 68, 68, 0.3)",
+                          color: "#dc2626",
+                          fontSize: "11px",
+                          cursor: isRetryingCategories ? "not-allowed" : "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <RefreshCw size={12} style={{ 
+                          animation: isRetryingCategories ? "spin 1s linear infinite" : "none" 
+                        }} />
+                        {isRetryingCategories ? "Retrying..." : "Retry"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="pp-select-wrap">
+                      <select className="pp-select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+                        <option value="all">All Products</option>
+                        {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="pp-select-chevron" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Price range */}
