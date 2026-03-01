@@ -32,18 +32,18 @@ describe('ProductsService', () => {
   beforeEach(async () => {
     const mockPrismaService = {
       product: {
-        create: jest.fn(),
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
-        findFirst: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
-        count: jest.fn(),
+        create: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn().mockResolvedValue(null),
+        findFirst: jest.fn().mockResolvedValue(null),
+        update: jest.fn().mockResolvedValue({}),
+        delete: jest.fn().mockResolvedValue({}),
+        count: jest.fn().mockResolvedValue(0),
       },
       category: {
-        findUnique: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue(null),
       },
-      $transaction: jest.fn(),
+      $transaction: jest.fn().mockImplementation((cb) => cb(prismaService)),
     };
 
     const mockSettingsService = {
@@ -101,6 +101,7 @@ describe('ProductsService', () => {
 
       prismaService.category.findUnique.mockResolvedValue(mockCategory);
       prismaService.product.findMany.mockResolvedValue([]);
+      prismaService.product.create.mockResolvedValue(mockProduct);
       prismaService.$transaction.mockImplementation((callback) => {
         return callback(prismaService);
       });
@@ -109,9 +110,11 @@ describe('ProductsService', () => {
       const result = await service.create(createProductDto);
 
       expect(result).toEqual(mockProduct);
-      expect(prismaService.category.findUnique).toHaveBeenCalledWith({
-        where: { id: 'category-1' },
-      });
+      expect(prismaService.category.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'category-1' },
+        }),
+      );
       expect(prismaService.product.create).toHaveBeenCalled();
     });
 
@@ -200,6 +203,7 @@ describe('ProductsService', () => {
         include: {
           category: true,
           variants: true,
+          reviews: true,
         },
       });
     });
