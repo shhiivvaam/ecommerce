@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -23,6 +23,8 @@ import { WishlistsModule } from './wishlists/wishlists.module';
 import { BannersModule } from './banners/banners.module';
 import { VariantsModule } from './variants/variants.module';
 import { AdminModule } from './admin/admin.module';
+import { MonitoringModule } from './common/monitoring.module';
+import { CsrfMiddleware } from './common/guards/csrf.middleware';
 
 @Module({
   controllers: [HealthController],
@@ -41,21 +43,39 @@ import { AdminModule } from './admin/admin.module';
       isGlobal: true,
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const url =
-          configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-        try {
-          const { redisStore } = await import('cache-manager-redis-yet');
-          const store = await redisStore({ url, ttl: 60 * 60 * 1000 });
-          return { store };
-        } catch (err) {
-          // Redis is unavailable — fall back to in-memory cache.
-          // This is acceptable for development. Log a warning in production.
-          console.warn(
-            '[CacheModule] Redis unavailable, falling back to in-memory cache:',
-            (err as Error).message,
-          );
-          return {}; // Default: NestJS built-in in-memory store
+        const isProduction = configService.get('NODE_ENV') === 'production';
+        const redisUrl = configService.get<string>('REDIS_URL');
+
+        // Redis configuration for production
+        if (isProduction && redisUrl) {
+          try {
+            const { redisStore } = await import('cache-manager-redis-yet');
+            return {
+              store: await redisStore({
+                url: redisUrl,
+                ttl: 60 * 60 * 1000, // 1 hour default
+                isCacheable: (value: any) => {
+                  // Don't cache errors or null values
+                  return value !== null && value !== undefined;
+                },
+              }),
+            };
+          } catch (err) {
+            console.warn(
+              'Redis unavailable for caching, falling back to memory:',
+              err,
+            );
+          }
         }
+
+        // In-memory cache for development
+        return {
+          ttl: 15 * 60 * 1000, // 15 minutes for development
+          max: 100, // Maximum number of items in cache
+          isCacheable: (value: any) => {
+            return value !== null && value !== undefined;
+          },
+        };
       },
       inject: [ConfigService],
     }),
@@ -77,6 +97,7 @@ import { AdminModule } from './admin/admin.module';
     BannersModule,
     VariantsModule,
     AdminModule,
+    MonitoringModule,
   ],
   providers: [
     {
@@ -85,4 +106,8 @@ import { AdminModule } from './admin/admin.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CsrfMiddleware).forRoutes('*'); // Apply CSRF protection to all routes
+  }
+}
