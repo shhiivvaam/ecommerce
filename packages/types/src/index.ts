@@ -112,6 +112,11 @@ export interface ApiCartItem {
     id: string;
     productId: string;
     variantId?: string;
+    variant?: {
+        size?: string;
+        color?: string;
+        priceDiff: number;
+    };
     quantity: number;
     product: {
         title: string;
