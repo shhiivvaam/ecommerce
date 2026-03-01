@@ -1,18 +1,20 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Patch,
   Body,
+  Controller,
+  Get,
   Param,
-  UseGuards,
+  Patch,
+  Post,
+  Query,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
   ApiBearerAuth,
+  ApiOperation,
   ApiParam,
+  ApiQuery,
+  ApiTags,
 } from '@nestjs/swagger';
 import { RefundsService } from './refunds.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -67,8 +69,23 @@ export class RefundsController {
   @UseGuards(RolesGuard)
   @Roles(RoleType.ADMIN)
   @ApiOperation({ summary: 'List all refund requests (admin)' })
-  findAll() {
-    return this.refundsService.findAll();
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (default: 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Items per page (default: 20, max: 100)',
+    example: 20,
+  })
+  findAll(@Query('page') page = '1', @Query('limit') limit = '20') {
+    const pageNumber = Number(page) || 1;
+    const rawLimit = Number(limit) || 20;
+    const safeLimit = Math.min(Math.max(rawLimit, 1), 100);
+    return this.refundsService.findAll(pageNumber, safeLimit);
   }
 
   @Patch('refunds/:refundId/status')

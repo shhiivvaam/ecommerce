@@ -65,14 +65,26 @@ export class RefundsService {
     });
   }
 
-  async findAll() {
-    return this.prisma.refund.findMany({
-      include: {
-        order: {
-          include: { user: { select: { id: true, email: true, name: true } } },
+  async findAll(page = 1, limit = 20) {
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const skip = (page - 1) * safeLimit;
+
+    const [refunds, total] = await this.prisma.$transaction([
+      this.prisma.refund.findMany({
+        include: {
+          order: {
+            include: {
+              user: { select: { id: true, email: true, name: true } },
+            },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+      this.prisma.refund.count(),
+    ]);
+
+    return { refunds, total, page, limit: safeLimit };
   }
 }
