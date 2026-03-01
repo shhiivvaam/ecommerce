@@ -37,7 +37,7 @@ interface SavedAddress {
 
 export default function CheckoutPage() {
     const [currentStep, setCurrentStep] = useState(1);
-    const { items, total, clearCart } = useCartStore();
+    const { items } = useCartStore();
     const [isProcessing, setIsProcessing] = useState(false);
 
     // Address state
@@ -50,6 +50,10 @@ export default function CheckoutPage() {
     const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
+    // Calculate total
+    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const finalTotal = appliedCoupon ? appliedCoupon.finalTotal : total;
+
     const [address, setAddress] = useState({
         firstName: "",
         lastName: "",
@@ -59,9 +63,6 @@ export default function CheckoutPage() {
         state: "NY",
         country: "US"
     });
-
-
-    const finalTotal = appliedCoupon ? appliedCoupon.finalTotal : total;
 
     const handleApplyCoupon = async () => {
         if (!couponCode.trim()) return;
@@ -100,6 +101,14 @@ export default function CheckoutPage() {
             }
         };
         fetchAddresses();
+    }, []);
+
+    // Handle payment cancellation
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('canceled') === 'true') {
+            toast.error('Payment canceled. Your cart has been preserved.');
+        }
     }, []);
 
     if (items.length === 0 && currentStep !== 4) {
@@ -149,7 +158,8 @@ export default function CheckoutPage() {
             const orderRes = await api.post('/orders', orderPayload);
             const orderId = orderRes.data.id;
 
-            await clearCart();
+            // Store order ID in sessionStorage for potential cleanup on success page
+            sessionStorage.setItem('pendingOrderId', orderId);
 
             const checkoutPayload = {
                 orderId,
@@ -489,7 +499,7 @@ export default function CheckoutPage() {
                                     </motion.div>
 
                                     <div className="space-y-6">
-                                        <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-black dark:text-white uppercase leading-[0.9]">Acquisition <br /><span className="text-emerald-500 dark:text-emerald-400">Authorized.</span></h2>
+                                        <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-black dark:text-white leading-[0.9]">Acquisition <br /><span className="text-emerald-500 dark:text-emerald-400">Authorized.</span></h2>
                                         <p className="text-xl text-slate-400 dark:text-slate-500 font-medium max-w-xl mx-auto italic leading-relaxed">
                                             Registry updated successfully. Your assets have been committed to the logistics flow and will materialize at the destination node shortly.
                                         </p>
