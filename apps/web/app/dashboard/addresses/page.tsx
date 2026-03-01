@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@repo/ui";
+import { Input } from "@repo/ui";
 import { MapPin, Plus, Trash2, Star, Globe, Zap, ShieldCheck, X } from "lucide-react";
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";

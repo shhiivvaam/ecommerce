@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Input } from "@/components/ui/input";
+import { Input } from "@repo/ui";
 import {
     Save, RefreshCw, LayoutGrid, Target, DollarSign,
     Percent, Globe, Zap, Shield, ChevronDown

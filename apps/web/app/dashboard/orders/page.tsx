@@ -5,7 +5,7 @@ import { Package, Clock, CheckCircle, Truck, XCircle, RefreshCcw, ChevronRight, 
 import { api } from "@/lib/api";
 import { format } from "date-fns";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button } from "@repo/ui";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
