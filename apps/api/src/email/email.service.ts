@@ -29,7 +29,13 @@ export class EmailService {
         html: `<h2>Thank you for your order!</h2><p>Your order #${orderId} for $${total} has been confirmed. We will send tracking details soon!</p>`,
       });
     } catch (error) {
-      console.error('Failed to send confirmation email:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to send confirmation email', {
+        error: errorMessage,
+        orderId,
+        to,
+      });
     }
   }
 
@@ -46,7 +52,12 @@ export class EmailService {
         html: `<h2>Password Reset Request</h2><p>Click <a href="${resetLink}">here</a> to reset your password. The link expires in 15 minutes.</p>`,
       });
     } catch (error) {
-      console.error('Failed to send reset email:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to send reset email', {
+        error: errorMessage,
+        to,
+      });
     }
   }
 
@@ -59,7 +70,12 @@ export class EmailService {
         html: `<h2>Welcome ${name}!</h2><p>We're thrilled to have you. Enjoy exploring our premium products.</p>`,
       });
     } catch (error) {
-      console.error('Failed to send welcome email:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to send welcome email', {
+        error: errorMessage,
+        to,
+      });
     }
   }
 }
