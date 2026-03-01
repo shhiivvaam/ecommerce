@@ -101,7 +101,7 @@ describe('ProductsService', () => {
 
       prismaService.category.findUnique.mockResolvedValue(mockCategory);
       prismaService.product.findMany.mockResolvedValue([]);
-      prismaService.$transaction.mockImplementation(async (callback) => {
+      prismaService.$transaction.mockImplementation((callback) => {
         return callback(prismaService);
       });
       prismaService.product.create.mockResolvedValue(mockProduct);
