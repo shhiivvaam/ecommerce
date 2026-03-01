@@ -67,7 +67,7 @@ describe('ProductsService', () => {
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
-    prismaService = module.get(PrismaService) as unknown as MockPrismaService;
+    prismaService = module.get(PrismaService);
   });
 
   it('should be defined', () => {
