@@ -54,8 +54,8 @@ describe('ProductsController', () => {
         description: 'Test Description',
         price: 99.99,
         categoryId: 'category-1',
-        images: ['image1.jpg'],
-        inventory: 10,
+        gallery: ['image1.jpg'],
+        stock: 10,
       };
 
       const mockProduct = {
@@ -65,7 +65,7 @@ describe('ProductsController', () => {
         updatedAt: new Date(),
       };
 
-      productsService.create.mockResolvedValue(mockProduct);
+      productsService.create.mockResolvedValue(mockProduct as any);
 
       const result = await controller.create(createProductDto);
 
@@ -89,7 +89,7 @@ describe('ProductsController', () => {
         totalPages: 1,
       };
 
-      productsService.findAll.mockResolvedValue(mockResponse);
+      productsService.findAll.mockResolvedValue(mockResponse as any);
 
       const result = await controller.findAll({ page: 1, limit: 10 });
 
@@ -110,7 +110,7 @@ describe('ProductsController', () => {
         description: 'Test Description',
       };
 
-      productsService.findOne.mockResolvedValue(mockProduct);
+      productsService.findOne.mockResolvedValue(mockProduct as any);
 
       const result = await controller.findOne('product-1');
 
@@ -128,7 +128,7 @@ describe('ProductsController', () => {
         price: 99.99,
       };
 
-      productsService.update.mockResolvedValue(mockProduct);
+      productsService.update.mockResolvedValue(mockProduct as any);
 
       const result = await controller.update('product-1', updateData);
 
@@ -144,7 +144,7 @@ describe('ProductsController', () => {
     it('should delete a product', async () => {
       const mockProduct = { id: 'product-1', title: 'Test Product' };
 
-      productsService.remove.mockResolvedValue(mockProduct);
+      productsService.remove.mockResolvedValue(mockProduct as any);
 
       const result = await controller.remove('product-1');
 

@@ -3,7 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import * as request from 'supertest';
+import request from 'supertest';
 import { TestHelpers } from './test-helpers';
 
 describe('Cart and Checkout Flow (Integration)', () => {

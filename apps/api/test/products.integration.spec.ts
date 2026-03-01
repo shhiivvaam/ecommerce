@@ -3,7 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import * as request from 'supertest';
+import request from 'supertest';
 
 describe('Products Flow (Integration)', () => {
   let app: INestApplication;
@@ -233,6 +233,7 @@ describe('Products Flow (Integration)', () => {
         prisma.product.create({
           data: {
             title: 'Laptop Computer',
+            slug: 'laptop-computer',
             description: 'High performance laptop',
             price: 999.99,
             categoryId: testCategory.id,
@@ -243,6 +244,7 @@ describe('Products Flow (Integration)', () => {
         prisma.product.create({
           data: {
             title: 'Wireless Mouse',
+            slug: 'wireless-mouse',
             description: 'Ergonomic wireless mouse',
             price: 29.99,
             categoryId: testCategory.id,
@@ -253,6 +255,7 @@ describe('Products Flow (Integration)', () => {
         prisma.product.create({
           data: {
             title: 'Mechanical Keyboard',
+            slug: 'mechanical-keyboard',
             description: 'RGB mechanical keyboard',
             price: 149.99,
             categoryId: testCategory.id,
@@ -313,6 +316,7 @@ describe('Products Flow (Integration)', () => {
       testProductWithVariants = await prisma.product.create({
         data: {
           title: 'T-Shirt',
+          slug: 't-shirt-variant',
           description: 'Cotton t-shirt',
           price: 19.99,
           categoryId: testCategory.id,
@@ -321,21 +325,21 @@ describe('Products Flow (Integration)', () => {
           variants: {
             create: [
               {
-                name: 'Small',
+                size: 'Small',
                 sku: 'TSHIRT-001-S',
-                price: 19.99,
+                priceDiff: 0,
                 stock: 50,
               },
               {
-                name: 'Medium',
+                size: 'Medium',
                 sku: 'TSHIRT-001-M',
-                price: 19.99,
+                priceDiff: 0,
                 stock: 75,
               },
               {
-                name: 'Large',
+                size: 'Large',
                 sku: 'TSHIRT-001-L',
-                price: 24.99,
+                priceDiff: 5,
                 stock: 25,
               },
             ],
@@ -356,7 +360,7 @@ describe('Products Flow (Integration)', () => {
         .expect(200);
 
       expect(response.body.variants).toHaveLength(3);
-      expect(response.body.variants[0]).toHaveProperty('name');
+      expect(response.body.variants[0]).toHaveProperty('size');
       expect(response.body.variants[0]).toHaveProperty('stock');
     });
 

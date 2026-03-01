@@ -57,7 +57,7 @@ describe('CartController', () => {
         ],
       };
 
-      cartService.getCart.mockResolvedValue(mockCart);
+      cartService.getCart.mockResolvedValue(mockCart as any);
 
       const result = await controller.getCart({ user: mockUser });
 
@@ -82,7 +82,7 @@ describe('CartController', () => {
         variantId: 'variant-1',
       };
 
-      cartService.addItem.mockResolvedValue(mockCartItem);
+      cartService.addItem.mockResolvedValue(mockCartItem as any);
 
       const result = await controller.addItem({ user: mockUser }, addItemDto);
 
@@ -102,7 +102,7 @@ describe('CartController', () => {
         quantity: 5,
       };
 
-      cartService.updateItem.mockResolvedValue(mockUpdatedItem);
+      cartService.updateItem.mockResolvedValue(mockUpdatedItem as any);
 
       const result = await controller.updateItem(
         { user: mockUser },
@@ -123,7 +123,7 @@ describe('CartController', () => {
     it('should remove an item from the cart', async () => {
       const mockUser = { id: 'user-1', sub: 'user-1' };
 
-      cartService.removeItem.mockResolvedValue(undefined);
+      cartService.removeItem.mockResolvedValue({} as any);
 
       await controller.removeItem({ user: mockUser }, 'item-1');
 
@@ -135,7 +135,7 @@ describe('CartController', () => {
     it('should clear the user cart', async () => {
       const mockUser = { id: 'user-1', sub: 'user-1' };
 
-      cartService.clearCart.mockResolvedValue(undefined);
+      cartService.clearCart.mockResolvedValue({} as any);
 
       await controller.clearCart({ user: mockUser });
 
