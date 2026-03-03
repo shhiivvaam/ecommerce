@@ -37,4 +37,14 @@ export const queryKeys = {
     banners: {
         root: ["banners"] as const,
     },
+    admin: {
+        stats: ["admin", "stats"] as const,
+        orders: (page: number, limit: number) => ["admin", "orders", page, limit] as const,
+        order: (id: string) => ["admin", "orders", id] as const,
+        categories: ["admin", "categories"] as const,
+        coupons: ["admin", "coupons"] as const,
+        users: (search: string) => ["admin", "users", search] as const,
+        user: (id: string) => ["admin", "users", id] as const,
+        settings: ["admin", "settings"] as const,
+    },
 } as const;
