@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { serverFetch, toErrorResponse } from "@/lib/http";
+import { serverFetch, toErrorResponse, extractToken } from "@/lib/http";
 import type { Product, PaginatedResponse } from "@repo/types";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +47,24 @@ export async function GET(request: Request): Promise<NextResponse> {
         };
 
         return NextResponse.json(normalized);
+    } catch (error) {
+        const { status, message } = toErrorResponse(error);
+        return NextResponse.json({ error: message }, { status });
+    }
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
+    const token = extractToken(request);
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    try {
+        const body = await request.json();
+        const product = await serverFetch<Product>("/products", {
+            method: "POST",
+            token,
+            body,
+        });
+        return NextResponse.json(product, { status: 201 });
     } catch (error) {
         const { status, message } = toErrorResponse(error);
         return NextResponse.json({ error: message }, { status });
