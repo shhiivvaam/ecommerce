@@ -1,27 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Package, Users, ShoppingCart,
   Tag, Ticket, LogOut, Settings, Image as ImageIcon,
-  Menu, X, ChevronRight,
+  Menu, X, ChevronRight, Loader2
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ─── Nav items ──────────────────────────────────────────────────────────── */
 
 const NAV_ITEMS = [
-  { name: "Overview",   href: "/admin",            icon: LayoutDashboard },
-  { name: "Products",   href: "/admin/products",   icon: Package },
-  { name: "Orders",     href: "/admin/orders",     icon: ShoppingCart },
+  { name: "Overview", href: "/admin", icon: LayoutDashboard },
+  { name: "Products", href: "/admin/products", icon: Package },
+  { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { name: "Categories", href: "/admin/categories", icon: Tag },
-  { name: "Banners",    href: "/admin/banners",    icon: ImageIcon },
-  { name: "Coupons",    href: "/admin/coupons",    icon: Ticket },
-  { name: "Customers",  href: "/admin/customers",  icon: Users },
-  { name: "Settings",   href: "/admin/settings",   icon: Settings },
+  { name: "Banners", href: "/admin/banners", icon: ImageIcon },
+  { name: "Coupons", href: "/admin/coupons", icon: Ticket },
+  { name: "Customers", href: "/admin/customers", icon: Users },
+  { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
@@ -377,9 +377,20 @@ const CSS = `
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname     = usePathname();
-  const { logout, user } = useAuthStore();
+  const pathname = usePathname();
+  const router = useRouter();
+  const { logout, user, _hasHydrated } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (_hasHydrated) {
+      if (!user) {
+        router.push("/login?callbackUrl=/admin");
+      } else if (user.role !== "ADMIN") {
+        router.push("/");
+      }
+    }
+  }, [user, _hasHydrated, router]);
 
   const isActive = (href: string) =>
     href === "/admin"
@@ -387,6 +398,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       : pathname === href || pathname.startsWith(href + "/");
 
   const currentPage = NAV_ITEMS.find((i) => isActive(i.href));
+
+  if (!_hasHydrated || !user || user.role !== "ADMIN") {
+    return (
+      <div style={{ height: "100svh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f3ef" }}>
+        <Loader2 size={32} style={{ color: "#0a0a0a", animation: "spin 1s linear infinite" }} />
+      </div>
+    );
+  }
 
   return (
     <>
