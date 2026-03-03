@@ -3,14 +3,12 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { api } from "@/lib/api";
 import { toast } from "react-hot-toast";
-import { isAxiosError } from "axios";
 import { ArrowRight, ChevronLeft, Mail, Lock } from "lucide-react";
+import { useLogin } from "@/lib/hooks/useAuth";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -25,22 +23,20 @@ const features = [
 ];
 
 export default function LoginPage() {
-  const login = useAuthStore((s) => s.login);
   const router = useRouter();
+  const loginMutation = useLogin();
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<z.infer<typeof formSchema>>({
+  const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const { data } = await api.post("/auth/login", values);
-      login(data.user, data.access_token);
+      await loginMutation.mutateAsync(values);
       toast.success("Welcome back.");
       router.push("/");
-    } catch (error) {
-      const message = isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Incorrect email or password.");
+    } catch {
+      // Error toast is handled inside useLogin's onError
     }
   };
 
@@ -274,12 +270,12 @@ export default function LoginPage() {
                   {errors.password && <span className="lp-error">{errors.password.message}</span>}
                 </div>
 
-                <button type="submit" className="lp-submit" disabled={isSubmitting}>
-                  {isSubmitting && <span className="lp-shimmer" />}
+                <button type="submit" className="lp-submit" disabled={loginMutation.isPending}>
+                  {loginMutation.isPending && <span className="lp-shimmer" />}
                   <span style={{ position: "relative", zIndex: 1 }}>
-                    {isSubmitting ? "Signing In…" : "Sign In"}
+                    {loginMutation.isPending ? "Signing In…" : "Sign In"}
                   </span>
-                  {!isSubmitting && <ArrowRight size={16} style={{ position: "relative", zIndex: 1 }} />}
+                  {!loginMutation.isPending && <ArrowRight size={16} style={{ position: "relative", zIndex: 1 }} />}
                 </button>
               </form>
 

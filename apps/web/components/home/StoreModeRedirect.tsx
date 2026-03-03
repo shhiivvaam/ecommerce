@@ -2,25 +2,25 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { useStoreSettings } from "@/contexts/SettingsContext";
 
+/**
+ * Redirects to single-product page if store is in SINGLE mode.
+ * Uses the globally available SettingsContext — no additional fetch needed.
+ */
 export function StoreModeRedirect() {
     const router = useRouter();
+    const { settings } = useStoreSettings();
 
-    // Single-product store mode: redirect if the store is configured for one product
     useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const res = await api.get("/settings").catch(() => ({ data: null }));
-                if (res.data?.storeMode === "single" && res.data?.singleProductId) {
-                    router.push(`/products/${res.data.singleProductId}`);
-                }
-            } catch {
-                // Silently ignore — settings are optional
+        if (settings?.storeMode === "SINGLE") {
+            // If the backend exposes a singleProductId in settings, redirect to it
+            const sid = (settings as unknown as Record<string, string>).singleProductId;
+            if (sid) {
+                router.push(`/products/${sid}`);
             }
-        };
-        fetchSettings();
-    }, [router]);
+        }
+    }, [settings, router]);
 
     return null;
 }

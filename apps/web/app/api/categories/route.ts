@@ -1,40 +1,16 @@
 import { NextResponse } from "next/server";
+import { serverFetch, toErrorResponse } from "@/lib/http";
+import type { Category } from "@repo/types";
 
-const EXTERNAL_CATEGORIES_URL = "https://api.reyva.co.in/api/categories";
+// Categories rarely change — we can revalidate every 5 minutes
+export const revalidate = 300;
 
-export const dynamic = "force-dynamic";
-
-export type Category = {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  _count: { products: number };
-};
-
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
-    const res = await fetch(EXTERNAL_CATEGORIES_URL, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch categories" },
-        { status: res.status }
-      );
-    }
-
-    const data: Category[] = await res.json();
-    return NextResponse.json(data, { status: 200 });
+    const categories = await serverFetch<Category[]>("/categories");
+    return NextResponse.json(categories);
   } catch (error) {
-    console.error("Error fetching categories:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+    const { status, message } = toErrorResponse(error);
+    return NextResponse.json({ error: message }, { status });
   }
 }

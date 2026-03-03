@@ -1,35 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
-import type { ProductSummary } from "@repo/types";
+import { useProducts } from "@/lib/hooks/useProducts";
 import { FALLBACK_IMAGE } from "@/constants/home";
 
-async function fetchProducts(): Promise<ProductSummary[]> {
-    const res = await fetch("/api/products");
-    if (!res.ok) throw new Error("Failed to fetch products");
-    const data: { products?: { id: string; title: string; description: string; price: number; gallery?: string[] }[] } =
-        await res.json();
-    return (
-        data.products?.slice(0, 8).map((p) => ({
-            id: p.id,
-            title: p.title,
-            description: p.description,
-            price: p.price,
-            image: p.gallery?.[0] ?? FALLBACK_IMAGE,
-            gallery: p.gallery ?? [],
-        })) ?? []
-    );
-}
-
 export function ProductGrid() {
-    const { data: products = [], isLoading } = useQuery<ProductSummary[]>({
-        queryKey: ["home-products"],
-        queryFn: fetchProducts,
-    });
+    const { data, isLoading } = useProducts({ limit: 8, sortBy: "createdAt", sortOrder: "desc" });
+    const products = data?.data ?? [];
 
     return (
         <section className="px-6 md:px-12 lg:px-20 py-20 lg:py-28" style={{ background: "var(--paper)" }}>
@@ -60,7 +40,10 @@ export function ProductGrid() {
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.65, delay: i * 0.07 }}
                             >
-                                <ProductCard product={product} />
+                                <ProductCard product={{
+                                    ...product,
+                                    image: product.gallery?.[0] ?? FALLBACK_IMAGE,
+                                }} />
                             </motion.div>
                         ))
                         : (

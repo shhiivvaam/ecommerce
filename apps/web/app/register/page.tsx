@@ -3,12 +3,12 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { ArrowRight, ChevronLeft, Mail, Lock, User as UserIcon } from "lucide-react";
+import { useRegister } from "@/lib/hooks/useAuth";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -24,38 +24,20 @@ const perks = [
 ];
 
 export default function RegisterPage() {
-  const login = useAuthStore((s) => s.login);
   const router = useRouter();
+  const registerMutation = useRegister();
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<z.infer<typeof formSchema>>({
+  const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        const message =
-          (data && (data.message || data.error)) ||
-          "This email may already be in use.";
-        throw new Error(message);
-      }
-
-      login(data.user, data.access_token);
+      await registerMutation.mutateAsync(values);
       toast.success("Account created. Welcome.");
       router.push("/");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : undefined;
-      toast.error(message || "This email may already be in use.");
+    } catch {
+      // Error toast is handled inside useRegister's onError
     }
   };
 
@@ -291,12 +273,12 @@ export default function RegisterPage() {
                   {errors.password && <span className="rp-error">{errors.password.message}</span>}
                 </div>
 
-                <button type="submit" className="rp-submit" disabled={isSubmitting}>
-                  {isSubmitting && <span className="rp-submit-shimmer" />}
+                <button type="submit" className="rp-submit" disabled={registerMutation.isPending}>
+                  {registerMutation.isPending && <span className="rp-submit-shimmer" />}
                   <span style={{ position: "relative", zIndex: 1 }}>
-                    {isSubmitting ? "Creating Account…" : "Create Account"}
+                    {registerMutation.isPending ? "Creating Account…" : "Create Account"}
                   </span>
-                  {!isSubmitting && <ArrowRight size={16} style={{ position: "relative", zIndex: 1 }} />}
+                  {!registerMutation.isPending && <ArrowRight size={16} style={{ position: "relative", zIndex: 1 }} />}
                 </button>
               </form>
 

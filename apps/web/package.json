@@ -9,11 +9,12 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@repo/ui": "*",
-    "@repo/types": "*",
     "@hookform/resolvers": "^4.1.0",
     "@radix-ui/react-slot": "^1.1.2",
+    "@repo/types": "*",
+    "@repo/ui": "*",
     "@tanstack/react-query": "^5.66.0",
+    "@tanstack/react-query-devtools": "^5.91.3",
     "axios": "^1.7.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -32,10 +33,10 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@repo/typescript-config": "*",
+    "@eslint/eslintrc": "^3.3.4",
     "@repo/eslint-config": "*",
     "@repo/tailwind-config": "*",
-    "@eslint/eslintrc": "^3.3.4",
+    "@repo/typescript-config": "*",
     "@types/node": "^22.13.5",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

@@ -17,11 +17,15 @@ export type User = z.infer<typeof UserSchema>;
 // Category
 // ─────────────────────────────────────────────────────────────────
 export const CategorySchema = z.object({
-    id: z.string().uuid(),
+    id: z.string(),
     name: z.string().min(1),
     slug: z.string().min(1),
     description: z.string().optional(),
     image: z.string().optional(),
+    deletedAt: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    _count: z.object({ products: z.number() }).optional(),
 });
 
 export type Category = z.infer<typeof CategorySchema>;
@@ -128,4 +132,110 @@ export interface ApiCartItem {
 
 export interface ProductsApiResponse {
     products?: Product[];
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Pagination
+// ─────────────────────────────────────────────────────────────────
+export interface PaginatedResponse<T> {
+    data: T[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Product Filters (used by hooks + BFF routes)
+// ─────────────────────────────────────────────────────────────────
+export interface ProductFilters {
+    page?: number;
+    limit?: number;
+    search?: string;
+    categoryId?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    sortBy?: 'createdAt' | 'price' | 'title';
+    sortOrder?: 'asc' | 'desc';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Banner
+// ─────────────────────────────────────────────────────────────────
+export interface Banner {
+    id: string;
+    title: string;
+    subtitle?: string;
+    imageUrl: string;
+    link?: string;
+    active: boolean;
+    createdAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Store Settings
+// ─────────────────────────────────────────────────────────────────
+export interface StoreSettings {
+    id: string;
+    storeName: string;
+    storeMode: 'SINGLE' | 'MULTI';
+    currency: string;
+    logo?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Order
+// ─────────────────────────────────────────────────────────────────
+export interface OrderItem {
+    id: string;
+    productId: string;
+    variantId?: string;
+    quantity: number;
+    price: number;
+    title: string;
+    image?: string;
+}
+
+export interface Order {
+    id: string;
+    status: 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED';
+    total: number;
+    items: OrderItem[];
+    createdAt: string;
+    updatedAt: string;
+    address?: {
+        street: string;
+        city: string;
+        state: string;
+        zip: string;
+        country: string;
+    };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Auth
+// ─────────────────────────────────────────────────────────────────
+export interface AuthResponse {
+    user: User;
+    token: string;
+}
+
+export interface LoginCredentials {
+    email: string;
+    password: string;
+}
+
+export interface RegisterCredentials {
+    email: string;
+    password: string;
+    name?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Cart (server response shape)
+// ─────────────────────────────────────────────────────────────────
+export interface CartResponse {
+    items: CartItem[];
+    total: number;
+    itemCount: number;
 }

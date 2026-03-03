@@ -48,11 +48,11 @@ const nextConfig = {
                         // Allows: same-origin scripts, Google Fonts, Stripe, Vercel
                         value: [
                             "default-src 'self'",
-                            "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+                            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
                             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                             "font-src 'self' https://fonts.gstatic.com",
                             "img-src 'self' data: blob: https:",
-                            "connect-src 'self' https://api.stripe.com http://localhost:* https://api.reyva.co.in",
+                            "connect-src 'self' https://api.stripe.com http://localhost:* https://127.0.0.1:* https://api.reyva.co.in",
                             "frame-src https://js.stripe.com https://hooks.stripe.com",
                         ].join('; '),
                     },
