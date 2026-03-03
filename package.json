@@ -15,6 +15,7 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "test": "turbo test",
+    "type-check": "turbo type-check",
     "deploy:vercel": "vercel --prod",
     "deploy:aws": "aws ecs update-service --cluster ecommerce --service ecommerce-service --force-new-deployment",
     "build:docker": "docker build -t ecommerce .",

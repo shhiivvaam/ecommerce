@@ -14,7 +14,7 @@ export async function setupTestDatabase(prisma: PrismaService) {
       update: {},
       create: {
         id: '1',
-        name: 'USER',
+        name: 'CUSTOMER',
       },
     });
 
