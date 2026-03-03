@@ -9,7 +9,7 @@ import { RoleType } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
@@ -30,8 +30,8 @@ export class UsersService {
 
     // exclude password
 
-    const { password: _password, ...result } = user;
-    return result;
+    const { password: _password, role, ...result } = user;
+    return { ...result, role: role?.name || 'CUSTOMER' };
   }
 
   async update(id: string, data: UpdateUserDto) {
@@ -46,8 +46,8 @@ export class UsersService {
       include: { role: true },
     });
 
-    const { password: _password, ...result } = updated;
-    return result;
+    const { password: _password, role, ...result } = updated;
+    return { ...result, role: role?.name || 'CUSTOMER' };
   }
 
   async remove(id: string) {
@@ -60,11 +60,11 @@ export class UsersService {
     const skip = (page - 1) * limit;
     const where = search
       ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' as const } },
-            { email: { contains: search, mode: 'insensitive' as const } },
-          ],
-        }
+        OR: [
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { email: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }
       : {};
 
     const [users, total] = await Promise.all([
@@ -78,7 +78,10 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
-    const sanitized = users.map(({ password: _password, ...u }) => u);
+    const sanitized = users.map(({ password: _password, role, ...u }) => ({
+      ...u,
+      role: role?.name || 'CUSTOMER',
+    }));
     return { users: sanitized, total, page, limit };
   }
 
@@ -93,8 +96,8 @@ export class UsersService {
       include: { role: true },
     });
 
-    const { password: _password, ...result } = updated;
-    return result;
+    const { password: _password, role, ...result } = updated;
+    return { ...result, role: role?.name || 'CUSTOMER' };
   }
 
   async changeRole(id: string, roleType: RoleType) {
@@ -116,7 +119,7 @@ export class UsersService {
       include: { role: true },
     });
 
-    const { password: _password, ...result } = updated;
-    return result;
+    const { password: _password, role: r, ...result } = updated;
+    return { ...result, role: r?.name || 'CUSTOMER' };
   }
 }
