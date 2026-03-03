@@ -85,8 +85,7 @@ log_success "Pre-flight checks passed"
 # ─────────────────────────────────────────────────────────────────────────────
 log_info "[1/7] Pre-deploy cleanup..."
 
-docker container prune -f                          >/dev/null 2>&1 || true
-docker image prune -af --filter "until=168h"       >/dev/null 2>&1 || true
+docker system prune -af --volumes >/dev/null 2>&1 || true
 
 log_success "Cleanup done"
 
