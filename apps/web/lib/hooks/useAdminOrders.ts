@@ -27,6 +27,8 @@ interface AdminOrder {
         country: string;
         zipCode: string;
     };
+    trackingNumber?: string;
+    carrier?: string;
 }
 
 interface AdminOrdersResponse {
@@ -60,11 +62,11 @@ export function useAdminOrders(page = 1, limit = 20) {
 export function useUpdateOrderStatus() {
     const queryClient = useQueryClient();
 
-    return useMutation<AdminOrder, Error, { orderId: string; status: string }>({
-        mutationFn: async ({ orderId, status }) => {
+    return useMutation<AdminOrder, Error, { orderId: string; status: string; trackingNumber?: string; carrier?: string }>({
+        mutationFn: async ({ orderId, status, trackingNumber, carrier }) => {
             const { data } = await apiClient.patch<AdminOrder>(
                 `/admin/orders/${orderId}`,
-                { status },
+                { status, trackingNumber, carrier },
             );
             return data;
         },

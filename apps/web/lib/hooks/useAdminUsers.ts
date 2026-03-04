@@ -84,7 +84,7 @@ export function useToggleUserBlock() {
             );
             return data;
         },
-        onSuccess: (updated, { id, isBlocked }) => {
+        onSuccess: (updated, { isBlocked }) => {
             // Invalidate the user list for all search queries
             queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
             toast.success(`Customer ${isBlocked ? "unblocked" : "blocked"}.`);
