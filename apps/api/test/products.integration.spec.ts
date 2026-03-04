@@ -345,6 +345,7 @@ describe('Products Flow (Integration)', () => {
             ],
           },
         },
+        include: { variants: true },
       });
     });
 

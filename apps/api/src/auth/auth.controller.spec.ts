@@ -44,7 +44,7 @@ describe('AuthController', () => {
         id: '1',
         email: 'test@example.com',
         name: 'Test User',
-        role: { name: 'CUSTOMER' },
+        role: 'CUSTOMER' as any,
       };
       const mockToken = 'jwt-token';
 
@@ -53,7 +53,12 @@ describe('AuthController', () => {
         .mockResolvedValue(mockUser as any);
       jest.spyOn(controller['authService'], 'login').mockReturnValue({
         access_token: mockToken,
-        user: { id: '1', email: 'test@example.com', name: 'Test User' },
+        user: {
+          id: '1',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'CUSTOMER' as any,
+        },
       });
 
       const result = await controller.login({
@@ -63,7 +68,12 @@ describe('AuthController', () => {
 
       expect(result).toEqual({
         access_token: mockToken,
-        user: { id: '1', email: 'test@example.com', name: 'Test User' },
+        user: {
+          id: '1',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'CUSTOMER' as any,
+        },
       });
       expect(controller['authService'].validateUser).toHaveBeenCalledWith(
         'test@example.com',
