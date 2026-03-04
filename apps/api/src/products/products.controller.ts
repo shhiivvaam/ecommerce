@@ -9,7 +9,14 @@ import {
   Query,
   UseGuards,
   UseInterceptors,
+  Req,
+  UploadedFile,
+  Res,
+  BadRequestException,
 } from '@nestjs/common';
+import type { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Express } from 'express';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { RoleType } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -55,8 +62,14 @@ export class ProductsController {
     type: ProductResponseDto,
   })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.create(createProductDto);
+  create(
+    @Req() req: { user: { id: string; sub?: string } },
+    @Body() createProductDto: CreateProductDto,
+  ) {
+    return this.productsService.create(
+      req.user.sub ?? req.user.id,
+      createProductDto,
+    );
   }
 
   @Get()
@@ -110,6 +123,54 @@ export class ProductsController {
     return this.productsService.findAll(query);
   }
 
+  @Post('import')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Import products via CSV' })
+  @UseInterceptors(FileInterceptor('file'))
+  async importProducts(
+    @Req() req: { user: { id: string; sub?: string } },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    const csvString = file.buffer.toString('utf-8');
+    return this.productsService.queueCsvImport(
+      req.user.sub ?? req.user.id,
+      csvString,
+    );
+  }
+
+  @Get('export')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Export products to CSV' })
+  async exportProducts(@Res() res: Response) {
+    const csvString = await this.productsService.generateCsvExport();
+    res.header('Content-Type', 'text/csv');
+    res.attachment('products_export.csv');
+    return res.send(csvString);
+  }
+
+  @Get(':id/related')
+  @ApiOperation({ summary: 'Get related products' })
+  @ApiParam({
+    name: 'id',
+    description: 'Product ID',
+    example: 'clx_product_id_123',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of related products',
+    type: [ProductResponseDto],
+  })
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(300000) // 5 minutes cache
+  findRelated(@Param('id') id: string) {
+    return this.productsService.findRelated(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a product by ID' })
   @ApiParam({
@@ -150,8 +211,16 @@ export class ProductsController {
   })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
   @ApiNotFoundResponse({ description: 'Product not found' })
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-    return this.productsService.update(id, updateProductDto);
+  update(
+    @Req() req: { user: { id: string; sub?: string } },
+    @Param('id') id: string,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
+    return this.productsService.update(
+      req.user.sub ?? req.user.id,
+      id,
+      updateProductDto,
+    );
   }
 
   @Delete(':id')
@@ -170,7 +239,10 @@ export class ProductsController {
   @ApiResponse({ status: 200, description: 'Product deleted successfully' })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
   @ApiNotFoundResponse({ description: 'Product not found' })
-  remove(@Param('id') id: string) {
-    return this.productsService.remove(id);
+  remove(
+    @Req() req: { user: { id: string; sub?: string } },
+    @Param('id') id: string,
+  ) {
+    return this.productsService.remove(req.user.sub ?? req.user.id, id);
   }
 }

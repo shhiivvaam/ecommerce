@@ -3,8 +3,12 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
+import { parse } from 'csv-parse/sync';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { AuditService } from '../audit/audit.service';
 import {
   CreateProductDto,
   UpdateProductDto,
@@ -17,7 +21,9 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private settings: SettingsService,
-  ) {}
+    private audit: AuditService,
+    @InjectQueue('products_import') private importQueue: Queue,
+  ) { }
 
   private async generateSlug(title: string): Promise<string> {
     const base = title
@@ -41,7 +47,113 @@ export class ProductsService {
     return `${base}-${Math.max(...suffixes) + 1}`;
   }
 
-  async create(data: CreateProductDto) {
+  async queueCsvImport(userId: string, csvString: string) {
+    await this.importQueue.add('import-csv', {
+      csvString,
+      userId,
+    });
+    return { message: 'Import queued successfully' };
+  }
+
+  async processCsvImport(csvString: string, userId: string) {
+    try {
+      const records = parse(csvString, {
+        columns: true,
+        skip_empty_lines: true,
+      });
+
+      let importedCount = 0;
+      let failedCount = 0;
+
+      interface CsvRecord {
+        title?: string;
+        name?: string;
+        price?: string;
+        stock?: string;
+        description?: string;
+        tags?: string;
+        categoryId?: string;
+      }
+      for (const record of records as CsvRecord[]) {
+        try {
+          const title = record.title || record.name;
+          if (!title) continue;
+
+          const price = record.price ? parseFloat(record.price) : 0;
+          const stock = record.stock ? parseInt(record.stock, 10) : 0;
+          const description = record.description || '';
+          const tags = record.tags
+            ? record.tags.split(',').map((t: string) => t.trim())
+            : [];
+          const categoryId = record.categoryId || undefined;
+
+          await this.create(userId, {
+            title: title,
+            price: price,
+            stock,
+            description,
+            tags,
+            categoryId,
+          });
+
+          importedCount++;
+        } catch {
+          failedCount++;
+        }
+      }
+
+      await this.audit.logAction(userId, 'IMPORT_BATCH', 'Product', 'bulk', {
+        importedCount,
+        failedCount,
+        total: records.length,
+      });
+
+      return { importedCount, failedCount };
+    } catch (error) {
+      const err = error as Error;
+      await this.audit.logAction(
+        userId,
+        'IMPORT_BATCH_FAILED',
+        'Product',
+        'bulk',
+        { error: err.message },
+      );
+      throw err;
+    }
+  }
+
+  async generateCsvExport(): Promise<string> {
+    const products = await this.prisma.product.findMany({
+      include: { category: true },
+    });
+
+    const headers = [
+      'id',
+      'title',
+      'price',
+      'stock',
+      'categoryId',
+      'categoryName',
+      'tags',
+      'createdAt',
+    ];
+    const rows = products.map((p) =>
+      [
+        p.id,
+        `"${p.title.replace(/"/g, '""')}"`,
+        p.price,
+        p.stock,
+        p.categoryId,
+        `"${p.category?.name?.replace(/"/g, '""') || ''}"`,
+        `"${p.tags.join(',')}"`,
+        p.createdAt.toISOString(),
+      ].join(','),
+    );
+
+    return [headers.join(','), ...rows].join('\n');
+  }
+
+  async create(userId: string, data: CreateProductDto) {
     // Block creation in single product mode
     const isSingle = await this.settings.isSingleProductMode();
     if (isSingle) {
@@ -62,14 +174,14 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : { set: [] },
       variants: data.variants
         ? {
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
       category: { connect: { id: 'temp' } }, // Will be overwritten below
     };
@@ -106,7 +218,15 @@ export class ProductsService {
       };
     }
 
-    return this.prisma.product.create({ data: productData });
+    const product = await this.prisma.product.create({ data: productData });
+    await this.audit.logAction(
+      userId,
+      'CREATE',
+      'Product',
+      product.id,
+      data as unknown as import('@prisma/client').Prisma.InputJsonValue,
+    );
+    return product;
   }
 
   async findAll(query: ProductQueryDto = {}) {
@@ -130,6 +250,13 @@ export class ProductsService {
     // Default multi-product fetching with secure pagination and search parsing
     const search = query.search;
     const categoryId = query.categoryId;
+    const minPrice = query.minPrice;
+    const maxPrice = query.maxPrice;
+    const minRating = query.minRating;
+    const tags = query.tags;
+    const sortBy = query.sortBy || 'createdAt';
+    const sortOrder = query.sortOrder || 'desc';
+
     const page = Math.max(1, query.page || 1);
     const limit = Math.max(1, query.limit || 10);
     const skip = (page - 1) * limit;
@@ -147,13 +274,46 @@ export class ProductsService {
       where.categoryId = categoryId;
     }
 
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined) where.price.gte = minPrice;
+      if (maxPrice !== undefined) where.price.lte = maxPrice;
+    }
+
+    if (minRating !== undefined) {
+      where.averageRating = { gte: minRating };
+    }
+
+    if (tags && tags.length > 0) {
+      where.tags = { hasSome: typeof tags === 'string' ? [tags] : tags };
+    }
+
+    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' };
+    const direction = sortOrder === 'asc' ? 'asc' : 'desc';
+
+    switch (sortBy) {
+      case 'price':
+        orderBy = { price: direction };
+        break;
+      case 'title':
+        orderBy = { title: direction };
+        break;
+      case 'rating':
+        orderBy = { averageRating: direction };
+        break;
+      case 'createdAt':
+      default:
+        orderBy = { createdAt: direction };
+        break;
+    }
+
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
         skip,
         take: limit,
         include: { variants: true, category: true },
-        orderBy: { createdAt: 'desc' }, // Default sorting
+        orderBy,
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -166,7 +326,12 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { variants: true, category: true, reviews: true },
+      include: {
+        variants: true,
+        category: true,
+        reviews: true,
+        relatedProducts: true,
+      },
     });
     if (!product) throw new NotFoundException('Product not found');
 
@@ -182,7 +347,32 @@ export class ProductsService {
     return product;
   }
 
-  async update(id: string, data: UpdateProductDto) {
+  async findRelated(id: string, limit: number = 4) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { relatedProducts: true },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+
+    // Return explicit related products if they exist
+    if (product.relatedProducts.length > 0) {
+      return product.relatedProducts.slice(0, limit);
+    }
+
+    // Fallback: Return products from the same category
+    const relatedByCategory = await this.prisma.product.findMany({
+      where: {
+        categoryId: product.categoryId,
+        id: { not: id },
+      },
+      take: limit,
+      orderBy: { averageRating: 'desc' },
+    });
+
+    return relatedByCategory;
+  }
+
+  async update(userId: string, id: string, data: UpdateProductDto) {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');
 
@@ -205,15 +395,20 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : undefined,
       variants: data.variants
         ? {
-            deleteMany: {},
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          deleteMany: {},
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
+        : undefined,
+      relatedProducts: data.relatedProductIds
+        ? {
+          set: data.relatedProductIds.map((id) => ({ id })),
+        }
         : undefined,
     };
 
@@ -227,13 +422,21 @@ export class ProductsService {
       };
     }
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data: updateData,
     });
+    await this.audit.logAction(
+      userId,
+      'UPDATE',
+      'Product',
+      id,
+      data as unknown as import('@prisma/client').Prisma.InputJsonValue,
+    );
+    return updated;
   }
 
-  async remove(id: string) {
+  async remove(userId: string, id: string) {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');
 
@@ -245,6 +448,8 @@ export class ProductsService {
         'Cannot delete the primary product while store is in single-product mode',
       );
     }
-    return this.prisma.product.delete({ where: { id } });
+    const deleted = await this.prisma.product.delete({ where: { id } });
+    await this.audit.logAction(userId, 'DELETE', 'Product', id);
+    return deleted;
   }
 }

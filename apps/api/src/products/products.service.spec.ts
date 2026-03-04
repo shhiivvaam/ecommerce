@@ -3,11 +3,14 @@ import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { NotFoundException } from '@nestjs/common';
-import {
+import type {
   CreateProductDto,
   UpdateProductDto,
   ProductQueryDto,
 } from './dto/product.dto';
+
+import { AuditService } from '../audit/audit.service';
+import { getQueueToken } from '@nestjs/bullmq';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -52,6 +55,14 @@ describe('ProductsService', () => {
       getSingleProductId: jest.fn().mockResolvedValue(null),
     };
 
+    const mockAuditService = {
+      logAction: jest.fn().mockResolvedValue({}),
+    };
+
+    const mockQueue = {
+      add: jest.fn().mockResolvedValue({}),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductsService,
@@ -62,6 +73,14 @@ describe('ProductsService', () => {
         {
           provide: SettingsService,
           useValue: mockSettingsService,
+        },
+        {
+          provide: AuditService,
+          useValue: mockAuditService,
+        },
+        {
+          provide: getQueueToken('products_import'),
+          useValue: mockQueue,
         },
       ],
     }).compile();
@@ -107,7 +126,7 @@ describe('ProductsService', () => {
       });
       prismaService.product.create.mockResolvedValue(mockProduct);
 
-      const result = await service.create(createProductDto);
+      const result = await service.create('user-1', createProductDto);
 
       expect(result).toEqual(mockProduct);
       expect(prismaService.category.findUnique).toHaveBeenCalledWith(
@@ -130,7 +149,7 @@ describe('ProductsService', () => {
 
       prismaService.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createProductDto)).rejects.toThrow(
+      await expect(service.create('user-1', createProductDto)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -191,6 +210,8 @@ describe('ProductsService', () => {
         price: 99.99,
         category: { id: 'cat-1', name: 'Test Category' },
         variants: [],
+        reviews: [],
+        relatedProducts: [],
       };
 
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
@@ -204,6 +225,7 @@ describe('ProductsService', () => {
           category: true,
           variants: true,
           reviews: true,
+          relatedProducts: true,
         },
       });
     });
@@ -229,7 +251,7 @@ describe('ProductsService', () => {
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
       prismaService.product.update.mockResolvedValue(mockProduct);
 
-      const result = await service.update('product-1', updateData);
+      const result = await service.update('user-1', 'product-1', updateData);
 
       expect(result).toEqual(mockProduct);
       expect(prismaService.product.update).toHaveBeenCalledWith({
@@ -243,9 +265,9 @@ describe('ProductsService', () => {
 
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('invalid-id', updateData)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('user-1', 'invalid-id', updateData),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -260,7 +282,7 @@ describe('ProductsService', () => {
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
       prismaService.product.delete.mockResolvedValue(mockProduct);
 
-      const result = await service.remove('product-1');
+      const result = await service.remove('user-1', 'product-1');
 
       expect(result).toEqual(mockProduct);
       expect(prismaService.product.delete).toHaveBeenCalledWith({
@@ -271,7 +293,7 @@ describe('ProductsService', () => {
     it('should throw NotFoundException if product to delete does not exist', async () => {
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.remove('invalid-id')).rejects.toThrow(
+      await expect(service.remove('user-1', 'invalid-id')).rejects.toThrow(
         NotFoundException,
       );
     });

@@ -147,6 +147,14 @@ export class UpdateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductVariantDto)
   variants?: ProductVariantDto[];
+
+  @ApiPropertyOptional({
+    example: ['clx_product_id_789'],
+    description: 'IDs of related products',
+  })
+  @IsOptional()
+  @IsString({ each: true })
+  relatedProductIds?: string[];
 }
 
 export class ProductQueryDto {
@@ -177,14 +185,44 @@ export class ProductQueryDto {
   @Min(1)
   limit?: number;
 
+  @ApiPropertyOptional({ example: 10, description: 'Minimum price filter' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
+
+  @ApiPropertyOptional({ example: 100, description: 'Maximum price filter' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
+  @ApiPropertyOptional({ example: 4.5, description: 'Minimum average rating' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  minRating?: number;
+
   @ApiPropertyOptional({
-    example: 'price',
+    example: ['electronics', 'sale'],
+    description: 'Filter by tags',
+    isArray: true,
+  })
+  @IsOptional()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @ApiPropertyOptional({
+    example: 'createdAt',
     description: 'Sort field',
-    enum: ['price', 'name', 'createdAt'],
+    enum: ['createdAt', 'price', 'title', 'rating'],
   })
   @IsOptional()
   @IsString()
-  @IsIn(['price', 'name', 'createdAt'])
+  @IsIn(['createdAt', 'price', 'title', 'rating'])
   sortBy?: string;
 
   @ApiPropertyOptional({

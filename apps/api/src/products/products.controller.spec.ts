@@ -67,10 +67,14 @@ describe('ProductsController', () => {
 
       productsService.create.mockResolvedValue(mockProduct as any);
 
-      const result = await controller.create(createProductDto);
+      const req = { user: { id: 'user-1' } } as any;
+      const result = await controller.create(req, createProductDto);
 
       expect(result).toEqual(mockProduct);
-      expect(productsService.create).toHaveBeenCalledWith(createProductDto);
+      expect(productsService.create).toHaveBeenCalledWith(
+        'user-1',
+        createProductDto,
+      );
     });
   });
 
@@ -130,10 +134,12 @@ describe('ProductsController', () => {
 
       productsService.update.mockResolvedValue(mockProduct as any);
 
-      const result = await controller.update('product-1', updateData);
+      const req = { user: { id: 'user-1' } } as any;
+      const result = await controller.update(req, 'product-1', updateData);
 
       expect(result).toEqual(mockProduct);
       expect(productsService.update).toHaveBeenCalledWith(
+        'user-1',
         'product-1',
         updateData,
       );
@@ -146,10 +152,14 @@ describe('ProductsController', () => {
 
       productsService.remove.mockResolvedValue(mockProduct as any);
 
-      const result = await controller.remove('product-1');
+      const req = { user: { id: 'user-1' } } as any;
+      const result = await controller.remove(req, 'product-1');
 
       expect(result).toEqual(mockProduct);
-      expect(productsService.remove).toHaveBeenCalledWith('product-1');
+      expect(productsService.remove).toHaveBeenCalledWith(
+        'user-1',
+        'product-1',
+      );
     });
   });
 });
