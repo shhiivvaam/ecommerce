@@ -1,5 +1,7 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
@@ -25,6 +27,13 @@ import { VariantsModule } from './variants/variants.module';
 import { AdminModule } from './admin/admin.module';
 import { MonitoringModule } from './common/monitoring.module';
 import { CsrfMiddleware } from './common/guards/csrf.middleware';
+import { AuditModule } from './audit/audit.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ShippingModule } from './shipping/shipping.module';
+import { TaxModule } from './tax/tax.module';
+import { ReturnsModule } from './returns/returns.module';
+import { GiftCardsModule } from './gift-cards/gift-cards.module';
+import { AffiliatesModule } from './affiliates/affiliates.module';
 
 @Module({
   controllers: [HealthController],
@@ -39,6 +48,16 @@ import { CsrfMiddleware } from './common/guards/csrf.middleware';
         limit: 100, // 100 requests per IP per minute
       },
     ]),
+    ScheduleModule.forRoot(),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          url: configService.get<string>('REDIS_URL'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
@@ -98,6 +117,13 @@ import { CsrfMiddleware } from './common/guards/csrf.middleware';
     VariantsModule,
     AdminModule,
     MonitoringModule,
+    AuditModule,
+    AnalyticsModule,
+    ShippingModule,
+    TaxModule,
+    ReturnsModule,
+    GiftCardsModule,
+    AffiliatesModule,
   ],
   providers: [
     {
