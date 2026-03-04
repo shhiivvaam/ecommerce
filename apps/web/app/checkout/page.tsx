@@ -13,7 +13,9 @@ import { api } from "@/lib/api";
 import toast from "react-hot-toast";
 
 interface AppliedCoupon {
-    couponId: string;
+    couponId?: string;
+    affiliateId?: string;
+    affiliateCode?: string;
     code: string;
     discountAmount: number;
     finalTotal: number;
@@ -64,16 +66,36 @@ export default function CheckoutPage() {
         country: "US"
     });
 
-    const handleApplyCoupon = async () => {
+    const handleApplyCouponOrAffiliate = async () => {
         if (!couponCode.trim()) return;
         setIsApplyingCoupon(true);
         try {
+            // First check if it's an affiliate code
+            try {
+                const affRes = await api.get(`/affiliates/verify/${couponCode.trim()}`);
+                if (affRes.data && affRes.data.valid) {
+                    const discountAmount = total * affRes.data.commissionRate;
+                    setAppliedCoupon({
+                        affiliateId: affRes.data.affiliateId,
+                        affiliateCode: couponCode.trim(),
+                        code: couponCode.trim(),
+                        discountAmount,
+                        finalTotal: total - discountAmount
+                    });
+                    toast.success(`Referral applied: -${discountAmount.toFixed(2)} Credits`);
+                    setIsApplyingCoupon(false);
+                    return;
+                }
+            } catch {
+                // Not an affiliate code, try coupon
+            }
+
             const { data } = await api.post('/coupons/apply', { code: couponCode.trim(), cartTotal: total });
             setAppliedCoupon(data);
             toast.success(`Coupon authorized: -${data.discountAmount.toFixed(2)} Credits`);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message || 'Invalid coupon signature');
+            toast.error(error.response?.data?.message || 'Invalid promotion or referral signature');
         } finally {
             setIsApplyingCoupon(false);
         }
@@ -140,7 +162,8 @@ export default function CheckoutPage() {
         try {
             const orderPayload: Record<string, unknown> = {
                 items: items.map(i => ({ productId: i.productId, variantId: i.variantId || undefined, quantity: i.quantity })),
-                ...(appliedCoupon && { couponId: appliedCoupon.couponId }),
+                ...(appliedCoupon?.couponId && { couponId: appliedCoupon.couponId }),
+                ...(appliedCoupon?.affiliateCode && { affiliateCode: appliedCoupon.affiliateCode })
             };
 
             if (selectedAddressId && !isAddingNew) {
@@ -431,12 +454,12 @@ export default function CheckoutPage() {
                                                             onChange={e => setCouponCode(e.target.value.toUpperCase())}
                                                             placeholder="ENTER CODE"
                                                             className="h-20 rounded-[28px] border-2 dark:border-slate-800 dark:bg-black font-black tracking-[0.5em] uppercase text-center focus-visible:ring-primary/20 placeholder:text-slate-200 dark:placeholder:text-slate-800 text-black dark:text-white"
-                                                            onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
+                                                            onKeyDown={e => e.key === 'Enter' && handleApplyCouponOrAffiliate()}
                                                         />
                                                     </div>
                                                     <Button
                                                         variant="outline"
-                                                        onClick={handleApplyCoupon}
+                                                        onClick={handleApplyCouponOrAffiliate}
                                                         disabled={isApplyingCoupon || !couponCode.trim()}
                                                         className="h-20 px-12 rounded-[28px] border-4 dark:border-slate-800 dark:bg-slate-900 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all"
                                                     >
