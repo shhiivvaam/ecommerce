@@ -7,8 +7,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { CouponsService } from '../coupons/coupons.service';
+import { ShippingService } from '../shipping/shipping.service';
+import { TaxService } from '../tax/tax.service';
 import { OrderStatus } from '@prisma/client';
 import { CreateOrderDto } from './dto/order.dto';
+import { UpdateOrderTrackingDto } from './dto/tracking.dto';
 
 @Injectable()
 export class OrdersService {
@@ -17,9 +21,17 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private couponsService: CouponsService,
+    private shippingService: ShippingService,
+    private taxService: TaxService,
   ) {}
 
-  async create(userId: string, data: CreateOrderDto) {
+  async create(userId: string | undefined, data: CreateOrderDto) {
+    if (!userId && !data.sessionId && !data.guestEmail) {
+      throw new BadRequestException(
+        'A user ID or (session ID + guest email) must be provided.',
+      );
+    }
     if (!data.items || data.items.length === 0) {
       throw new BadRequestException('Order must contain at least one item');
     }
@@ -32,11 +44,15 @@ export class OrdersService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Fetch user email before building the order (avoids Prisma tx type narrowing issues)
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { email: true },
-      });
-      const userEmail = user?.email ?? '';
+      let userEmail = data.guestEmail ?? '';
+
+      if (userId) {
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { email: true },
+        });
+        userEmail = user?.email ?? userEmail;
+      }
 
       const productIds = data.items.map((item) => item.productId);
 
@@ -53,10 +69,12 @@ export class OrdersService {
       const productMap = new Map(products.map((p) => [p.id, p]));
 
       let totalAmount = 0;
+      let isDigitalOnly = true;
       const orderItemsData = [];
 
       for (const item of data.items) {
         const product = productMap.get(item.productId)!;
+        if (!product.isDigital) isDigitalOnly = false;
 
         let currentPrice = product.discounted ?? product.price;
         let pTitle = product.title;
@@ -111,13 +129,7 @@ export class OrdersService {
         });
       }
 
-      // Compute taxes and shipping from Settings
-      const settings = await tx.settings.findFirst();
-      const taxPercent = settings?.taxPercent || 0;
-      const shippingFlat = settings?.shippingFlat || 0;
-
-      const taxAmount = (totalAmount * taxPercent) / 100;
-      const shippingAmount = shippingFlat;
+      // Tax and Shipping will be calculated later with the final address
 
       // ✅ Apply coupon discount if a coupon code is provided
       let discountAmount = 0;
@@ -134,32 +146,21 @@ export class OrdersService {
           );
         }
 
-        if (new Date() > coupon.expiryDate) {
-          throw new BadRequestException(
-            `Coupon "${data.couponCode}" has expired`,
-          );
-        }
+        this.couponsService.validateCouponBasic(coupon, totalAmount);
 
-        if (
-          coupon.usageLimit !== null &&
-          coupon.usedCount >= coupon.usageLimit
-        ) {
-          throw new BadRequestException(
-            `Coupon "${data.couponCode}" has reached its usage limit`,
-          );
-        }
+        // Build CouponItem list for discount calculation
+        const couponItems = orderItemsData.map((item) => ({
+          productId: item.productId,
+          categoryId: item.variantId || '', // Simplified for now since Prisma needs categories resolving
+          price: item.price,
+          quantity: item.quantity,
+        }));
 
-        if (totalAmount < coupon.minTotal) {
-          throw new BadRequestException(
-            `Order total must be at least $${coupon.minTotal.toFixed(2)} to use this coupon`,
-          );
-        }
-
-        discountAmount = coupon.isFlat
-          ? coupon.discount
-          : (totalAmount * coupon.discount) / 100;
-
-        discountAmount = Math.min(discountAmount, totalAmount); // cap at order total
+        discountAmount = this.couponsService.calculateDiscount(
+          coupon,
+          couponItems,
+          totalAmount,
+        );
         couponId = coupon.id;
 
         // Increment usage count
@@ -171,52 +172,122 @@ export class OrdersService {
 
       // Resolve address by cloning to prevent silent mutation of past orders
       let finalAddressObj;
-      if (data.addressId) {
-        const existingAddress = await tx.address.findUnique({
-          where: { id: data.addressId },
+      let createdAddressId = undefined;
+
+      if (!isDigitalOnly) {
+        if (data.addressId) {
+          const existingAddress = await tx.address.findUnique({
+            where: { id: data.addressId },
+          });
+          if (!existingAddress)
+            throw new BadRequestException('Address not found');
+          finalAddressObj = {
+            userId: userId || undefined,
+            sessionId: !userId ? data.sessionId : undefined,
+            street: existingAddress.street,
+            city: existingAddress.city,
+            state: existingAddress.state,
+            country: existingAddress.country,
+            zipCode: existingAddress.zipCode,
+            isDefault: false,
+          };
+        } else if (data.address) {
+          finalAddressObj = {
+            userId: userId || undefined,
+            sessionId: !userId ? data.sessionId : undefined,
+            street: data.address.street,
+            city: data.address.city,
+            state: data.address.state,
+            country: data.address.country,
+            zipCode: data.address.zipCode,
+            isDefault: false, // snapshots shouldn't be default
+          };
+        } else {
+          throw new BadRequestException(
+            'Shipping address is required for physical products',
+          );
+        }
+
+        const snapshotAddress = await tx.address.create({
+          data: finalAddressObj,
         });
-        if (!existingAddress)
-          throw new BadRequestException('Address not found');
-        finalAddressObj = {
-          userId,
-          street: existingAddress.street,
-          city: existingAddress.city,
-          state: existingAddress.state,
-          country: existingAddress.country,
-          zipCode: existingAddress.zipCode,
-          isDefault: false,
-        };
-      } else if (data.address) {
-        finalAddressObj = {
-          userId,
-          street: data.address.street,
-          city: data.address.city,
-          state: data.address.state,
-          country: data.address.country,
-          zipCode: data.address.zipCode,
-          isDefault: false, // snapshots shouldn't be default
-        };
-      } else {
-        throw new BadRequestException('Address could not be resolved');
+        createdAddressId = snapshotAddress.id;
       }
 
-      const snapshotAddress = await tx.address.create({
-        data: finalAddressObj,
-      });
-      const createdAddressId = snapshotAddress.id;
+      let taxAmount = 0;
+      let shippingAmount = 0;
+      if (!isDigitalOnly && finalAddressObj) {
+        taxAmount = this.taxService.calculateTaxAmount(
+          totalAmount,
+          finalAddressObj as unknown as import('@prisma/client').Address,
+        );
+        shippingAmount = this.shippingService.calculateShippingRate(
+          orderItemsData,
+          finalAddressObj as unknown as import('@prisma/client').Address,
+          totalAmount,
+        );
+      }
 
-      const grandTotal =
+      let grandTotal =
         totalAmount + taxAmount + shippingAmount - discountAmount;
+
+      grandTotal = Math.max(0, grandTotal);
+
+      // Evaluate Affiliate
+      let affiliateId: string | undefined = undefined;
+      const reqUserId = userId || undefined;
+      if (data.affiliateCode) {
+        const affiliate = await tx.affiliate.findUnique({
+          where: { code: data.affiliateCode.toUpperCase() },
+        });
+
+        if (affiliate && affiliate.userId !== reqUserId) {
+          // Give 5% off the grandTotal
+          const affiliateDiscount = grandTotal * 0.05;
+          discountAmount += affiliateDiscount; // keep track globally
+          grandTotal -= affiliateDiscount;
+          affiliateId = affiliate.id;
+        }
+      }
+
+      grandTotal = Math.max(0, grandTotal);
+
+      // Evaluate Gift Card
+      if (data.giftCardCode && grandTotal > 0) {
+        const giftCard = await tx.giftCard.findUnique({
+          where: { code: data.giftCardCode.toUpperCase() },
+        });
+
+        if (
+          !giftCard ||
+          (giftCard.expiresAt && giftCard.expiresAt < new Date())
+        ) {
+          throw new BadRequestException('Invalid or expired gift card code');
+        }
+
+        if (giftCard.currentBalance > 0) {
+          const allocatable = Math.min(grandTotal, giftCard.currentBalance);
+          grandTotal -= allocatable;
+
+          await tx.giftCard.update({
+            where: { id: giftCard.id },
+            data: { currentBalance: { decrement: allocatable } },
+          });
+        }
+      }
 
       const order = await tx.order.create({
         data: {
-          userId,
+          userId: userId || undefined,
+          sessionId: !userId ? data.sessionId : undefined,
+          guestEmail: !userId && userEmail ? userEmail : undefined,
           status: OrderStatus.PENDING,
           totalAmount: Math.max(0, grandTotal),
           taxAmount,
           shippingAmount,
+          couponId,
           addressId: createdAddressId,
-          couponId: couponId ?? null,
+          affiliateId,
           items: {
             create: orderItemsData,
           },
@@ -248,7 +319,8 @@ export class OrdersService {
     return result.order;
   }
 
-  async findAllByUser(userId: string) {
+  async findAllByUser(userId: string | undefined) {
+    if (!userId) return [];
     return this.prisma.order.findMany({
       where: { userId },
       include: { items: { include: { product: true, variant: true } } },
@@ -256,9 +328,12 @@ export class OrdersService {
     });
   }
 
-  async findOne(id: string, userId: string) {
+  async findOne(id: string, userId: string | undefined, sessionId?: string) {
+    if (!userId && !sessionId)
+      throw new ForbiddenException('Identification required');
+
     const order = await this.prisma.order.findFirst({
-      where: { id, userId },
+      where: userId ? { id, userId } : { id, sessionId: sessionId! },
       include: {
         items: { include: { product: true, variant: true } },
         address: true,
@@ -294,9 +369,16 @@ export class OrdersService {
     return { orders, total, page, limit };
   }
 
-  async cancelOrder(id: string, userId: string) {
+  async cancelOrder(
+    id: string,
+    userId: string | undefined,
+    sessionId?: string,
+  ) {
+    if (!userId && !sessionId)
+      throw new ForbiddenException('Identification required');
+
     const order = await this.prisma.order.findFirst({
-      where: { id, userId },
+      where: userId ? { id, userId } : { id, sessionId: sessionId! },
       include: { items: true },
     });
 
@@ -324,11 +406,131 @@ export class OrdersService {
         }
       }
 
-      return tx.order.update({
+      const updatedOrder = await tx.order.update({
         where: { id },
         data: { status: OrderStatus.CANCELLED },
-        include: { items: true },
       });
+      return { ...updatedOrder, items: order.items };
     });
+  }
+
+  async updateTracking(id: string, data: UpdateOrderTrackingDto) {
+    const order = await this.prisma.order.update({
+      where: { id },
+      data: {
+        trackingNumber: data.trackingNumber,
+        carrier: data.carrier,
+        status: OrderStatus.SHIPPED,
+      },
+    });
+
+    if (order.guestEmail || order.userId) {
+      const email =
+        order.guestEmail ||
+        (await this.prisma.user.findUnique({ where: { id: order.userId! } }))
+          ?.email;
+      if (email) {
+        this.logger.log(
+          `Dispatching email to ${email} for tracking # ${order.trackingNumber}`,
+        );
+      }
+    }
+
+    return order;
+  }
+
+  async getTracking(id: string, userId?: string, sessionId?: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    // Access control
+    if (!userId && order.sessionId !== sessionId) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+    if (userId && order.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
+    // Mock Dynamic Timeline based on status
+    const timeline = [];
+    timeline.push({ status: 'Order Placed', date: order.createdAt });
+
+    if (order.status !== 'PENDING') {
+      timeline.push({ status: 'Processing', date: order.updatedAt });
+    }
+
+    if (order.trackingNumber) {
+      timeline.push({
+        status: 'Shipped',
+        date: order.updatedAt,
+        details: `Carrier: ${order.carrier}, Tracking: ${order.trackingNumber}`,
+      });
+    }
+
+    if (order.status === 'DELIVERED') {
+      timeline.push({
+        status: 'Delivered',
+        date: order.updatedAt,
+        details: 'Package arrived',
+      });
+    }
+
+    return {
+      trackingNumber: order.trackingNumber,
+      carrier: order.carrier,
+      status: order.status,
+      timeline,
+    };
+  }
+
+  async getDigitalDownloadUrl(
+    orderId: string,
+    productId: string,
+    userId: string,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { product: true } } },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (order.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
+    if (
+      order.status === OrderStatus.PENDING ||
+      order.status === OrderStatus.CANCELLED
+    ) {
+      throw new ForbiddenException(
+        'Order must be paid to access digital products',
+      );
+    }
+
+    const orderItem = order.items.find((item) => item.productId === productId);
+    if (!orderItem) {
+      throw new NotFoundException('Product not found in this order');
+    }
+
+    if (!orderItem.product.isDigital) {
+      throw new BadRequestException('This product is not a digital asset');
+    }
+
+    if (!orderItem.product.fileUrl) {
+      throw new NotFoundException('Digital asset file not available');
+    }
+
+    // In a real application, this might generate an S3 pre-signed URL.
+    return {
+      downloadUrl: orderItem.product.fileUrl,
+    };
   }
 }

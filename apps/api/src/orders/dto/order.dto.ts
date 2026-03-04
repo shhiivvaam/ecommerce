@@ -70,6 +70,30 @@ export class CreateOrderDto {
   @IsString()
   @IsOptional()
   couponCode?: string;
+
+  @ApiPropertyOptional({ description: 'Gift card code to apply' })
+  @IsOptional()
+  @IsString()
+  giftCardCode?: string;
+
+  @ApiPropertyOptional({ description: 'Affiliate referral code' })
+  @IsOptional()
+  @IsString()
+  affiliateCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'Email for guest checkout',
+  })
+  @IsString()
+  @IsOptional()
+  guestEmail?: string;
+
+  @ApiPropertyOptional({
+    description: 'Session ID for guest checkout',
+  })
+  @IsString()
+  @IsOptional()
+  sessionId?: string;
 }
 
 export class UpdateOrderStatusDto {

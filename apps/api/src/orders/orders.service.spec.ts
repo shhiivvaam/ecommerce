@@ -4,6 +4,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
 import { CreateOrderDto } from './dto/order.dto';
 import { EmailService } from '../email/email.service';
+import { CouponsService } from '../coupons/coupons.service';
+import { ShippingService } from '../shipping/shipping.service';
+import { TaxService } from '../tax/tax.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -36,6 +39,13 @@ describe('OrdersService', () => {
     variant: {
       findUnique: jest.Mock;
       updateMany: jest.Mock;
+    };
+    affiliate: {
+      findUnique: jest.Mock;
+    };
+    giftCard: {
+      findUnique: jest.Mock;
+      update: jest.Mock;
     };
     $transaction: jest.Mock;
   };
@@ -93,6 +103,13 @@ describe('OrdersService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      affiliate: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
+      giftCard: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        update: jest.fn().mockResolvedValue(null),
+      },
 
       $transaction: jest
         .fn()
@@ -105,6 +122,21 @@ describe('OrdersService', () => {
         OrdersService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: EmailService, useValue: emailServiceMock },
+        {
+          provide: CouponsService,
+          useValue: {
+            validateCouponBasic: jest.fn(),
+            calculateDiscount: jest.fn().mockReturnValue(0),
+          },
+        },
+        {
+          provide: ShippingService,
+          useValue: { calculateShippingRate: jest.fn().mockReturnValue(0) },
+        },
+        {
+          provide: TaxService,
+          useValue: { calculateTaxAmount: jest.fn().mockReturnValue(0) },
+        },
       ],
     }).compile();
 

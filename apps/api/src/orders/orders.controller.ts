@@ -22,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { OrderStatus, RoleType } from '@prisma/client';
@@ -30,11 +31,11 @@ import {
   UpdateOrderStatusDto,
   OrderResponseDto,
 } from './dto/order.dto';
+import { UpdateOrderTrackingDto } from './dto/tracking.dto';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
 @Controller('orders')
-@UseGuards(JwtAuthGuard)
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
@@ -50,12 +51,13 @@ export class OrdersController {
     type: OrderResponseDto,
   })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
+  @UseGuards(OptionalJwtAuthGuard)
   create(
-    @Request() req: { user: { id: string; userId?: string } },
+    @Request() req: { user?: { id?: string; userId?: string } },
     @Body() createOrderDto: CreateOrderDto,
   ) {
     return this.ordersService.create(
-      req.user.userId || req.user.id,
+      req.user?.userId || req.user?.id,
       createOrderDto,
     );
   }
@@ -71,6 +73,7 @@ export class OrdersController {
     type: [OrderResponseDto],
   })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
+  @UseGuards(JwtAuthGuard)
   findAll(@Request() req: { user: { id: string; userId?: string } }) {
     return this.ordersService.findAllByUser(req.user.userId || req.user.id);
   }
@@ -95,6 +98,7 @@ export class OrdersController {
   @ApiNotFoundResponse({
     description: 'Order not found or does not belong to the user',
   })
+  @UseGuards(JwtAuthGuard)
   findOne(
     @Request() req: { user: { id: string; userId?: string } },
     @Param('id') id: string,
@@ -167,10 +171,78 @@ export class OrdersController {
   @ApiParam({ name: 'id', description: 'Order ID' })
   @ApiResponse({ status: 200, description: 'Order cancelled successfully' })
   @ApiNotFoundResponse({ description: 'Order not found' })
+  @UseGuards(JwtAuthGuard)
   cancelOrder(
     @Request() req: { user: { id: string; userId?: string } },
     @Param('id') id: string,
   ) {
     return this.ordersService.cancelOrder(id, req.user.userId || req.user.id);
+  }
+
+  @Get(':id/download/:productId')
+  @ApiOperation({
+    summary: 'Download a digital product from an order',
+    description: 'Retrieve the file URL of a purchased digital product.',
+  })
+  @ApiParam({ name: 'id', description: 'Order ID' })
+  @ApiParam({ name: 'productId', description: 'Product ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns an object with downloadUrl property',
+  })
+  @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
+  @ApiNotFoundResponse({ description: 'Order or digital product not found' })
+  @UseGuards(JwtAuthGuard)
+  downloadDigitalAsset(
+    @Request() req: { user: { id: string; userId?: string } },
+    @Param('id') orderId: string,
+    @Param('productId') productId: string,
+  ) {
+    return this.ordersService.getDigitalDownloadUrl(
+      orderId,
+      productId,
+      req.user.userId || req.user.id,
+    );
+  }
+
+  @Patch(':id/tracking')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  @ApiOperation({
+    summary: 'Update order tracking (admin)',
+    description:
+      'Add or update a tracking number and carrier. Restricted to Admin roles.',
+  })
+  @ApiParam({ name: 'id', description: 'Order ID' })
+  @ApiBody({ type: UpdateOrderTrackingDto })
+  updateTracking(
+    @Param('id') id: string,
+    @Body() data: UpdateOrderTrackingDto,
+  ) {
+    return this.ordersService.updateTracking(id, data);
+  }
+
+  @Get(':id/tracking')
+  @ApiOperation({
+    summary: 'Get order tracking',
+    description: 'Retrieve dynamic tracking history for a specific order.',
+  })
+  @ApiParam({ name: 'id', description: 'Order ID' })
+  @ApiQuery({
+    name: 'sessionId',
+    required: false,
+    description: 'Guest session ID',
+  })
+  @UseGuards(OptionalJwtAuthGuard)
+  getTracking(
+    @Request() req: { user?: { id?: string; userId?: string } },
+    @Param('id') id: string,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    return this.ordersService.getTracking(
+      id,
+      req.user?.userId || req.user?.id,
+      sessionId,
+    );
   }
 }
