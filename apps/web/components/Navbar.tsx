@@ -47,6 +47,7 @@ export function Navbar() {
     { label: "All", href: "/products" },
     { label: "Men", href: "/men" },
     { label: "Women", href: "/women" },
+    { label: "Gift Cards", href: "/gift-cards" },
     { label: "New Arrivals", href: "/new-arrivals" },
     { label: "Sale", href: "/sale", accent: true },
   ];
