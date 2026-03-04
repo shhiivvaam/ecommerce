@@ -78,4 +78,26 @@ export class EmailService {
       });
     }
   }
+
+  async sendAbandonedCartEmail(to: string, _cartId: string, total: number) {
+    try {
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ||
+        'http://localhost:3000';
+      const checkoutLink = `${frontendUrl}/cart`;
+      await this.transporter.sendMail({
+        from: '"Reyva Support" <support@reyva.com>',
+        to,
+        subject: `Did you forget something in your cart?`,
+        html: `<h2>Your cart misses you!</h2><p>You left items worth $${total.toFixed(2)} in your cart. Click <a href="${checkoutLink}">here</a> to complete your purchase.</p>`,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to send abandoned cart email', {
+        error: errorMessage,
+        to,
+      });
+    }
+  }
 }
