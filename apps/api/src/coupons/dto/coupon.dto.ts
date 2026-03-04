@@ -3,12 +3,14 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
-  IsBoolean,
   IsNumber,
   IsDateString,
   IsInt,
   Min,
+  IsArray,
+  IsEnum,
 } from 'class-validator';
+import { CouponType } from '@prisma/client';
 
 export class CreateCouponDto {
   @ApiProperty({ example: 'SAVE20' })
@@ -22,12 +24,14 @@ export class CreateCouponDto {
   discount: number;
 
   @ApiPropertyOptional({
-    example: false,
-    description: 'If true, discount is a flat amount; otherwise percentage',
+    example: 'PERCENTAGE',
+    enum: CouponType,
+    description:
+      'Type of coupon: PERCENTAGE, FIXED_AMOUNT, BOGO, FREE_SHIPPING',
   })
-  @IsBoolean()
+  @IsEnum(CouponType)
   @IsOptional()
-  isFlat?: boolean;
+  type?: CouponType;
 
   @ApiProperty({ example: '2025-12-31T23:59:59Z' })
   @IsDateString()
@@ -47,6 +51,30 @@ export class CreateCouponDto {
   @Min(0)
   @IsOptional()
   minTotal?: number;
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  applicableProductIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  applicableCategoryIds?: string[];
+
+  @ApiPropertyOptional({ description: 'Number of items to buy for BOGO' })
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  buyQuantity?: number;
+
+  @ApiPropertyOptional({ description: 'Number of items to get for BOGO' })
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  getQuantity?: number;
 }
 
 export class UpdateCouponDto {
@@ -55,10 +83,10 @@ export class UpdateCouponDto {
   @IsOptional()
   discount?: number;
 
-  @ApiPropertyOptional()
-  @IsBoolean()
+  @ApiPropertyOptional({ enum: CouponType })
+  @IsEnum(CouponType)
   @IsOptional()
-  isFlat?: boolean;
+  type?: CouponType;
 
   @ApiPropertyOptional()
   @IsDateString()
@@ -76,6 +104,30 @@ export class UpdateCouponDto {
   @Min(0)
   @IsOptional()
   minTotal?: number;
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  applicableProductIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  applicableCategoryIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  buyQuantity?: number;
+
+  @ApiPropertyOptional()
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  getQuantity?: number;
 }
 
 export class ApplyCouponDto {

@@ -10,6 +10,14 @@ import {
   UpdateCouponDto,
   ApplyCouponDto,
 } from './dto/coupon.dto';
+import { Coupon, CouponType } from '@prisma/client';
+
+export interface CouponItem {
+  productId: string;
+  categoryId: string;
+  price: number;
+  quantity: number;
+}
 
 @Injectable()
 export class CouponsService {
@@ -39,11 +47,15 @@ export class CouponsService {
     return this.prisma.coupon.create({
       data: {
         code: data.code.toUpperCase(),
+        type: data.type || CouponType.PERCENTAGE,
         discount: data.discount,
-        isFlat: data.isFlat ?? false,
         expiryDate: new Date(data.expiryDate),
         usageLimit: data.usageLimit ?? null,
         minTotal: data.minTotal ?? 0,
+        applicableProductIds: data.applicableProductIds ?? [],
+        applicableCategoryIds: data.applicableCategoryIds ?? [],
+        buyQuantity: data.buyQuantity ?? null,
+        getQuantity: data.getQuantity ?? null,
       },
     });
   }
@@ -52,11 +64,19 @@ export class CouponsService {
     await this.findOne(id);
     const updatePayload: Record<string, unknown> = {};
     if (data.discount !== undefined) updatePayload.discount = data.discount;
-    if (data.isFlat !== undefined) updatePayload.isFlat = data.isFlat;
+    if (data.type !== undefined) updatePayload.type = data.type;
     if (data.expiryDate) updatePayload.expiryDate = new Date(data.expiryDate);
     if (data.usageLimit !== undefined)
       updatePayload.usageLimit = data.usageLimit;
     if (data.minTotal !== undefined) updatePayload.minTotal = data.minTotal;
+    if (data.applicableProductIds !== undefined)
+      updatePayload.applicableProductIds = data.applicableProductIds;
+    if (data.applicableCategoryIds !== undefined)
+      updatePayload.applicableCategoryIds = data.applicableCategoryIds;
+    if (data.buyQuantity !== undefined)
+      updatePayload.buyQuantity = data.buyQuantity;
+    if (data.getQuantity !== undefined)
+      updatePayload.getQuantity = data.getQuantity;
 
     return this.prisma.coupon.update({ where: { id }, data: updatePayload });
   }
@@ -72,26 +92,122 @@ export class CouponsService {
     });
 
     if (!coupon) throw new NotFoundException('Coupon code not found');
-    if (new Date(coupon.expiryDate) < new Date())
-      throw new BadRequestException('This coupon has expired');
-    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit)
-      throw new BadRequestException('This coupon has reached its usage limit');
-    if (dto.cartTotal < coupon.minTotal)
-      throw new BadRequestException(
-        `Minimum order value of $${coupon.minTotal.toFixed(2)} required for this coupon`,
-      );
+    this.validateCouponBasic(coupon, dto.cartTotal);
 
-    const discountAmount = coupon.isFlat
-      ? Math.min(coupon.discount, dto.cartTotal)
-      : (dto.cartTotal * coupon.discount) / 100;
+    const discountAmount = this.calculateDiscount(coupon, [], dto.cartTotal); // Empty items for simple fallback calculation
 
     return {
       couponId: coupon.id,
       code: coupon.code,
+      type: coupon.type,
       discount: coupon.discount,
-      isFlat: coupon.isFlat,
-      discountAmount: Math.round(discountAmount * 100) / 100,
+      discountAmount: discountAmount,
       finalTotal: Math.round((dto.cartTotal - discountAmount) * 100) / 100,
     };
+  }
+
+  validateCouponBasic(coupon: Coupon, cartTotal: number) {
+    if (new Date(coupon.expiryDate) < new Date())
+      throw new BadRequestException(`Coupon "${coupon.code}" has expired`);
+    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit)
+      throw new BadRequestException(
+        `Coupon "${coupon.code}" has reached its usage limit`,
+      );
+    if (cartTotal < coupon.minTotal)
+      throw new BadRequestException(
+        `Order total must be at least $${coupon.minTotal.toFixed(2)} to use this coupon`,
+      );
+  }
+
+  calculateDiscount(
+    coupon: Coupon,
+    items: CouponItem[],
+    cartTotal: number,
+  ): number {
+    let applicableItems = items;
+
+    // Filter by applicable products or categories
+    const hasProductScope =
+      coupon.applicableProductIds && coupon.applicableProductIds.length > 0;
+    const hasCategoryScope =
+      coupon.applicableCategoryIds && coupon.applicableCategoryIds.length > 0;
+
+    if (hasProductScope || hasCategoryScope) {
+      applicableItems = items.filter(
+        (i) =>
+          (hasProductScope &&
+            coupon.applicableProductIds.includes(i.productId)) ||
+          (hasCategoryScope &&
+            coupon.applicableCategoryIds.includes(i.categoryId)),
+      );
+    }
+
+    const applicableTotal = applicableItems.reduce(
+      (acc, item) => acc + item.price * item.quantity,
+      0,
+    );
+
+    if (
+      applicableItems.length === 0 &&
+      items.length > 0 &&
+      (hasProductScope || hasCategoryScope)
+    ) {
+      throw new BadRequestException(
+        `Coupon "${coupon.code}" is not applicable to any items in your cart`,
+      );
+    }
+
+    let discount = 0;
+
+    switch (coupon.type) {
+      case 'FIXED_AMOUNT':
+        discount = Math.min(coupon.discount, applicableTotal || cartTotal);
+        break;
+      case 'PERCENTAGE':
+        discount = ((applicableTotal || cartTotal) * coupon.discount) / 100;
+        break;
+      case 'FREE_SHIPPING':
+        // FREE_SHIPPING handles its logic in the order service for the shipping fee,
+        // discount on items is 0.
+        discount = 0;
+        break;
+      case 'BOGO':
+        if (!coupon.buyQuantity || !coupon.getQuantity) {
+          discount = 0;
+        } else {
+          // Flatten items into single units sorted by price descending
+          const unitPrices: number[] = [];
+          for (const item of applicableItems) {
+            for (let i = 0; i < item.quantity; i++) {
+              unitPrices.push(item.price);
+            }
+          }
+          unitPrices.sort((a, b) => b - a);
+
+          const totalBogoGroupSize = coupon.buyQuantity + coupon.getQuantity;
+          let i = 0;
+
+          // Process groups
+          while (i + totalBogoGroupSize <= unitPrices.length) {
+            // we have a valid group of (buy + get)
+            // since array is sorted desc, the first `buyQuantity` elements are most expensive (paid)
+            // the next `getQuantity` elements are cheaper (free / discounted)
+            const freeStartIdx = i + coupon.buyQuantity;
+            for (let j = 0; j < coupon.getQuantity; j++) {
+              // Usually BOGO gives the cheapest items in the group free, or based on discount %.
+              // We'll apply the `coupon.discount` percentage to the "get" items. 100% discount = Free.
+              discount +=
+                unitPrices[freeStartIdx + j] * (coupon.discount / 100);
+            }
+            i += totalBogoGroupSize;
+          }
+        }
+        break;
+      default:
+        discount = 0;
+    }
+
+    discount = Math.min(discount, cartTotal); // Never discount more than total
+    return Math.round(discount * 100) / 100;
   }
 }
