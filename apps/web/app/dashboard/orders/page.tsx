@@ -68,13 +68,13 @@ function OrdersPageContent() {
 
         if (searchParams.get('success') === 'true') {
             toast.success('Acquisition authorized. Registry updated.', { icon: '🛡️' });
-            
+
             // Clear cart after successful payment
             clearCart();
-            
+
             // Clean up sessionStorage
             sessionStorage.removeItem('pendingOrderId');
-            
+
             // Clear the success parameter from URL to prevent repeated toasts
             const url = new URL(window.location.href);
             url.searchParams.delete('success');
@@ -149,7 +149,9 @@ function OrdersPageContent() {
                                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 dark:text-slate-700 flex items-center gap-3">
                                             <Hash className="h-3.5 w-3.5" /> Registry ID
                                         </p>
-                                        <p className="font-black uppercase text-xs tracking-tight text-black dark:text-slate-400 tabular-nums">{order.id.slice(0, 16)}...</p>
+                                        <Link href={`/dashboard/orders/${order.id}`}>
+                                            <p className="font-black uppercase text-xs tracking-tight text-primary hover:underline tabular-nums">{order.id.slice(0, 16)}...</p>
+                                        </Link>
                                     </div>
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 dark:text-slate-700 flex items-center gap-3">
