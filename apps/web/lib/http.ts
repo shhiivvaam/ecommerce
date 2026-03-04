@@ -11,7 +11,7 @@
 const INTERNAL_API_BASE =
     process.env.INTERNAL_API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:3001/api";
+    "http://127.0.0.1:3001/api";
 
 const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET;
 
