@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -114,9 +114,11 @@ function ProductsPageContent() {
   };
 
   // Show error toast if products query fails
-  if (isError) {
-    toast.error(error instanceof Error ? error.message : "Failed to load products");
-  }
+  useEffect(() => {
+    if (isError) {
+      toast.error(error instanceof Error ? error.message : "Failed to load products");
+    }
+  }, [isError, error]);
 
   return (
     <>

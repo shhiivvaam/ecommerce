@@ -11,6 +11,8 @@ import { api } from "@/lib/api";
 import toast from "react-hot-toast";
 import { ProductCard } from "@/components/ProductCard";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import RecentlyViewed from "@/components/RecentlyViewed";
 
 interface Variant {
   id: string;
@@ -81,6 +83,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const addItem = useCartStore((s) => s.addItem);
   const { isAuthenticated, user } = useAuthStore();
+  const { addRecentlyViewed } = useRecentlyViewed();
+
+  useEffect(() => {
+    if (id) {
+      addRecentlyViewed(id);
+    }
+  }, [id, addRecentlyViewed]);
 
   const fetchReviews = useCallback(async () => {
     try {
@@ -621,6 +630,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </section>
           )}
+
+          <RecentlyViewed />
 
         </div>
       </div>
