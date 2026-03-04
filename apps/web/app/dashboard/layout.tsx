@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, ShoppingBag, MapPin, Heart, Bell, LogOut, ShieldCheck, ChevronRight, Activity, Menu, X } from "lucide-react";
+import { User, ShoppingBag, MapPin, Heart, Bell, LogOut, ShieldCheck, ChevronRight, Activity, Menu, X, DollarSign } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
@@ -535,11 +535,12 @@ const styles = `
 `;
 
 const navItems = [
-  { name: "My Profile",    href: "/dashboard",               icon: User,        sub: "Account"  },
-  { name: "Orders",        href: "/dashboard/orders",        icon: ShoppingBag, sub: "Orders"   },
-  { name: "Addresses",     href: "/dashboard/addresses",     icon: MapPin,      sub: "Shipping" },
-  { name: "Wishlist",      href: "/dashboard/wishlist",      icon: Heart,       sub: "Saved"    },
-  { name: "Notifications", href: "/dashboard/notifications", icon: Bell,        sub: "Alerts"   },
+  { name: "My Profile", href: "/dashboard", icon: User, sub: "Account" },
+  { name: "Orders", href: "/dashboard/orders", icon: ShoppingBag, sub: "Orders" },
+  { name: "Addresses", href: "/dashboard/addresses", icon: MapPin, sub: "Shipping" },
+  { name: "Whislist", href: "/dashboard/wishlist", icon: Heart, sub: "Saved" },
+  { name: "Rewards", href: "/dashboard/affiliate", icon: DollarSign, sub: "Earn" },
+  { name: "Notifications", href: "/dashboard/notifications", icon: Bell, sub: "Alerts" },
 ];
 
 // Bottom tab bar: first 4 items + "More" to open drawer
