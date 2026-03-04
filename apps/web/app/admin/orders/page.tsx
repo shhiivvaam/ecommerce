@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-    ChevronDown, RefreshCw, ShoppingBag, Clock,
-    Package, X, MapPin, User, DollarSign,
-    ExternalLink, Zap, Activity
+    ChevronDown, RefreshCw, ShoppingBag,
+    Package, X, MapPin, User, DollarSign
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdminOrders, useUpdateOrderStatus } from "@/lib/hooks/useAdminOrders";
@@ -49,6 +48,10 @@ export default function AdminOrdersPage() {
     const [page, setPage] = useState(1);
     const limit = 20;
 
+    // Local tracking state pending save
+    const [trackingInput, setTrackingInput] = useState("");
+    const [carrierInput, setCarrierInput] = useState("");
+
     const { data, isLoading: loading, refetch } = useAdminOrders(page, limit);
     const { mutate: updateStatus } = useUpdateOrderStatus();
 
@@ -63,12 +66,12 @@ export default function AdminOrdersPage() {
         processing: orders.filter(o => o.status === "PROCESSING").length,
     };
 
-    const handleStatusChange = (orderId: string, status: string) => {
-        updateStatus({ orderId, status }, {
+    const handleStatusChange = (orderId: string, status: string, trackingNum?: string, carrierCode?: string) => {
+        updateStatus({ orderId, status, trackingNumber: trackingNum, carrier: carrierCode }, {
             onSuccess: () => {
                 // Keep selected order panel in sync
                 if (selectedOrder?.id === orderId) {
-                    setSelectedOrder(prev => prev ? { ...prev, status } : null);
+                    setSelectedOrder(prev => prev ? { ...prev, status, trackingNumber: trackingNum || prev.trackingNumber, carrier: carrierCode || prev.carrier } : null);
                 }
             },
         });
@@ -166,7 +169,11 @@ export default function AdminOrdersPage() {
                         <tbody>
                             {filtered.map((order, i) => (
                                 <motion.tr key={order.id} className="ao-row" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                                    onClick={() => setSelectedOrder(order)}>
+                                    onClick={() => {
+                                        setSelectedOrder(order);
+                                        setTrackingInput(order.trackingNumber || "");
+                                        setCarrierInput(order.carrier || "");
+                                    }}>
                                     <td className="ao-td" style={{ fontFamily: "monospace", fontSize: 12 }}>#{order.id.slice(-8).toUpperCase()}</td>
                                     <td className="ao-td">
                                         <p style={{ fontWeight: 500, color: INK }}>{order.user.name || "—"}</p>
@@ -235,18 +242,49 @@ export default function AdminOrdersPage() {
 
                             <div className="p-8 space-y-8 flex-1">
                                 {/* Status update */}
-                                <div style={{ backgroundColor: PAPER, borderRadius: 8, padding: 20, border: `1px solid ${BORDER}` }}>
-                                    <label className={labelCls}>Update Status</label>
+                                <div style={{ backgroundColor: PAPER, borderRadius: 8, padding: 20, border: `1px solid ${BORDER}` }} className="space-y-4">
+                                    <label className={labelCls}>Update Status & Logistics</label>
                                     <div className="flex items-center gap-4 flex-wrap">
                                         <StatusBadge status={selectedOrder.status} />
                                         <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
                                             <select className="ao-select" style={{ width: "100%" }} value={selectedOrder.status}
-                                                onChange={e => handleStatusChange(selectedOrder.id, e.target.value)}>
+                                                onChange={e => handleStatusChange(selectedOrder.id, e.target.value, trackingInput, carrierInput)}>
                                                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                             </select>
                                             <ChevronDown size={12} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: MID, pointerEvents: "none" }} />
                                         </div>
                                     </div>
+
+                                    {(selectedOrder.status === "PROCESSING" || selectedOrder.status === "SHIPPED") && (
+                                        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-black/10">
+                                            <div>
+                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Carrier Code</label>
+                                                <input
+                                                    value={carrierInput}
+                                                    onChange={e => setCarrierInput(e.target.value)}
+                                                    placeholder="e.g. FEDEX"
+                                                    className="text-xs p-3 rounded-md border w-full font-bold uppercase tracking-widest outline-none focus:border-black"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Tracking Reference</label>
+                                                <input
+                                                    value={trackingInput}
+                                                    onChange={e => setTrackingInput(e.target.value)}
+                                                    placeholder="e.g. 1Z9999W99999999999"
+                                                    className="text-xs p-3 rounded-md border w-full font-mono uppercase outline-none focus:border-black"
+                                                />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <button
+                                                    onClick={() => handleStatusChange(selectedOrder.id, selectedOrder.status, trackingInput, carrierInput)}
+                                                    className="w-full bg-black text-white rounded-md py-3 text-xs font-bold uppercase tracking-widest hover:bg-black/80 transition-colors"
+                                                >
+                                                    Save Waybill Protocol
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Customer */}

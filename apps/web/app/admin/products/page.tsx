@@ -11,7 +11,6 @@ import { useAdminStats } from "@/lib/hooks/useAdminStats";
 
 const INK = "#0a0a0a";
 const PAPER = "#f5f3ef";
-const ACCENT = "#c8ff00";
 const MID = "#8a8a8a";
 const BORDER = "rgba(10,10,10,0.1)";
 

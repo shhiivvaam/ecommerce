@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { DollarSign, ShoppingBag, Package, Clock, Users, ArrowUpRight, TrendingUp } from "lucide-react";
+import { DollarSign, ShoppingBag, Package, Clock, ArrowUpRight, TrendingUp, BarChart } from "lucide-react";
 import Link from "next/link";
 import { useAdminStats } from "@/lib/hooks/useAdminStats";
+import { useAnalytics } from "@/lib/hooks/useAnalytics";
 
 const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   PENDING: { color: "#d97706", bg: "#fffbeb" },
@@ -15,6 +16,7 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
 
 export default function AdminOverview() {
   const { data, isLoading: loading } = useAdminStats();
+  const { data: analyticsData, isLoading: analyticsLoading } = useAnalytics();
 
   const stats = {
     totalRevenue: data?.totalRevenue ?? 0,
@@ -29,7 +31,7 @@ export default function AdminOverview() {
     { label: "Total Revenue", value: `$${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: DollarSign, note: "All time" },
     { label: "Total Orders", value: stats.totalOrders, icon: ShoppingBag, note: `${stats.pendingOrders} pending` },
     { label: "Products Listed", value: stats.totalProducts, icon: Package, note: "In catalog" },
-    { label: "Customers", value: stats.totalUsers, icon: Users, note: "Registered" },
+    { label: "Average Order (AOV)", value: analyticsData ? `$${analyticsData.overview.averageOrderValue.toFixed(2)}` : "--", icon: BarChart, note: "Trailing 30 days" },
   ];
 
   return (
@@ -171,6 +173,40 @@ export default function AdminOverview() {
             <div style={{ textAlign: "center", padding: "48px 24px", border: "1.5px dashed var(--border)", borderRadius: 10 }}>
               <ShoppingBag size={32} style={{ color: "rgba(10,10,10,0.15)", marginBottom: 12 }} />
               <p style={{ color: "var(--mid)", fontSize: 14, fontWeight: 300 }}>No orders yet.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Top Products */}
+        <div style={{ marginTop: 40 }}>
+          <h2 className="ov-section-title" style={{ margin: 0, marginBottom: 16 }}>
+            <Package size={20} style={{ display: "inline", marginRight: 8, verticalAlign: "text-top", color: "var(--mid)" }} />
+            Top Selling Products
+          </h2>
+          {analyticsLoading ? (
+            <div className="ov-skel" style={{ height: 200 }} />
+          ) : analyticsData && analyticsData.topSellingProducts.length > 0 ? (
+            <table className="ov-table">
+              <thead>
+                <tr>
+                  <th className="ov-th">Product</th>
+                  <th className="ov-th" style={{ textAlign: "right" }}>Units Sold</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analyticsData.topSellingProducts.map((p, i) => (
+                  <motion.tr key={p.productId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}>
+                    <td className="ov-td" style={{ fontWeight: 500 }}>{p.title}</td>
+                    <td className="ov-td" style={{ textAlign: "right", fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700 }}>
+                      {p.totalSold}
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ textAlign: "center", padding: "48px 24px", border: "1.5px dashed var(--border)", borderRadius: 10 }}>
+              <p style={{ color: "var(--mid)", fontSize: 14, fontWeight: 300 }}>No top products data yet.</p>
             </div>
           )}
         </div>

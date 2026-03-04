@@ -11,7 +11,6 @@ import {
   useAdminUser,
   useToggleUserBlock,
   useUpdateUserRole,
-  type AdminUser,
 } from "@/lib/hooks/useAdminUsers";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────── */

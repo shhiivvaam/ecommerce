@@ -31,15 +31,15 @@ export default function AdminSettingsPage() {
                 storeMode: settings.storeMode ?? "MULTI",
                 currency: settings.currency ?? "USD",
                 logo: settings.logo ?? "",
-                singleProductId: (settings as any).singleProductId ?? "",
-                taxRate: (settings as any).taxRate ?? 0,
-                shippingRate: (settings as any).shippingRate ?? 0,
+                singleProductId: (settings as StoreSettings & { singleProductId?: string }).singleProductId ?? "",
+                taxRate: (settings as StoreSettings & { taxRate?: number }).taxRate ?? 0,
+                shippingRate: (settings as StoreSettings & { shippingRate?: number }).shippingRate ?? 0,
             });
         }
     }, [settings]);
 
     const handleSave = () => {
-        const payload: any = {
+        const payload: Record<string, unknown> = {
             storeName: form.storeName || undefined,
             storeMode: form.storeMode as StoreSettings["storeMode"],
             currency: form.currency,
