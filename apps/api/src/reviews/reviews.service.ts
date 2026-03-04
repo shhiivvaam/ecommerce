@@ -61,10 +61,14 @@ export class ReviewsService {
     if (existing)
       throw new ConflictException('You have already reviewed this product');
 
-    return this.prisma.review.create({
+    const newReview = await this.prisma.review.create({
       data: { userId, productId, rating: data.rating, comment: data.comment },
       include: { user: { select: { id: true, name: true, avatar: true } } },
     });
+
+    await this.updateProductRating(productId);
+
+    return newReview;
   }
 
   async updateReview(userId: string, reviewId: string, data: CreateReviewDto) {
@@ -75,11 +79,15 @@ export class ReviewsService {
     if (review.userId !== userId)
       throw new ForbiddenException('You can only edit your own reviews');
 
-    return this.prisma.review.update({
+    const updatedReview = await this.prisma.review.update({
       where: { id: reviewId },
       data: { rating: data.rating, comment: data.comment },
       include: { user: { select: { id: true, name: true, avatar: true } } },
     });
+
+    await this.updateProductRating(review.productId);
+
+    return updatedReview;
   }
 
   async deleteReview(userId: string, reviewId: string) {
@@ -90,6 +98,32 @@ export class ReviewsService {
     if (review.userId !== userId)
       throw new ForbiddenException('You can only delete your own reviews');
 
-    return this.prisma.review.delete({ where: { id: reviewId } });
+    const deletedReview = await this.prisma.review.delete({
+      where: { id: reviewId },
+    });
+
+    await this.updateProductRating(review.productId);
+
+    return deletedReview;
+  }
+
+  private async updateProductRating(productId: string) {
+    const aggregate = await this.prisma.review.aggregate({
+      where: { productId },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+
+    const avgRatingRaw = aggregate._avg.rating ?? 0;
+    const avgRating = Math.round(avgRatingRaw * 10) / 10;
+    const reviewCount = aggregate._count.id ?? 0;
+
+    await this.prisma.product.update({
+      where: { id: productId },
+      data: {
+        averageRating: avgRating,
+        reviewCount: reviewCount,
+      },
+    });
   }
 }
