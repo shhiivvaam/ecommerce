@@ -63,13 +63,17 @@ export class PaymentsService {
     }));
 
     const session = await this.stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
         orderId: orderId,
+      },
+      payment_intent_data: {
+        metadata: {
+          orderId: orderId,
+        },
       },
     });
 
@@ -129,6 +133,59 @@ export class PaymentsService {
       data: { status: OrderStatus.PROCESSING },
     });
 
+    if (order.affiliateId) {
+      const affiliate = await this.prisma.affiliate.findUnique({
+        where: { id: order.affiliateId },
+      });
+      if (affiliate) {
+        const commission = order.totalAmount * affiliate.commissionRate;
+        await this.prisma.affiliate.update({
+          where: { id: affiliate.id },
+          data: { totalEarned: { increment: commission } },
+        });
+      }
+    }
+
     return payment;
+  }
+
+  async handlePaymentFailed(transactionId: string, orderId?: string) {
+    if (!orderId) {
+      const payment = await this.prisma.payment.findFirst({
+        where: { transactionId },
+      });
+      if (payment) orderId = payment.orderId;
+    }
+
+    if (orderId) {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.CANCELLED },
+      });
+      await this.prisma.payment.updateMany({
+        where: { transactionId },
+        data: { status: PaymentStatus.FAILED },
+      });
+    }
+  }
+
+  async handleRefunded(transactionId: string, orderId?: string) {
+    if (!orderId) {
+      const payment = await this.prisma.payment.findFirst({
+        where: { transactionId },
+      });
+      if (payment) orderId = payment.orderId;
+    }
+
+    if (orderId) {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.RETURNED },
+      });
+      await this.prisma.payment.updateMany({
+        where: { transactionId },
+        data: { status: PaymentStatus.REFUNDED },
+      });
+    }
   }
 }

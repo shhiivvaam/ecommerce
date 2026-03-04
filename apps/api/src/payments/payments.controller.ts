@@ -89,9 +89,27 @@ export class PaymentsController {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const orderId = session.metadata?.orderId;
+      const paymentIntentId = session.payment_intent as string;
       if (orderId) {
-        await this.paymentsService.verifyPayment(orderId, session.id);
+        await this.paymentsService.verifyPayment(
+          orderId,
+          paymentIntentId || session.id,
+        );
       }
+    } else if (event.type === 'charge.refunded') {
+      const charge = event.data.object;
+      const orderId = charge.metadata?.orderId;
+      const paymentIntentId =
+        typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : charge.payment_intent?.id;
+      if (paymentIntentId) {
+        await this.paymentsService.handleRefunded(paymentIntentId, orderId);
+      }
+    } else if (event.type === 'payment_intent.payment_failed') {
+      const intent = event.data.object;
+      const orderId = intent.metadata?.orderId;
+      await this.paymentsService.handlePaymentFailed(intent.id, orderId);
     }
 
     return { received: true };
