@@ -10,7 +10,7 @@ import { EmailService } from '../email/email.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { TaxService } from '../tax/tax.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, RoleType } from '@prisma/client';
 import { CreateOrderDto } from './dto/order.dto';
 import { UpdateOrderTrackingDto } from './dto/tracking.dto';
 
@@ -24,7 +24,7 @@ export class OrdersService {
     private couponsService: CouponsService,
     private shippingService: ShippingService,
     private taxService: TaxService,
-  ) {}
+  ) { }
 
   async create(userId: string | undefined, data: CreateOrderDto) {
     if (!userId && !data.sessionId && !data.guestEmail) {
@@ -328,12 +328,19 @@ export class OrdersService {
     });
   }
 
-  async findOne(id: string, userId: string | undefined, sessionId?: string) {
+  async findOne(id: string, userId: string | undefined, sessionId?: string, role?: RoleType) {
     if (!userId && !sessionId)
       throw new ForbiddenException('Identification required');
 
+    // Admins can view any order
+    const where = role === RoleType.ADMIN
+      ? { id }
+      : userId
+        ? { id, userId }
+        : { id, sessionId: sessionId! };
+
     const order = await this.prisma.order.findFirst({
-      where: userId ? { id, userId } : { id, sessionId: sessionId! },
+      where,
       include: {
         items: { include: { product: true, variant: true } },
         address: true,
@@ -439,7 +446,7 @@ export class OrdersService {
     return order;
   }
 
-  async getTracking(id: string, userId?: string, sessionId?: string) {
+  async getTracking(id: string, userId?: string, sessionId?: string, role?: RoleType) {
     const order = await this.prisma.order.findUnique({
       where: { id },
     });
@@ -448,12 +455,14 @@ export class OrdersService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    // Access control
-    if (!userId && order.sessionId !== sessionId) {
-      throw new ForbiddenException('You do not have access to this order');
-    }
-    if (userId && order.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this order');
+    // Admins can view tracking for any order
+    if (role !== RoleType.ADMIN) {
+      if (!userId && order.sessionId !== sessionId) {
+        throw new ForbiddenException('You do not have access to this order');
+      }
+      if (userId && order.userId !== userId) {
+        throw new ForbiddenException('You do not have access to this order');
+      }
     }
 
     // Mock Dynamic Timeline based on status
@@ -492,6 +501,7 @@ export class OrdersService {
     orderId: string,
     productId: string,
     userId: string,
+    role?: RoleType,
   ) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -502,7 +512,8 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    if (order.userId !== userId) {
+    // Admins can download from any order
+    if (role !== RoleType.ADMIN && order.userId !== userId) {
       throw new ForbiddenException('You do not have access to this order');
     }
 

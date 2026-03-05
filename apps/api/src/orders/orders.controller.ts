@@ -26,6 +26,7 @@ import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { OrderStatus, RoleType } from '@prisma/client';
+import { Role } from '@prisma/client';
 import {
   CreateOrderDto,
   UpdateOrderStatusDto,
@@ -37,7 +38,7 @@ import { UpdateOrderTrackingDto } from './dto/tracking.dto';
 @ApiBearerAuth()
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   @Post()
   @ApiOperation({
@@ -100,10 +101,10 @@ export class OrdersController {
   })
   @UseGuards(JwtAuthGuard)
   findOne(
-    @Request() req: { user: { id: string; userId?: string } },
+    @Request() req: { user: { id: string; userId?: string; role?: Role } },
     @Param('id') id: string,
   ) {
-    return this.ordersService.findOne(id, req.user.userId || req.user.id);
+    return this.ordersService.findOne(id, req.user.userId || req.user.id, undefined, req.user.role?.name);
   }
 
   @Patch(':id/status')
@@ -194,7 +195,7 @@ export class OrdersController {
   @ApiNotFoundResponse({ description: 'Order or digital product not found' })
   @UseGuards(JwtAuthGuard)
   downloadDigitalAsset(
-    @Request() req: { user: { id: string; userId?: string } },
+    @Request() req: { user: { id: string; userId?: string; role?: Role } },
     @Param('id') orderId: string,
     @Param('productId') productId: string,
   ) {
@@ -202,6 +203,7 @@ export class OrdersController {
       orderId,
       productId,
       req.user.userId || req.user.id,
+      req.user.role?.name,
     );
   }
 
@@ -235,7 +237,7 @@ export class OrdersController {
   })
   @UseGuards(OptionalJwtAuthGuard)
   getTracking(
-    @Request() req: { user?: { id?: string; userId?: string } },
+    @Request() req: { user?: { id?: string; userId?: string; role?: Role } },
     @Param('id') id: string,
     @Query('sessionId') sessionId?: string,
   ) {
@@ -243,6 +245,7 @@ export class OrdersController {
       id,
       req.user?.userId || req.user?.id,
       sessionId,
+      req.user?.role?.name,
     );
   }
 }
