@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { User, ShoppingBag, MapPin, Heart, Bell, LogOut, ShieldCheck, ChevronRight, Activity, Menu, X, DollarSign } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { User, ShoppingBag, MapPin, Heart, Bell, LogOut, ShieldCheck, ChevronRight, Loader2, Menu, X, DollarSign } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap');
@@ -578,20 +578,27 @@ function NavItem({
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const router = useRouter();
+  const { user, logout, _hasHydrated } = useAuthStore();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  if (!user) {
+  // Wait for Zustand to rehydrate from localStorage before checking auth.
+  // Without this guard, the layout briefly sees user=null on every page load
+  // (before the persisted token is read), renders the auth-gate, and fires
+  // requests without an Authorization header — causing spurious 401s that
+  // trigger the api-client logout interceptor.
+  useEffect(() => {
+    if (_hasHydrated && !user) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+    }
+  }, [_hasHydrated, user, router, pathname]);
+
+  // Show a spinner while the store is still rehydrating OR while redirecting
+  if (!_hasHydrated || !user) {
     return (
-      <>
-        <style>{styles}</style>
-        <div className="auth-gate">
-          <div className="auth-gate-icon"><Activity size={24} /></div>
-          <h2>Sign In Required</h2>
-          <p>You need to be logged in to access your dashboard.</p>
-          <Link href="/auth/login" className="auth-gate-btn">Sign In</Link>
-        </div>
-      </>
+      <div style={{ height: "100svh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f3ef" }}>
+        <Loader2 size={32} style={{ color: "#0a0a0a", animation: "spin 1s linear infinite" }} />
+      </div>
     );
   }
 

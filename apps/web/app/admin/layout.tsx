@@ -8,6 +8,7 @@ import {
   Menu, X, ChevronRight, Loader2
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useLogout } from "@/lib/hooks/useAuth";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -381,8 +382,14 @@ const CSS = `
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, user, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
+  const { mutate: logoutMutate } = useLogout();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleSignOut = () => {
+    logoutMutate();
+    router.push("/");
+  };
 
   useEffect(() => {
     if (_hasHydrated) {
@@ -459,7 +466,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
               </div>
             )}
-            <button className="al-logout" onClick={() => logout()}>
+            <button className="al-logout" onClick={handleSignOut}>
               <LogOut size={13} strokeWidth={1.5} />
               Sign Out
             </button>
@@ -518,7 +525,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               <button
                 className="al-drawer-logout"
-                onClick={() => { logout(); setMobileOpen(false); }}
+                onClick={() => { handleSignOut(); setMobileOpen(false); }}
               >
                 <LogOut size={14} strokeWidth={1.5} />
                 Sign Out
