@@ -58,11 +58,20 @@ export class ReviewsService {
     };
   }
 
-  async createReview(userId: string, productId: string, data: CreateReviewDto) {
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
+  async createReview(userId: string, productIdOrSlug: string, data: CreateReviewDto) {
+    let product = await this.prisma.product.findUnique({
+      where: { id: productIdOrSlug },
     });
+
+    if (!product) {
+      product = await this.prisma.product.findUnique({
+        where: { slug: productIdOrSlug },
+      });
+    }
+
     if (!product) throw new NotFoundException('Product not found');
+
+    const productId = product.id;
 
     const existing = await this.prisma.review.findFirst({
       where: { userId, productId },
