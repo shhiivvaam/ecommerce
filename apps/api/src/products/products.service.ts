@@ -323,9 +323,9 @@ export class ProductsService {
     return { data: products, total, page, limit, totalPages };
   }
 
-  async findOne(id: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
+  async findOne(idOrSlug: string) {
+    let product = await this.prisma.product.findUnique({
+      where: { id: idOrSlug },
       include: {
         variants: true,
         category: true,
@@ -333,12 +333,25 @@ export class ProductsService {
         relatedProducts: true,
       },
     });
+
+    if (!product) {
+      product = await this.prisma.product.findUnique({
+        where: { slug: idOrSlug },
+        include: {
+          variants: true,
+          category: true,
+          reviews: true,
+          relatedProducts: true,
+        },
+      });
+    }
+
     if (!product) throw new NotFoundException('Product not found');
 
     // Safety check if in single mode
     const isSingle = await this.settings.isSingleProductMode();
     const singleId = await this.settings.getSingleProductId();
-    if (isSingle && singleId && singleId !== id) {
+    if (isSingle && singleId && singleId !== product.id) {
       throw new NotFoundException(
         'Store is currently restricted to a single product',
       );
@@ -347,23 +360,39 @@ export class ProductsService {
     return product;
   }
 
-  async findRelated(id: string, limit: number = 4) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      include: { relatedProducts: true },
+  async findRelated(idOrSlug: string, limit: number = 4) {
+    let product = await this.prisma.product.findUnique({
+      where: { id: idOrSlug },
+      select: { id: true, categoryId: true },
     });
+
+    if (!product) {
+      product = await this.prisma.product.findUnique({
+        where: { slug: idOrSlug },
+        select: { id: true, categoryId: true },
+      });
+    }
+
     if (!product) throw new NotFoundException('Product not found');
 
+    const productId = product.id;
+
+    // Check for explicit related products
+    const withRelated = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: { relatedProducts: true },
+    });
+
     // Return explicit related products if they exist
-    if (product.relatedProducts.length > 0) {
-      return product.relatedProducts.slice(0, limit);
+    if (withRelated?.relatedProducts && withRelated.relatedProducts.length > 0) {
+      return withRelated.relatedProducts.slice(0, limit);
     }
 
     // Fallback: Return products from the same category
     const relatedByCategory = await this.prisma.product.findMany({
       where: {
         categoryId: product.categoryId,
-        id: { not: id },
+        id: { not: productId },
       },
       take: limit,
       orderBy: { averageRating: 'desc' },
