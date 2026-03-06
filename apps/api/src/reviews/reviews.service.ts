@@ -9,13 +9,22 @@ import { CreateReviewDto } from './dto/review.dto';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
-  async getProductReviews(productId: string, page = 1, limit = 20) {
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
+  async getProductReviews(productIdOrSlug: string, page = 1, limit = 20) {
+    let product = await this.prisma.product.findUnique({
+      where: { id: productIdOrSlug },
     });
+
+    if (!product) {
+      product = await this.prisma.product.findUnique({
+        where: { slug: productIdOrSlug },
+      });
+    }
+
     if (!product) throw new NotFoundException('Product not found');
+
+    const productId = product.id;
 
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const skip = (page - 1) * safeLimit;
