@@ -252,18 +252,18 @@ sudo tee "${NGINX_SNIPPET}" > /dev/null << 'EOF'
 # ssl-hardening.conf — included inside the HTTPS server block by the hook below.
 
 # TLS version enforcement
-ssl_protocols             TLSv1.2 TLSv1.3;
-ssl_prefer_server_ciphers on;
+# ssl_protocols             TLSv1.2 TLSv1.3;
+# ssl_prefer_server_ciphers on;
 ssl_ecdh_curve            X25519:secp384r1;
 
 # TLS session resumption — reduces handshake overhead for returning clients
 # session_tickets off: disables ticket reuse (forward secrecy improvement)
-ssl_session_cache   shared:SSL:10m;
-ssl_session_timeout 1d;
-ssl_session_tickets off;
+# ssl_session_cache   shared:SSL:10m;
+# ssl_session_timeout 1d;
+# ssl_session_tickets off;
 
 # Cipher suite control — bans anonymous + MD5 ciphers, allows all HIGH-strength
-ssl_ciphers HIGH:!aNULL:!MD5;
+# ssl_ciphers HIGH:!aNULL:!MD5;
 
 # OCSP stapling — server pre-fetches cert revocation status from CA
 # and staples it to the TLS handshake: faster for browsers, better privacy
@@ -288,7 +288,7 @@ SNIPPET="include /etc/nginx/snippets/ssl-hardening.conf;"
 if ! grep -qF "\${SNIPPET}" "\${SITE}"; then
   # Inject after 'listen 443 ssl' — more stable anchor than ssl_certificate
   # (certbot always writes this line and its format is consistent)
-  sudo sed -i "/listen 443 ssl/a\\    \${SNIPPET}" "\${SITE}"
+  sudo sed -i "/listen 443 ssl;/a\\    \${SNIPPET}" "\${SITE}"
 fi
 
 sudo nginx -t && sudo systemctl reload nginx
