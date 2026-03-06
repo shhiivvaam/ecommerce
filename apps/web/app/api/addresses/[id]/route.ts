@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { serverFetch, extractToken, toErrorResponse } from "@/lib/http";
+import { Address } from "@repo/types";
 
 // PATCH /api/addresses/[id] — update an address
 export async function PATCH(
@@ -12,7 +13,7 @@ export async function PATCH(
     try {
         const { id } = await params;
         const body = await request.json();
-        const address = await serverFetch<any>(`/addresses/${id}`, {
+        const address = await serverFetch<Address>(`/addresses/${id}`, {
             method: "PATCH",
             token,
             body,

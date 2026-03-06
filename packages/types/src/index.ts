@@ -239,3 +239,34 @@ export interface CartResponse {
     total: number;
     itemCount: number;
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Address
+// ─────────────────────────────────────────────────────────────────
+export interface Address {
+    id: string;
+    userId?: string;
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    zipCode: string;
+    isDefault: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Wishlist
+// ─────────────────────────────────────────────────────────────────
+export interface WishlistItem {
+    id: string;
+    userId: string;
+    productId: string;
+    product: Product;
+    createdAt: string;
+}
+
+export interface WishlistCheckResponse {
+    inWishlist: boolean;
+}

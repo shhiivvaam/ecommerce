@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { serverFetch, extractToken, toErrorResponse } from "@/lib/http";
+import { Address } from "@repo/types";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const addresses = await serverFetch<any>("/addresses", { token });
+        const addresses = await serverFetch<Address[]>("/addresses", { token });
         return NextResponse.json(addresses);
     } catch (error) {
         const { status, message } = toErrorResponse(error);
@@ -24,7 +25,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     try {
         const body = await request.json();
-        const address = await serverFetch<any>("/addresses", {
+        const address = await serverFetch<Address>("/addresses", {
             method: "POST",
             token,
             body,

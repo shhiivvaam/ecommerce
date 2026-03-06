@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { serverFetch, toErrorResponse, extractToken } from "@/lib/http";
+import { Review } from "@repo/types";
 
 export async function GET(
     _request: Request,
@@ -8,7 +9,7 @@ export async function GET(
     const { id } = await params;
 
     try {
-        const data = await serverFetch<any>(`/products/${id}/reviews`);
+        const data = await serverFetch<Review[]>(`/products/${id}/reviews`);
         return NextResponse.json(data);
     } catch (error) {
         const { status, message } = toErrorResponse(error);
@@ -27,7 +28,7 @@ export async function POST(
 
     try {
         const body = await request.json();
-        const data = await serverFetch<any>(`/products/${id}/reviews`, {
+        const data = await serverFetch<Review>(`/products/${id}/reviews`, {
             method: "POST",
             body,
             token,

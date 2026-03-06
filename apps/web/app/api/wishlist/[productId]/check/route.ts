@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { serverFetch, toErrorResponse, extractToken } from "@/lib/http";
+import { WishlistCheckResponse } from "@repo/types";
 
 export async function GET(
     request: Request,
@@ -10,7 +11,7 @@ export async function GET(
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const data = await serverFetch<any>(`/wishlist/${productId}/check`, { token });
+        const data = await serverFetch<WishlistCheckResponse>(`/wishlist/${productId}/check`, { token });
         return NextResponse.json(data);
     } catch (error) {
         const { status, message } = toErrorResponse(error);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { serverFetch, toErrorResponse, extractToken } from "@/lib/http";
+import { WishlistItem } from "@repo/types";
 
 export async function POST(
     request: Request,
@@ -10,7 +11,7 @@ export async function POST(
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const data = await serverFetch<any>(`/wishlist/${productId}`, {
+        const data = await serverFetch<WishlistItem>(`/wishlist/${productId}`, {
             method: "POST",
             token,
         });
@@ -30,7 +31,7 @@ export async function DELETE(
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const data = await serverFetch<any>(`/wishlist/${productId}`, {
+        const data = await serverFetch<WishlistItem>(`/wishlist/${productId}`, {
             method: "DELETE",
             token,
         });
