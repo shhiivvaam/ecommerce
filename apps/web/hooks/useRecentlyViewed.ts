@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const RECENTLY_VIEWED_KEY = 'recently_viewed_products';
 const MAX_ITEM_COUNT = 10;
@@ -17,7 +17,7 @@ export function useRecentlyViewed() {
         }
     }, []);
 
-    const addRecentlyViewed = (productId: string) => {
+    const addRecentlyViewed = useCallback((productId: string) => {
         setRecentProductIds((prev) => {
             // Remove it if it exists so we can bump it to the front
             const filtered = prev.filter((id) => id !== productId);
@@ -32,16 +32,16 @@ export function useRecentlyViewed() {
 
             return updated;
         });
-    };
+    }, []);
 
-    const clearRecentlyViewed = () => {
+    const clearRecentlyViewed = useCallback(() => {
         setRecentProductIds([]);
         try {
             localStorage.removeItem(RECENTLY_VIEWED_KEY);
         } catch (e) {
             console.error('Error clearing recently viewed from localStorage', e);
         }
-    };
+    }, []);
 
     return { recentProductIds, addRecentlyViewed, clearRecentlyViewed };
 }
