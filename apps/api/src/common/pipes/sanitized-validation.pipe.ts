@@ -19,7 +19,10 @@ export class SanitizedValidationPipe extends ValidationPipe {
         enableImplicitConversion: true,
       },
       exceptionFactory: (errors) => {
-        console.error('[ValidationPipe] Errors:', JSON.stringify(errors, null, 2));
+        console.error(
+          '[ValidationPipe] Errors:',
+          JSON.stringify(errors, null, 2),
+        );
         return new BadRequestException({
           message: 'Validation failed',
           errors: errors.map((error) => ({
