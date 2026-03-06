@@ -71,16 +71,18 @@ export async function serverFetch<T = unknown>(
     return response.json() as Promise<T>;
 }
 
+import { cookies } from "next/headers";
+
 /** Extract a Bearer token from an incoming Next.js request */
-export function extractToken(request: Request): string | undefined {
+export async function extractToken(request: Request): Promise<string | undefined> {
     const authHeader = request.headers.get("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
         return authHeader.slice(7);
     }
-    // Also check cookie (httpOnly cookie set by auth route)
-    const cookie = request.headers.get("cookie");
-    const match = cookie?.match(/auth-token=([^;]+)/);
-    return match?.[1];
+    // Check Next.js 15 cookies API
+    const cookieStore = await cookies();
+    const tokenCookie = cookieStore.get("auth-token");
+    return tokenCookie?.value;
 }
 
 /** Build a standardised error NextResponse from an unknown thrown value */
