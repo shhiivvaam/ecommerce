@@ -55,7 +55,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
         tags: initialData?.tags?.join(", ") || "",
     });
 
-const [variants, setVariants] = useState<Variant[]>(initialData?.variants || []);
+    const [variants, setVariants] = useState<Variant[]>(initialData?.variants || []);
 
     const addVariant = () => {
         setVariants([...variants, { size: "", color: "", sku: "", stock: 0, priceDiff: 0 }]);
@@ -67,7 +67,11 @@ const [variants, setVariants] = useState<Variant[]>(initialData?.variants || [])
 
     const handleVariantChange = (index: number, field: string, value: string | number) => {
         const newVariants = [...variants];
-        newVariants[index] = { ...newVariants[index], [field]: (field === 'stock' || field === 'priceDiff') ? Number(value) : value };
+        let val: string | number = value;
+        if (field === 'stock' || field === 'priceDiff') {
+            val = value === "" ? 0 : Number(value);
+        }
+        newVariants[index] = { ...newVariants[index], [field]: val };
         setVariants(newVariants);
     };
 
@@ -86,10 +90,16 @@ const [variants, setVariants] = useState<Variant[]>(initialData?.variants || [])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: name === "price" || name === "stock" || name === "discounted" ? parseFloat(value) : value
-        }));
+        setFormData(prev => {
+            let parsedVal: string | number | undefined = value;
+            if (name === "price" || name === "stock" || name === "discounted") {
+                parsedVal = value === "" ? (name === "discounted" ? undefined : 0) : parseFloat(value);
+            }
+            return {
+                ...prev,
+                [name]: parsedVal
+            };
+        });
     };
 
     const handleGalleryChange = (index: number, value: string) => {
@@ -130,8 +140,8 @@ const [variants, setVariants] = useState<Variant[]>(initialData?.variants || [])
             router.push("/admin/products");
             router.refresh();
         } catch (err: unknown) {
-            const errorMessage = err && typeof err === 'object' && 'response' in err 
-                ? (err as { response?: { data?: { message?: string } } }).response?.data?.message 
+            const errorMessage = err && typeof err === 'object' && 'response' in err
+                ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
                 : "Something went wrong";
             toast.error(errorMessage || "Something went wrong");
         } finally {
@@ -162,11 +172,11 @@ const [variants, setVariants] = useState<Variant[]>(initialData?.variants || [])
                         <h3 className="font-semibold text-lg">General Information</h3>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Product Title</label>
-                            <Input name="title" value={formData.title} onChange={handleChange} required placeholder="e.g., Premium Wireless Headphones" />
+                            <Input name="title" value={formData.title ?? ""} onChange={handleChange} required placeholder="e.g., Premium Wireless Headphones" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Description</label>
-                            <Textarea name="description" value={formData.description} onChange={handleChange} required rows={5} placeholder="Describe your product..." />
+                            <Textarea name="description" value={formData.description ?? ""} onChange={handleChange} required rows={5} placeholder="Describe your product..." />
                         </div>
                     </div>
 
@@ -212,19 +222,19 @@ const [variants, setVariants] = useState<Variant[]>(initialData?.variants || [])
                                 <div key={index} className="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 border rounded-xl bg-muted/30 relative group">
                                     <div className="space-y-1">
                                         <label className="text-[10px] uppercase font-bold text-muted-foreground">Size</label>
-                                        <Input placeholder="XL, 42..." value={v.size || ""} onChange={e => handleVariantChange(index, 'size', e.target.value)} className="h-8 text-xs" />
+                                        <Input placeholder="XL, 42..." value={v.size ?? ""} onChange={e => handleVariantChange(index, 'size', e.target.value)} className="h-8 text-xs" />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] uppercase font-bold text-muted-foreground">Color</label>
-                                        <Input placeholder="Red, Onyx..." value={v.color || ""} onChange={e => handleVariantChange(index, 'color', e.target.value)} className="h-8 text-xs" />
+                                        <Input placeholder="Red, Onyx..." value={v.color ?? ""} onChange={e => handleVariantChange(index, 'color', e.target.value)} className="h-8 text-xs" />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] uppercase font-bold text-muted-foreground">Stock</label>
-                                        <Input type="number" value={v.stock} onChange={e => handleVariantChange(index, 'stock', e.target.value)} className="h-8 text-xs" />
+                                        <Input type="number" value={v.stock ?? ""} onChange={e => handleVariantChange(index, 'stock', e.target.value)} className="h-8 text-xs" />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] uppercase font-bold text-muted-foreground">Price Diff</label>
-                                        <Input type="number" step="0.01" value={v.priceDiff} onChange={e => handleVariantChange(index, 'priceDiff', e.target.value)} className="h-8 text-xs" />
+                                        <Input type="number" step="0.01" value={v.priceDiff ?? ""} onChange={e => handleVariantChange(index, 'priceDiff', e.target.value)} className="h-8 text-xs" />
                                     </div>
                                     <div className="flex items-end">
                                         <Button type="button" variant="ghost" size="icon" onClick={() => removeVariant(index)} className="h-8 w-8 text-destructive">
@@ -248,15 +258,15 @@ const [variants, setVariants] = useState<Variant[]>(initialData?.variants || [])
                         <h3 className="font-semibold text-lg">Pricing & Stock</h3>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Price</label>
-                            <Input type="number" name="price" value={formData.price} onChange={handleChange} required step="0.01" min="0" />
+                            <Input type="number" name="price" value={formData.price ?? ""} onChange={handleChange} required step="0.01" min="0" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Discounted Price (Optional)</label>
-                            <Input type="number" name="discounted" value={formData.discounted || ""} onChange={handleChange} step="0.01" min="0" placeholder="None" />
+                            <Input type="number" name="discounted" value={formData.discounted ?? ""} onChange={handleChange} step="0.01" min="0" placeholder="None" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Initial Stock</label>
-                            <Input type="number" name="stock" value={formData.stock} onChange={handleChange} required min="0" />
+                            <Input type="number" name="stock" value={formData.stock ?? ""} onChange={handleChange} required min="0" />
                         </div>
                     </div>
 
