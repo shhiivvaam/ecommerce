@@ -11,7 +11,7 @@ type Params = { params: Promise<{ id: string }> };
  * DELETE /api/admin/categories/[id] — delete a category
  */
 export async function PATCH(request: Request, { params }: Params): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
@@ -31,7 +31,7 @@ export async function PATCH(request: Request, { params }: Params): Promise<NextR
 }
 
 export async function DELETE(request: Request, { params }: Params): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;

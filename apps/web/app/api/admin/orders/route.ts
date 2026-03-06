@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
  * Forwards to NestJS GET /orders/admin/all (Admin-only).
  */
 export async function GET(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);

@@ -54,7 +54,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {

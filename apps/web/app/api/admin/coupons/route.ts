@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
  * POST /api/admin/coupons — create a coupon (admin)
  */
 export async function GET(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
@@ -21,7 +21,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {

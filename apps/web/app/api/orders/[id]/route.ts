@@ -8,7 +8,7 @@ type Params = { params: Promise<{ id: string }> };
 
 // GET /api/orders/[id]
 export async function GET(request: Request, { params }: Params): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;

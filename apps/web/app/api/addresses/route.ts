@@ -1,36 +1,35 @@
 import { NextResponse } from "next/server";
 import { serverFetch, extractToken, toErrorResponse } from "@/lib/http";
-import type { User } from "@repo/types";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/users/me
+// GET /api/addresses — list all addresses for user
 export async function GET(request: Request): Promise<NextResponse> {
     const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const user = await serverFetch<User>("/users/me", { token });
-        return NextResponse.json(user);
+        const addresses = await serverFetch<any>("/addresses", { token });
+        return NextResponse.json(addresses);
     } catch (error) {
         const { status, message } = toErrorResponse(error);
         return NextResponse.json({ error: message }, { status });
     }
 }
 
-// PATCH /api/users/me — update profile
-export async function PATCH(request: Request): Promise<NextResponse> {
+// POST /api/addresses — create a new address
+export async function POST(request: Request): Promise<NextResponse> {
     const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const body = await request.json();
-        const user = await serverFetch<User>("/users/me", {
-            method: "PATCH",
+        const address = await serverFetch<any>("/addresses", {
+            method: "POST",
             token,
             body,
         });
-        return NextResponse.json(user);
+        return NextResponse.json(address, { status: 201 });
     } catch (error) {
         const { status, message } = toErrorResponse(error);
         return NextResponse.json({ error: message }, { status });

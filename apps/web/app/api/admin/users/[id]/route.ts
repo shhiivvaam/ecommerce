@@ -9,7 +9,7 @@ type Params = { params: Promise<{ id: string }> };
  * GET /api/admin/users/[id] — get single user details (admin)
  */
 export async function GET(request: Request, { params }: Params): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: Params): Promise<NextRes
  *   ?action=role   → PATCH /users/:id/role  (body: { role: string })
  */
 export async function PATCH(request: Request, { params }: Params): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;

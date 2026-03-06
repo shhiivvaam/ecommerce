@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
  * GET /api/admin/users?search=X&limit=50 — list all users (admin)
  */
 export async function GET(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);

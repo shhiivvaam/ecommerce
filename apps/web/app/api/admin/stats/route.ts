@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
  * Forwards to NestJS GET /admin/stats (Admin-only via JWT + RolesGuard on backend).
  */
 export async function GET(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {

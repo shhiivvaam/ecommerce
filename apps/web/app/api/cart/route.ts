@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/cart — fetch authenticated cart
 export async function GET(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
 
     if (!token) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,7 +22,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
 // DELETE /api/cart — clear entire cart
 export async function DELETE(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
 
     if (!token) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

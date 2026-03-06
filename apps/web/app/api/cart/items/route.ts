@@ -3,7 +3,7 @@ import { serverFetch, extractToken, toErrorResponse } from "@/lib/http";
 
 // POST /api/cart/items — add item to cart
 export async function POST(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
 
     if (!token) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

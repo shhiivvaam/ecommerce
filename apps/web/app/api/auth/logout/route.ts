@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { serverFetch, extractToken, toErrorResponse } from "@/lib/http";
 
 export async function POST(request: Request): Promise<NextResponse> {
-    const token = extractToken(request);
+    const token = await extractToken(request);
 
     try {
         if (token) {
