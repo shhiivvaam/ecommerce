@@ -101,37 +101,54 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     }
   }, [id]);
 
-  const { data: productsData, isLoading } = useQuery<{ products?: ExternalProduct[] }>({
+  const { data: rawProduct, isLoading: productLoading } = useQuery<ExternalProduct>({
     queryKey: ["product-detail", id],
     queryFn: async () => {
-      const res = await fetch("/api/products");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      const res = await api.get(`/products/${id}`);
+      return res.data;
     },
   });
 
+  const { data: relatedProductsData } = useQuery<ExternalProduct[]>({
+    queryKey: ["product-related", id],
+    queryFn: async () => {
+      const res = await api.get(`/products/${id}/related`);
+      return res.data;
+    },
+    enabled: !!rawProduct,
+  });
+
   const product: Product | null = useMemo(() => {
-    if (!productsData?.products) return null;
-    const raw = productsData.products.find((p) => p.id === id);
-    if (!raw) return null;
+    if (!rawProduct) return null;
     return {
-      id: raw.id, title: raw.title, description: raw.description,
-      price: raw.price, discounted: raw.discounted ?? undefined,
-      image: raw.gallery?.[0] || FALLBACK,
-      gallery: raw.gallery?.length ? raw.gallery : [FALLBACK],
-      stock: raw.stock ?? 0,
-      category: raw.category ?? undefined,
-      variants: raw.variants ?? [],
+      id: rawProduct.id,
+      title: rawProduct.title,
+      description: rawProduct.description,
+      price: rawProduct.price,
+      discounted: rawProduct.discounted ?? undefined,
+      image: rawProduct.gallery?.[0] || FALLBACK,
+      gallery: rawProduct.gallery?.length ? rawProduct.gallery : [FALLBACK],
+      stock: rawProduct.stock ?? 0,
+      category: rawProduct.category ?? undefined,
+      variants: rawProduct.variants ?? [],
     };
-  }, [productsData, id]);
+  }, [rawProduct]);
 
   const relatedProducts: RelatedProduct[] = useMemo(() => {
-    if (!productsData?.products || !product?.category?.id) return [];
-    return productsData.products
-      .filter((p) => p.id !== product.id && p.category?.id === product.category!.id)
+    if (!relatedProductsData) return [];
+    return relatedProductsData
       .slice(0, 4)
-      .map((p) => ({ id: p.id, title: p.title, description: p.description, price: p.price, discounted: p.discounted ?? undefined, gallery: p.gallery || [] }));
-  }, [productsData, product]);
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        price: p.price,
+        discounted: p.discounted ?? undefined,
+        gallery: p.gallery || []
+      }));
+  }, [relatedProductsData]);
+
+  const isLoading = productLoading;
 
   useEffect(() => {
     fetchReviews();
