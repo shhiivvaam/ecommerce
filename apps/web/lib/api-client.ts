@@ -36,13 +36,18 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
-        if (error.response?.status === 401) {
-            // Token is invalid / expired — clear local auth state
+        // Only auto-logout on 401 from session-critical endpoints.
+        // Firing logout on ALL 401s causes race conditions during Zustand
+        // hydration (token not yet attached) and destroys admin sessions on
+        // unrelated 401 responses (e.g. analytics, unauthenticated endpoints).
+        const url = error.config?.url ?? "";
+        const isSessionEndpoint =
+            url.includes("/users/me") || url.includes("/auth/");
+        if (error.response?.status === 401 && isSessionEndpoint) {
+            // Token is invalid / expired — clear local auth state.
+            // Do NOT hard-redirect here: let the layout guards (admin/layout.tsx,
+            // dashboard/layout.tsx) handle the redirect so we avoid races.
             useAuthStore.getState().logout();
-            // Redirect to login on the client side
-            if (typeof window !== "undefined") {
-                window.location.href = "/login";
-            }
         }
         return Promise.reject(error);
     },
