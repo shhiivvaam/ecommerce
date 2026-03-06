@@ -38,7 +38,7 @@ import { UpdateOrderTrackingDto } from './dto/tracking.dto';
 @ApiBearerAuth()
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @ApiOperation({
@@ -104,7 +104,12 @@ export class OrdersController {
     @Request() req: { user: { id: string; userId?: string; role?: Role } },
     @Param('id') id: string,
   ) {
-    return this.ordersService.findOne(id, req.user.userId || req.user.id, undefined, req.user.role?.name);
+    return this.ordersService.findOne(
+      id,
+      req.user.userId || req.user.id,
+      undefined,
+      req.user.role?.name,
+    );
   }
 
   @Patch(':id/status')
