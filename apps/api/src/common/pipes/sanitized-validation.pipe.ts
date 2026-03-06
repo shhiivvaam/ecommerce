@@ -18,14 +18,16 @@ export class SanitizedValidationPipe extends ValidationPipe {
       transformOptions: {
         enableImplicitConversion: true,
       },
-      exceptionFactory: (errors) =>
-        new BadRequestException({
+      exceptionFactory: (errors) => {
+        console.error('[ValidationPipe] Errors:', JSON.stringify(errors, null, 2));
+        return new BadRequestException({
           message: 'Validation failed',
           errors: errors.map((error) => ({
             field: error.property,
             message: Object.values(error.constraints || {}).join(', '),
           })),
-        }),
+        });
+      },
       ...options,
     });
   }

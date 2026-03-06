@@ -23,7 +23,7 @@ export class ProductsService {
     private settings: SettingsService,
     private audit: AuditService,
     @InjectQueue('products_import') private importQueue: Queue,
-  ) {}
+  ) { }
 
   private async generateSlug(title: string): Promise<string> {
     const base = title
@@ -170,20 +170,20 @@ export class ProductsService {
       price: data.price,
       discounted: data.discounted,
       stock: data.stock ?? 0,
-      gallery: data.gallery ? { set: data.gallery } : { set: [] },
-      tags: data.tags ? { set: data.tags } : { set: [] },
+      gallery: data.gallery ? data.gallery : [],
+      tags: data.tags ? data.tags : [],
       variants: data.variants
         ? {
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
-      category: { connect: { id: 'temp' } }, // Will be overwritten below
+      category: { connect: { id: 'pending' } }, // Temporary placeholder
     };
 
     if (data.categoryId) {
@@ -427,20 +427,20 @@ export class ProductsService {
       tags: data.tags ? { set: data.tags } : undefined,
       variants: data.variants
         ? {
-            deleteMany: {},
-            create: data.variants.map((v) => ({
-              size: v.size,
-              color: v.color,
-              sku: v.sku,
-              stock: v.stock,
-              priceDiff: v.priceDiff,
-            })),
-          }
+          deleteMany: {},
+          create: data.variants.map((v) => ({
+            size: v.size,
+            color: v.color,
+            sku: v.sku,
+            stock: v.stock,
+            priceDiff: v.priceDiff,
+          })),
+        }
         : undefined,
       relatedProducts: data.relatedProductIds
         ? {
-            set: data.relatedProductIds.map((id) => ({ id })),
-          }
+          set: data.relatedProductIds.map((id) => ({ id })),
+        }
         : undefined,
     };
 
