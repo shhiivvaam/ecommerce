@@ -47,7 +47,7 @@ export class RegisterDto {
 
 export class AuthResponseDto {
   @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
-  access_token: string;
+  token: string;
 
   @ApiProperty({
     example: { id: 'clx...', email: 'john@example.com', name: 'John Doe' },
