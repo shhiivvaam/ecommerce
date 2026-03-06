@@ -24,7 +24,7 @@ export class OrdersService {
     private couponsService: CouponsService,
     private shippingService: ShippingService,
     private taxService: TaxService,
-  ) { }
+  ) {}
 
   async create(userId: string | undefined, data: CreateOrderDto) {
     if (!userId && !data.sessionId && !data.guestEmail) {
@@ -328,16 +328,22 @@ export class OrdersService {
     });
   }
 
-  async findOne(id: string, userId: string | undefined, sessionId?: string, role?: RoleType) {
+  async findOne(
+    id: string,
+    userId: string | undefined,
+    sessionId?: string,
+    role?: RoleType,
+  ) {
     if (!userId && !sessionId)
       throw new ForbiddenException('Identification required');
 
     // Admins can view any order
-    const where = role === RoleType.ADMIN
-      ? { id }
-      : userId
-        ? { id, userId }
-        : { id, sessionId: sessionId! };
+    const where =
+      role === RoleType.ADMIN
+        ? { id }
+        : userId
+          ? { id, userId }
+          : { id, sessionId: sessionId! };
 
     const order = await this.prisma.order.findFirst({
       where,
@@ -446,7 +452,12 @@ export class OrdersService {
     return order;
   }
 
-  async getTracking(id: string, userId?: string, sessionId?: string, role?: RoleType) {
+  async getTracking(
+    id: string,
+    userId?: string,
+    sessionId?: string,
+    role?: RoleType,
+  ) {
     const order = await this.prisma.order.findUnique({
       where: { id },
     });

@@ -9,7 +9,7 @@ import { CreateReviewDto } from './dto/review.dto';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getProductReviews(productIdOrSlug: string, page = 1, limit = 20) {
     let product = await this.prisma.product.findUnique({
@@ -58,7 +58,11 @@ export class ReviewsService {
     };
   }
 
-  async createReview(userId: string, productIdOrSlug: string, data: CreateReviewDto) {
+  async createReview(
+    userId: string,
+    productIdOrSlug: string,
+    data: CreateReviewDto,
+  ) {
     let product = await this.prisma.product.findUnique({
       where: { id: productIdOrSlug },
     });
