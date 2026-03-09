@@ -38,7 +38,7 @@ class UpdateRefundStatusDto {
   status: 'APPROVED' | 'REJECTED' | 'COMPLETED';
 }
 
-type AuthRequest = { user: { id: string } };
+type AuthRequest = { user: { id: string; role?: string } };
 
 @ApiTags('Refunds')
 @ApiBearerAuth()
@@ -55,7 +55,15 @@ export class RefundsController {
     @Param('orderId') orderId: string,
     @Body() dto: RequestRefundDto,
   ) {
-    return this.refundsService.requestRefund(req.user.id, orderId, dto.reason);
+    const userId = req.user.id;
+    const isAdmin = req.user.role === RoleType.ADMIN;
+
+    return this.refundsService.requestRefund(
+      userId,
+      orderId,
+      dto.reason,
+      isAdmin,
+    );
   }
 
   @Get(':orderId/refund')
