@@ -39,6 +39,14 @@ export class CouponsController {
     return this.couponsService.findAll();
   }
 
+  @Get('active')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all active coupons for users' })
+  findAllActive() {
+    return this.couponsService.findAllActive();
+  }
+
   @Post('apply')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
