@@ -21,7 +21,7 @@ import {
   ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import {
   CreateCheckoutSessionDto,
   CheckoutSessionResponseDto,
@@ -32,7 +32,7 @@ import {
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard)
   @Post('checkout')
   @ApiBearerAuth()
   @ApiOperation({
