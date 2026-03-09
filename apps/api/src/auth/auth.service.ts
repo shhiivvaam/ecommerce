@@ -23,8 +23,9 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, pass: string): Promise<SafeUser | null> {
+    const normalizedEmail = email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: { role: true },
     });
 
@@ -49,10 +50,11 @@ export class AuthService {
   }
 
   async register(data: RegisterDto) {
+    const normalizedEmail = data.email.toLowerCase().trim();
     // Redundant manual check: Our PrismaClientExceptionFilter handles P2002 automatically,
     // but checking here yields a faster friendlier message.
     const existing = await this.prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email: normalizedEmail },
     });
     if (existing) throw new BadRequestException('Email already in use');
 
@@ -68,7 +70,7 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        email: data.email,
+        email: normalizedEmail,
         password: hashedPassword,
         name: data.name,
         roleId: role.id,
@@ -81,8 +83,9 @@ export class AuthService {
   }
 
   async forgotPassword(data: ForgotPasswordDto) {
+    const normalizedEmail = data.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
