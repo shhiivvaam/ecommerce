@@ -13,8 +13,28 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'REYVA',
+  title: {
+    default: 'REYVA | Premium E-Commerce',
+    template: '%s | REYVA'
+  },
   description: 'A fully functional, production-ready, scalable e-commerce platform.',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://reyva.co.in',
+    siteName: 'REYVA',
+    images: [{
+      url: '/og-image.jpg',
+      width: 1200,
+      height: 630,
+      alt: 'REYVA - Premium E-Commerce'
+    }]
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'REYVA | Premium E-Commerce',
+    description: 'A fully functional, production-ready, scalable e-commerce platform.',
+  }
 };
 
 export default function RootLayout({
