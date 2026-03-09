@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { DollarSign, ShoppingBag, Package, Clock, ArrowUpRight, TrendingUp, BarChart } from "lucide-react";
 import Link from "next/link";
 import { useAdminStats } from "@/lib/hooks/useAdminStats";
-import { useAnalytics } from "@/lib/hooks/useAnalytics";
+import { useAnalyticsDashboard } from "@/lib/hooks/useAnalytics";
 
 const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   PENDING: { color: "#d97706", bg: "#fffbeb" },
@@ -16,7 +16,7 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
 
 export default function AdminOverview() {
   const { data, isLoading: loading } = useAdminStats();
-  const { data: analyticsData, isLoading: analyticsLoading } = useAnalytics();
+  const { data: analyticsData, isLoading: analyticsLoading } = useAnalyticsDashboard();
 
   const stats = {
     totalRevenue: data?.totalRevenue ?? 0,
@@ -31,7 +31,7 @@ export default function AdminOverview() {
     { label: "Total Revenue", value: `$${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: DollarSign, note: "All time" },
     { label: "Total Orders", value: stats.totalOrders, icon: ShoppingBag, note: `${stats.pendingOrders} pending` },
     { label: "Products Listed", value: stats.totalProducts, icon: Package, note: "In catalog" },
-    { label: "Average Order (AOV)", value: analyticsData ? `$${analyticsData.overview.averageOrderValue.toFixed(2)}` : "--", icon: BarChart, note: "Trailing 30 days" },
+    { label: "Average Order (AOV)", value: analyticsData ? `$${(analyticsData.averageOrderValue || 0).toFixed(2)}` : "--", icon: BarChart, note: "Trailing 30 days" },
   ];
 
   return (
@@ -153,7 +153,7 @@ export default function AdminOverview() {
                       <td className="ov-td" style={{ fontFamily: "monospace", fontSize: 12 }}>#{order.id.slice(-8).toUpperCase()}</td>
                       <td className="ov-td">{order.user.name || order.user.email}</td>
                       <td className="ov-td" style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700 }}>
-                        ${order.totalAmount.toFixed(2)}
+                        ${(order.totalAmount || 0).toFixed(2)}
                       </td>
                       <td className="ov-td">
                         <span className="ov-badge" style={{ background: style.bg, color: style.color }}>
@@ -185,7 +185,7 @@ export default function AdminOverview() {
           </h2>
           {analyticsLoading ? (
             <div className="ov-skel" style={{ height: 200 }} />
-          ) : analyticsData && analyticsData.topSellingProducts.length > 0 ? (
+          ) : analyticsData && analyticsData.topProducts && analyticsData.topProducts.length > 0 ? (
             <table className="ov-table">
               <thead>
                 <tr>
@@ -194,11 +194,11 @@ export default function AdminOverview() {
                 </tr>
               </thead>
               <tbody>
-                {analyticsData.topSellingProducts.map((p, i) => (
-                  <motion.tr key={p.productId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}>
+                {(analyticsData.topProducts || []).map((p, i) => (
+                  <motion.tr key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}>
                     <td className="ov-td" style={{ fontWeight: 500 }}>{p.title}</td>
                     <td className="ov-td" style={{ textAlign: "right", fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700 }}>
-                      {p.totalSold}
+                      {p._count.orderItems}
                     </td>
                   </motion.tr>
                 ))}

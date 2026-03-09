@@ -93,6 +93,18 @@ function OrdersPageContent() {
         }
     };
 
+    const handleRefund = async (orderId: string) => {
+        const reason = prompt('REGISTRY PROTOCOL: Specify refund justification:');
+        if (reason === null) return;
+        try {
+            await api.post(`/orders/${orderId}/refund`, { reason });
+            toast.success('Refund request transmitted to high-level nodes.');
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message || 'Transmission failure. Order state incompatible.');
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="space-y-12 animate-pulse bg-white dark:bg-transparent">
@@ -181,6 +193,14 @@ function OrdersPageContent() {
                                         className="text-[10px] font-black uppercase tracking-widest text-rose-300 hover:text-rose-500 transition-colors italic px-2"
                                     >
                                         Terminate Protocol
+                                    </button>
+                                )}
+                                {['SHIPPED', 'DELIVERED'].includes(order.status) && (
+                                    <button
+                                        onClick={() => handleRefund(order.id)}
+                                        className="text-[10px] font-black uppercase tracking-widest text-amber-300 hover:text-amber-500 transition-colors italic px-2"
+                                    >
+                                        Initiate Refund
                                     </button>
                                 )}
                             </div>

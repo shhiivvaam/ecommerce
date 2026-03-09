@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/store/useCartStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@repo/ui";
 import { Input } from "@repo/ui";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,6 +60,7 @@ export default function CheckoutPage() {
     const [address, setAddress] = useState({
         firstName: "",
         lastName: "",
+        email: "",
         street: "",
         city: "",
         zipCode: "",
@@ -106,7 +108,15 @@ export default function CheckoutPage() {
         setCouponCode("");
     };
 
+    const { isAuthenticated, _hasHydrated } = useAuthStore();
+
     useEffect(() => {
+        if (!_hasHydrated) return; // Wait for Zustand hydration
+        if (!isAuthenticated) {
+            setIsAddingNew(true);
+            return;
+        }
+
         const fetchAddresses = async () => {
             try {
                 const { data } = await api.get('/addresses');
@@ -123,7 +133,7 @@ export default function CheckoutPage() {
             }
         };
         fetchAddresses();
-    }, []);
+    }, [isAuthenticated, _hasHydrated]);
 
     // Handle payment cancellation
     useEffect(() => {
@@ -162,6 +172,8 @@ export default function CheckoutPage() {
         try {
             const orderPayload: Record<string, unknown> = {
                 items: items.map(i => ({ productId: i.productId, variantId: i.variantId || undefined, quantity: i.quantity })),
+                expectedTotal: finalTotal,
+                ...(!isAuthenticated && address.email ? { guestEmail: address.email, sessionId: Math.random().toString(36).substring(2, 15) } : {}),
                 ...(appliedCoupon?.couponId && { couponId: appliedCoupon.couponId }),
                 ...(appliedCoupon?.affiliateCode && { affiliateCode: appliedCoupon.affiliateCode })
             };
@@ -204,9 +216,17 @@ export default function CheckoutPage() {
                 setCurrentStep(4);
             }
 
-        } catch (error) {
-            console.error("Acquisition failure", error);
-            toast.error("Protocol rejection. Verify data integrity and re-initialize.");
+        } catch (err: unknown) {
+            console.error("Acquisition failure", err);
+            const error = err as { response?: { status?: number, data?: { statusCode?: number, message?: string | string[] } } };
+            if (error.response?.status === 409 || error.response?.data?.statusCode === 409) {
+                toast.error("Prices or stock have changed since you loaded the cart. Please review your cart.", { duration: 8000 });
+            } else if (error.response?.data?.message) {
+                const msgs = Array.isArray(error.response.data.message) ? error.response.data.message.join(', ') : error.response.data.message;
+                toast.error(msgs);
+            } else {
+                toast.error("Protocol rejection. Verify data integrity and re-initialize.");
+            }
             setIsProcessing(false);
         }
     };
@@ -217,7 +237,7 @@ export default function CheckoutPage() {
 
     const canProceedFromAddress = () => {
         if (!isAddingNew && selectedAddressId) return true;
-        if (isAddingNew && address.street && address.city && address.zipCode) return true;
+        if (isAddingNew && address.street && address.city && address.zipCode && (isAuthenticated || address.email)) return true;
         return false;
     };
 
@@ -329,6 +349,12 @@ export default function CheckoutPage() {
                                                     <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">Acquirer Last Name</label>
                                                     <Input value={address.lastName} onChange={e => updateAddress('lastName', e.target.value)} placeholder="e.g. AURELIUS" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-bold focus-visible:ring-primary/20 text-black dark:text-white uppercase tracking-widest text-xs" />
                                                 </div>
+                                                {!isAuthenticated && (
+                                                    <div className="space-y-4 sm:col-span-2">
+                                                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">Digital Comms (Email)</label>
+                                                        <Input type="email" value={address.email} onChange={e => updateAddress('email', e.target.value)} placeholder="guest@example.com" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-bold focus-visible:ring-primary/20 text-black dark:text-white uppercase tracking-widest text-xs" />
+                                                    </div>
+                                                )}
                                                 <div className="space-y-4 sm:col-span-2">
                                                     <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">Primary Conduit (Street)</label>
                                                     <Input value={address.street} onChange={e => updateAddress('street', e.target.value)} placeholder="e.g. 742 EVERGREEN TERRACE" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-bold focus-visible:ring-primary/20 text-black dark:text-white uppercase tracking-widest text-xs" />

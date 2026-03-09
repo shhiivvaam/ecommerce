@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import Image from "next/image";
-import { ShoppingBag, Star, ShieldCheck, Truck, ArrowLeft, Send, Heart, ChevronRight, Zap, Plus, Minus } from "lucide-react";
+import { ShoppingBag, Star, ShieldCheck, Truck, ArrowLeft, Send, Heart, ChevronRight, Zap, Plus, Minus, Trash2, Edit2 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
@@ -75,6 +75,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState("");
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [wishlisted, setWishlisted] = useState(false);
@@ -195,6 +198,29 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         : undefined;
       toast.error(msg || "Unable to submit review");
     } finally { setIsSubmittingReview(false); }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!window.confirm("Are you sure you want to delete your review?")) return;
+    try {
+      await api.delete(`/reviews/${reviewId}`);
+      toast.success("Review deleted");
+      await fetchReviews();
+    } catch {
+      toast.error("Failed to delete review");
+    }
+  };
+
+  const handleUpdateReview = async (reviewId: string) => {
+    if (!editRating) { toast.error("Rating is required"); return; }
+    try {
+      await api.patch(`/reviews/${reviewId}`, { rating: editRating, comment: editComment });
+      toast.success("Review updated");
+      setEditingReviewId(null);
+      await fetchReviews();
+    } catch {
+      toast.error("Failed to update review");
+    }
   };
 
   const basePrice = product?.discounted ?? product?.price ?? 0;
@@ -582,9 +608,32 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                         <div style={{ display: "flex", gap: 2 }}>
                           {[1, 2, 3, 4, 5].map((i) => <Star key={i} size={14} fill={i <= review.rating ? "currentColor" : "none"} className={i <= review.rating ? "pd-star" : "pd-star empty"} />)}
                         </div>
-                        <span style={{ fontSize: 11, color: "var(--mid)", fontWeight: 300 }}>{new Date(review.createdAt).toLocaleDateString()}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <span style={{ fontSize: 11, color: "var(--mid)", fontWeight: 300 }}>{new Date(review.createdAt).toLocaleDateString()}</span>
+                          {review.user.id === user?.id && editingReviewId !== review.id && (
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button onClick={() => { setEditingReviewId(review.id); setEditRating(review.rating); setEditComment(review.comment || ""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--mid)" }} title="Edit"><Edit2 size={13} /></button>
+                              <button onClick={() => handleDeleteReview(review.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#e11d48" }} title="Delete"><Trash2 size={13} /></button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p style={{ fontSize: 14, fontWeight: 300, lineHeight: 1.7, color: "rgba(10,10,10,.7)" }}>{review.comment}</p>
+                      {editingReviewId === review.id ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            {[1, 2, 3, 4, 5].map(star => (
+                              <button key={star} onClick={() => setEditRating(star)} type="button" style={{ background: "none", border: "none", cursor: "pointer", color: star <= editRating ? "var(--ink)" : "rgba(10,10,10,.2)" }}><Star size={16} fill={star <= editRating ? "currentColor" : "none"} /></button>
+                            ))}
+                          </div>
+                          <textarea className="pd-textarea" style={{ minHeight: 80 }} value={editComment} onChange={e => setEditComment(e.target.value)} />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => handleUpdateReview(review.id)} className="pd-submit-btn" style={{ width: "auto", padding: "0 16px", height: 36 }}>Save</button>
+                            <button onClick={() => setEditingReviewId(null)} className="pd-submit-btn" style={{ width: "auto", padding: "0 16px", height: 36, background: "transparent", border: "1.5px solid var(--border)", color: "var(--ink)" }}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: 14, fontWeight: 300, lineHeight: 1.7, color: "rgba(10,10,10,.7)" }}>{review.comment}</p>
+                      )}
                     </div>
                   </motion.div>
                 ))}

@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdminOrders, useUpdateOrderStatus } from "@/lib/hooks/useAdminOrders";
+import { api } from "@/lib/api";
+import toast from "react-hot-toast";
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const INK = "#0a0a0a";
@@ -75,6 +77,18 @@ export default function AdminOrdersPage() {
                 }
             },
         });
+    };
+
+    const handleAdminRefund = async (orderId: string) => {
+        const reason = prompt("Enter justification for this internal refund protocol:");
+        if (reason === null) return;
+        try {
+            await api.post(`/orders/${orderId}/refund`, { reason });
+            toast.success("Refund process initialized.");
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message || "Protocol rejection: Internal system error.");
+        }
     };
 
     return (
@@ -336,13 +350,25 @@ export default function AdminOrdersPage() {
                                 </div>
 
                                 {/* Total */}
-                                <div style={{ backgroundColor: INK, borderRadius: 8, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".16em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>
-                                        <DollarSign size={12} style={{ display: "inline", marginRight: 4, verticalAlign: "text-top" }} /> Order Total
-                                    </span>
-                                    <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: 28, color: ACCENT }}>
-                                        ${selectedOrder.totalAmount.toFixed(2)}
-                                    </span>
+                                <div className="space-y-4">
+                                    <div style={{ backgroundColor: INK, borderRadius: 8, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".16em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>
+                                            <DollarSign size={12} style={{ display: "inline", marginRight: 4, verticalAlign: "text-top" }} /> Order Total
+                                        </span>
+                                        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: 28, color: ACCENT }}>
+                                            ${selectedOrder.totalAmount.toFixed(2)}
+                                        </span>
+                                    </div>
+
+                                    {['SHIPPED', 'DELIVERED'].includes(selectedOrder.status) && (
+                                        <button
+                                            onClick={() => handleAdminRefund(selectedOrder.id)}
+                                            style={{ width: "100%", padding: "14px", borderRadius: "8px", border: `1px solid ${BORDER}`, backgroundColor: "transparent", color: "#ef4444", fontSize: "10px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.2em", cursor: "pointer", transition: "all 0.2s" }}
+                                            className="hover:bg-rose-50 hover:border-rose-200"
+                                        >
+                                            Initiate Refund Protocol
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </motion.aside>
