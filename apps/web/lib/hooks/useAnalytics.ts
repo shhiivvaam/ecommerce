@@ -1,30 +1,33 @@
-"use client";
-
-import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import { queryKeys } from "./queryKeys";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useQuery } from "@tanstack/react-query";
 
-interface AnalyticsData {
-    overview: {
-        totalRevenue: number;
-        totalOrders: number;
-        averageOrderValue: number;
-    };
-    salesByDay: Array<{ date: string; amount: number }>;
-    topSellingProducts: Array<{ productId: string; title: string; totalSold: number }>;
+export interface AnalyticsDashboard {
+    totalRevenue: number;
+    recentRevenue: number;
+    totalOrders: number;
+    recentOrders: number;
+    activeUsers: number;
+    averageOrderValue: number;
+    topProducts: Array<{
+        title: string;
+        price: number;
+        _count: {
+            orderItems: number;
+        };
+    }>;
+    recentActivities: Array<{
+        action: string;
+        entityType: string;
+        createdAt: string;
+    }>;
 }
 
-export function useAnalytics() {
-    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-
-    return useQuery<AnalyticsData>({
-        queryKey: [...queryKeys.admin.stats, "analytics"],
+export function useAnalyticsDashboard() {
+    return useQuery<AnalyticsDashboard>({
+        queryKey: ["admin", "analytics"],
         queryFn: async () => {
-            const { data } = await apiClient.get<AnalyticsData>("/admin/analytics/dashboard");
+            const { data } = await apiClient.get('/admin/analytics/dashboard');
             return data;
-        },
-        enabled: isAuthenticated,
-        staleTime: 60 * 1000,
+        }
     });
 }

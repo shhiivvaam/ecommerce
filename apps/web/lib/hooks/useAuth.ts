@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getErrorMessage } from "@/lib/api-client";
 import { queryKeys } from "./queryKeys";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useCartStore } from "@/store/useCartStore";
 import type { AuthResponse, LoginCredentials, RegisterCredentials, User } from "@repo/types";
 import toast from "react-hot-toast";
 
@@ -37,8 +38,28 @@ export function useLogin() {
             const { data } = await apiClient.post<AuthResponse>("/auth/login", credentials);
             return data;
         },
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
             login(data.user, data.token);
+
+            // Sync guest cart to server
+            const guestCart = useCartStore.getState();
+            if (guestCart.items.length > 0) {
+                try {
+                    await Promise.all(
+                        guestCart.items.map(item =>
+                            apiClient.post("/cart/items", {
+                                productId: item.productId,
+                                variantId: item.variantId,
+                                quantity: item.quantity
+                            })
+                        )
+                    );
+                    guestCart.clearCart();
+                } catch (error) {
+                    console.error("Failed to sync guest cart", error);
+                }
+            }
+
             // Invalidate cart so it refetches from server after login
             queryClient.invalidateQueries({ queryKey: queryKeys.cart.root });
         },
@@ -53,14 +74,36 @@ export function useLogin() {
  */
 export function useRegister() {
     const { login } = useAuthStore();
+    const queryClient = useQueryClient();
 
     return useMutation<AuthResponse, Error, RegisterCredentials>({
         mutationFn: async (credentials) => {
             const { data } = await apiClient.post<AuthResponse>("/auth/register", credentials);
             return data;
         },
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
             login(data.user, data.token);
+
+            // Sync guest cart to server
+            const guestCart = useCartStore.getState();
+            if (guestCart.items.length > 0) {
+                try {
+                    await Promise.all(
+                        guestCart.items.map(item =>
+                            apiClient.post("/cart/items", {
+                                productId: item.productId,
+                                variantId: item.variantId,
+                                quantity: item.quantity
+                            })
+                        )
+                    );
+                    guestCart.clearCart();
+                } catch (error) {
+                    console.error("Failed to sync guest cart", error);
+                }
+            }
+
+            queryClient.invalidateQueries({ queryKey: queryKeys.cart.root });
         },
         onError: (error) => {
             toast.error(getErrorMessage(error));
