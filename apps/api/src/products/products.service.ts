@@ -48,11 +48,22 @@ export class ProductsService {
   }
 
   async queueCsvImport(userId: string, csvString: string) {
-    await this.importQueue.add('import-csv', {
+    const job = await this.importQueue.add('import-csv', {
       csvString,
       userId,
     });
-    return { message: 'Import queued successfully' };
+    return { message: 'Import queued successfully', jobId: job.id };
+  }
+
+  async getImportJobStatus(jobId: string) {
+    const job = await this.importQueue.getJob(jobId);
+    if (!job) throw new NotFoundException('Job not found');
+
+    const state = await job.getState();
+    const result = job.returnvalue as unknown;
+    const error = job.failedReason;
+
+    return { id: job.id, state, result, error };
   }
 
   async processCsvImport(csvString: string, userId: string) {
