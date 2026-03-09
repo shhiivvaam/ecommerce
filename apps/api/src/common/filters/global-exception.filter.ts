@@ -73,7 +73,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       path: request.url,
       method: request.method,
       message: isDevelopment ? message : 'Something went wrong',
-      requestId: request.context?.requestId,
+      requestId: request.context?.requestId || (request as { id?: string }).id,
       ...(isDevelopment && { error: errorDetails }),
     };
 
