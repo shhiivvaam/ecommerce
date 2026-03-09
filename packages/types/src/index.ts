@@ -270,3 +270,148 @@ export interface WishlistItem {
 export interface WishlistCheckResponse {
     inWishlist: boolean;
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Order Management
+// ─────────────────────────────────────────────────────────────────
+export interface OrderTracking {
+    trackingNumber: string;
+    carrier: string;
+    status: string;
+    estimatedDelivery?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface OrderCancellation {
+    reason?: string;
+    refundAmount?: number;
+    cancelledAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Password Reset
+// ─────────────────────────────────────────────────────────────────
+export interface PasswordResetRequest {
+    email: string;
+}
+
+export interface PasswordReset {
+    token: string;
+    newPassword: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Coupon Management
+// ─────────────────────────────────────────────────────────────────
+export interface CouponApplication {
+    code: string;
+    orderId?: string;
+    subtotal?: number;
+}
+
+export interface CouponResponse {
+    id: string;
+    code: string;
+    discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING';
+    discountValue: number;
+    minimumAmount?: number;
+    isValid: boolean;
+    message?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Gift Cards
+// ─────────────────────────────────────────────────────────────────
+export interface GiftCardBalance {
+    code: string;
+    balance: number;
+    currency: string;
+    status: 'active' | 'expired' | 'used';
+    expiresAt?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// File Upload
+// ─────────────────────────────────────────────────────────────────
+export interface FileUpload {
+    file: string; // base64 encoded
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    folder?: string;
+    isPublic?: boolean;
+    fileType?: string;
+}
+
+export interface FileUploadResponse {
+    message: string;
+    filename: string;
+    originalName: string;
+    size: number;
+    mimeType: string;
+    folder: string;
+    url: string;
+    publicUrl?: string;
+    fileId: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Product Import/Export
+// ─────────────────────────────────────────────────────────────────
+export interface ProductImportResponse {
+    message: string;
+    imported: number;
+    failed: number;
+    errors: string[];
+    totalProcessed: number;
+}
+
+export interface ProductExportResponse {
+    message: string;
+    filename: string;
+    downloadUrl?: string;
+    recordCount: number;
+    format: 'csv' | 'xlsx';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Health Checks
+// ─────────────────────────────────────────────────────────────────
+export interface HealthStatus {
+    status: 'healthy' | 'unhealthy' | 'alive' | 'dead' | 'ready' | 'not-ready';
+    timestamp: string;
+    service: string;
+    uptime: number;
+    error?: string;
+    memory?: NodeJS.MemoryUsage;
+    checks?: {
+        backend: boolean;
+        database: boolean;
+        redis: boolean;
+    };
+}
+
+export interface Metrics {
+    service: string;
+    timestamp: string;
+    uptime: number;
+    memory: NodeJS.MemoryUsage;
+    cpu: NodeJS.CpuUsage;
+    version: string;
+    nodeVersion: string;
+    platform: string;
+    arch: string;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Payment Webhook
+// ─────────────────────────────────────────────────────────────────
+export interface PaymentWebhook {
+    rawBody: string;
+    signature: string;
+    headers: Record<string, string>;
+    type?: string;
+    id?: string;
+}
