@@ -94,6 +94,13 @@ export class CreateOrderDto {
   @IsString()
   @IsOptional()
   sessionId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Expected total amount to prevent price bait-and-switch',
+  })
+  @IsNumber()
+  @IsOptional()
+  expectedTotal?: number;
 }
 
 export class UpdateOrderStatusDto {

@@ -8,7 +8,9 @@ import {
   Query,
   Request,
   UseGuards,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -251,6 +253,36 @@ export class OrdersController {
       req.user?.userId || req.user?.id,
       sessionId,
       req.user?.role?.name,
+    );
+  }
+
+  @Get('serve-digital')
+  @ApiOperation({
+    summary: 'Serve secure digital download',
+    description:
+      'Verify HMAC signature and expiration, then redirect to the digital asset URL.',
+  })
+  @ApiQuery({ name: 'orderId', description: 'Order ID' })
+  @ApiQuery({ name: 'productId', description: 'Product ID' })
+  @ApiQuery({ name: 'userId', description: 'User ID' })
+  @ApiQuery({ name: 'expires', description: 'Expiration timestamp' })
+  @ApiQuery({ name: 'signature', description: 'HMAC Signature' })
+  // No guards natively, as this relies on the cryptographic signature
+  serveDigitalAsset(
+    @Query('orderId') orderId: string,
+    @Query('productId') productId: string,
+    @Query('userId') userId: string,
+    @Query('expires') expires: string,
+    @Query('signature') signature: string,
+    @Res() res: Response,
+  ) {
+    return this.ordersService.serveDigitalAsset(
+      orderId,
+      productId,
+      userId,
+      expires,
+      signature,
+      res,
     );
   }
 }
