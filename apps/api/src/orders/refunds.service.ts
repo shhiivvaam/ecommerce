@@ -9,9 +9,19 @@ import { PrismaService } from '../prisma/prisma.service';
 export class RefundsService {
   constructor(private prisma: PrismaService) {}
 
-  async requestRefund(userId: string, orderId: string, reason?: string) {
+  async requestRefund(
+    userId: string,
+    orderId: string,
+    reason?: string,
+    isAdmin = false,
+  ) {
+    const where: { id: string; userId?: string } = { id: orderId };
+    if (!isAdmin) {
+      where.userId = userId;
+    }
+
     const order = await this.prisma.order.findFirst({
-      where: { id: orderId, userId },
+      where,
       include: { refund: true },
     });
 
