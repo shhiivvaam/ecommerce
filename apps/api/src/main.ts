@@ -11,7 +11,7 @@ import { PrismaClientExceptionFilter } from './common/filters/prisma-client-exce
 import { SanitizedValidationPipe } from './common/pipes/sanitized-validation.pipe';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const logger = new Logger('Bootstrap');
 
   // 1. Security & Middleware
