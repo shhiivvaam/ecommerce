@@ -4,13 +4,16 @@ import {
   BadRequestException,
   ForbiddenException,
   Logger,
+  ConflictException,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { TaxService } from '../tax/tax.service';
-import { OrderStatus, RoleType } from '@prisma/client';
+import { OrderStatus, RoleType, Prisma } from '@prisma/client';
+import { Response } from 'express';
 import { CreateOrderDto } from './dto/order.dto';
 import { UpdateOrderTrackingDto } from './dto/tracking.dto';
 
@@ -163,11 +166,24 @@ export class OrdersService {
         );
         couponId = coupon.id;
 
-        // Increment usage count
-        await tx.coupon.update({
-          where: { id: coupon.id },
-          data: { usedCount: { increment: 1 } },
-        });
+        // Increment usage count securely to avoid race conditions
+        if (coupon.usageLimit !== null) {
+          const { count: updatedCouponCount } = await tx.coupon.updateMany({
+            where: { id: coupon.id, usedCount: { lt: coupon.usageLimit } },
+            data: { usedCount: { increment: 1 } },
+          });
+
+          if (updatedCouponCount === 0) {
+            throw new BadRequestException(
+              `Coupon code "${data.couponCode}" has reached its usage limit`,
+            );
+          }
+        } else {
+          await tx.coupon.update({
+            where: { id: coupon.id },
+            data: { usedCount: { increment: 1 } },
+          });
+        }
       }
 
       // Resolve address by cloning to prevent silent mutation of past orders
@@ -276,6 +292,15 @@ export class OrdersService {
         }
       }
 
+      if (data.expectedTotal !== undefined) {
+        const expectedTotal = data.expectedTotal;
+        if (Math.abs(grandTotal - expectedTotal) > 0.01) {
+          throw new ConflictException(
+            `Cart prices have changed. Expected $${expectedTotal.toFixed(2)}, but actual total is $${grandTotal.toFixed(2)}. Please review your cart.`,
+          );
+        }
+      }
+
       const order = await tx.order.create({
         data: {
           userId: userId || undefined,
@@ -338,7 +363,7 @@ export class OrdersService {
       throw new ForbiddenException('Identification required');
 
     // Admins can view any order
-    const where =
+    const where: Prisma.OrderWhereInput =
       role === RoleType.ADMIN
         ? { id }
         : userId
@@ -390,8 +415,12 @@ export class OrdersService {
     if (!userId && !sessionId)
       throw new ForbiddenException('Identification required');
 
+    const where: Prisma.OrderWhereInput = userId
+      ? { id, userId }
+      : { id, sessionId: sessionId! };
+
     const order = await this.prisma.order.findFirst({
-      where: userId ? { id, userId } : { id, sessionId: sessionId! },
+      where,
       include: { items: true },
     });
 
@@ -550,9 +579,60 @@ export class OrdersService {
       throw new NotFoundException('Digital asset file not available');
     }
 
-    // In a real application, this might generate an S3 pre-signed URL.
+    const expires = Date.now() + 60 * 60 * 1000; // 1 hour
+    const payload = `${orderId}:${productId}:${order.userId}:${expires}`;
+    const secret = process.env.JWT_SECRET || 'fallback_secret_ecommerce';
+    const signature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+
+    const downloadUrl = `/api/orders/serve-digital?orderId=${orderId}&productId=${productId}&userId=${order.userId}&expires=${expires}&signature=${signature}`;
+
     return {
-      downloadUrl: orderItem.product.fileUrl,
+      downloadUrl,
     };
+  }
+
+  async serveDigitalAsset(
+    orderId: string,
+    productId: string,
+    userId: string,
+    expires: string,
+    signature: string,
+    res: Response,
+  ) {
+    if (Date.now() > parseInt(expires, 10)) {
+      throw new ForbiddenException('Download link expired');
+    }
+
+    const payload = `${orderId}:${productId}:${userId}:${expires}`;
+    const secret = process.env.JWT_SECRET || 'fallback_secret_ecommerce';
+    const expectedHmac = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+
+    if (signature !== expectedHmac) {
+      throw new ForbiddenException('Invalid signature');
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { product: true } } },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    const orderItem = order.items.find((i) => i.productId === productId);
+    if (
+      !orderItem ||
+      !orderItem.product.isDigital ||
+      !orderItem.product.fileUrl
+    ) {
+      throw new NotFoundException('Digital asset not found');
+    }
+
+    // Redirect to the actual file URL (which could be an internal or external S3 link)
+    return res.redirect(orderItem.product.fileUrl);
   }
 }
