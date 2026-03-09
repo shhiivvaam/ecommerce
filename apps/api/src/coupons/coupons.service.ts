@@ -31,6 +31,15 @@ export class CouponsService {
     });
   }
 
+  async findAllActive() {
+    return this.prisma.coupon.findMany({
+      where: {
+        expiryDate: { gt: new Date() },
+      },
+      orderBy: { expiryDate: 'asc' },
+    });
+  }
+
   async findOne(id: string) {
     const coupon = await this.prisma.coupon.findUnique({ where: { id } });
     if (!coupon) throw new NotFoundException('Coupon not found');
