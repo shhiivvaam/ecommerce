@@ -58,6 +58,7 @@ describe('AuthController', () => {
           email: 'test@example.com',
           name: 'Test User',
           role: 'CUSTOMER' as any,
+          avatar: null,
         },
       });
 
@@ -73,6 +74,7 @@ describe('AuthController', () => {
           email: 'test@example.com',
           name: 'Test User',
           role: 'CUSTOMER' as any,
+          avatar: null,
         },
       });
       expect(controller['authService'].validateUser).toHaveBeenCalledWith(
