@@ -13,6 +13,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://reyva.co.in'),
   title: {
     default: 'REYVA | Premium E-Commerce',
     template: '%s | REYVA'
