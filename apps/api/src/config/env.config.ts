@@ -27,9 +27,7 @@ export const envValidationSchema = z.object({
       message: 'RAZORPAY_LIVE_KEY_ID must start with rzp_',
     })
     .optional(),
-  RAZORPAY_LIVE_SECRET: z
-    .string()
-    .optional(),
+  RAZORPAY_LIVE_SECRET: z.string().optional(),
 
   // Storage (AWS S3) - optional for dev
   AWS_S3_BUCKET: z.string().optional(),
