@@ -45,15 +45,15 @@ const nextConfig = {
                     },
                     {
                         key: 'Content-Security-Policy',
-                        // Allows: same-origin scripts, Google Fonts, Stripe, Vercel
+                        // Allows: same-origin scripts, Google Fonts, Stripe, Vercel, Razorpay
                         value: [
                             "default-src 'self'",
-                            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+                            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.razorpay.com",
                             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                             "font-src 'self' https://fonts.gstatic.com",
                             "img-src 'self' data: blob: https:",
-                            "connect-src 'self' https://api.stripe.com http://localhost:* https://127.0.0.1:* https://api.reyva.co.in",
-                            "frame-src https://js.stripe.com https://hooks.stripe.com",
+                            "connect-src 'self' https://api.stripe.com http://localhost:* https://127.0.0.1:* https://api.reyva.co.in https://lumberjack.razorpay.com",
+                            "frame-src https://js.stripe.com https://hooks.stripe.com https://api.razorpay.com",
                         ].join('; '),
                     },
                 ],
