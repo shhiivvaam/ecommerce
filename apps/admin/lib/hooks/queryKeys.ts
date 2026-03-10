@@ -18,22 +18,6 @@ export const queryKeys = {
     banners: {
         root: ["banners"] as const,
     },
-    cart: {
-        root: ["cart"] as const,
-    },
-    orders: {
-        all: ["orders"] as const,
-        detail: (id: string) => ["orders", id] as const,
-    },
-    wishlist: {
-        all: ["wishlist"] as const,
-    },
-    address: {
-        all: ["address"] as const,
-    },
-    affiliate: {
-        dashboard: ["affiliate", "dashboard"] as const,
-    },
     admin: {
         // sub-resource caches — namespaced so they don't collide with public caches
         categories: ["admin", "categories"] as const,
