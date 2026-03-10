@@ -22,7 +22,7 @@
     "push:ecr": "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY && docker push $ECR_REGISTRY/ecommerce-api:latest",
     "deploy:full": "npm run build:docker && npm run push:ecr && npm run deploy:aws",
     "start:api": "node apps/api/dist/main.js",
-    "start:web": "cd apps/web && npm start",
+    "start:customer": "cd apps/customer && npm start",
     "start:admin": "cd apps/admin && npm start",
     "migrate:prod": "cd apps/api && npx prisma migrate deploy",
     "seed:prod": "cd apps/api && npx prisma db seed"

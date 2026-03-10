@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, CreditCard, MapPin, Package, Lock, Plus, Tag, X, ChevronRight, ShieldCheck, Zap, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import Script from "next/script";
 
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
@@ -198,20 +199,57 @@ export default function CheckoutPage() {
 
             const checkoutPayload = {
                 orderId,
-                items: items.map(i => ({
-                    title: i.title,
-                    price: i.price,
-                    quantity: i.quantity
-                })),
-                successUrl: `${window.location.origin}/dashboard/orders?success=true`,
-                cancelUrl: `${window.location.origin}/checkout?canceled=true`,
                 ...(appliedCoupon && { discountAmount: appliedCoupon.discountAmount }),
             };
 
             const paymentRes = await api.post('/payments/checkout', checkoutPayload);
 
-            if (paymentRes.data.url) {
-                window.location.href = paymentRes.data.url;
+            if (paymentRes.data.id) {
+                const options = {
+                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+                    amount: paymentRes.data.amount,
+                    currency: paymentRes.data.currency,
+                    name: "E-Commerce",
+                    description: "Order Payment",
+                    order_id: paymentRes.data.id,
+                    handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+                        try {
+                            setIsProcessing(true);
+                            await api.post('/payments/verify', {
+                                orderId: orderId,
+                                razorpayOrderId: response.razorpay_order_id,
+                                razorpayPaymentId: response.razorpay_payment_id,
+                                signature: response.razorpay_signature
+                            });
+                            setCurrentStep(4);
+                        } catch (err: unknown) {
+                            const error = err as { response?: { data?: { message?: string } } };
+                            toast.error(error.response?.data?.message || "Payment verification failed.");
+                        } finally {
+                            setIsProcessing(false);
+                        }
+                    },
+                    prefill: {
+                        name: `${address.firstName} ${address.lastName}`.trim(),
+                        email: address.email || '',
+                    },
+                    theme: {
+                        color: "#0a0a0a"
+                    }
+                };
+                
+                const RazorpayWindow = window as unknown as {
+                    Razorpay: new (opts: Record<string, unknown>) => {
+                        on: (event: string, callback: (res: { error: { description: string } }) => void) => void;
+                        open: () => void;
+                    }
+                };
+                const rzp = new RazorpayWindow.Razorpay(options);
+                rzp.on('payment.failed', function (response: { error: { description: string } }){
+                    toast.error(response.error.description);
+                    setIsProcessing(false);
+                });
+                rzp.open();
             } else {
                 setCurrentStep(4);
             }
@@ -243,6 +281,7 @@ export default function CheckoutPage() {
 
     return (
         <div className="bg-background min-h-screen pb-40 transition-colors duration-500">
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" crossOrigin="anonymous" strategy="lazyOnload" />
             {/* Header */}
             <header className="pt-20 pb-12 border-b-2 border-slate-50 dark:border-slate-900 transition-colors">
                 <div className="container mx-auto px-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-12">
@@ -402,13 +441,13 @@ export default function CheckoutPage() {
                                         </div>
 
                                         <div className="space-y-6 relative z-10">
-                                            <h3 className="text-3xl font-black uppercase tracking-tighter text-black dark:text-white">IRONCLAD STRIPE PROTOCOL</h3>
-                                            <p className="text-base font-medium text-slate-400 dark:text-slate-500 max-w-md mx-auto italic leading-relaxed">External redirection to military-grade encryption hub for financial settlement. No card data persist on locale servers.</p>
+                                            <h3 className="text-3xl font-black uppercase tracking-tighter text-black dark:text-white">RAZORPAY SECURE PROTOCOL</h3>
+                                            <p className="text-base font-medium text-slate-400 dark:text-slate-500 max-w-md mx-auto italic leading-relaxed">External redirection to Razorpay encryption hub for INR financial settlement. Universal Indian payment methods supported.</p>
                                         </div>
 
                                         <div className="flex gap-6 pt-6 relative z-10">
-                                            {['VISA', 'AMEX', 'MC', 'PAYPAL'].map(brand => (
-                                                <div key={brand} className="h-12 w-20 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl flex items-center justify-center grayscale opacity-40 dark:opacity-20 font-black text-[10px] tracking-widest">
+                                            {['UPI', 'CARD', 'NETBANKING', 'WALLET'].map(brand => (
+                                                <div key={brand} className="h-12 w-24 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl flex items-center justify-center grayscale opacity-40 dark:opacity-20 font-black text-[10px] tracking-widest">
                                                     {brand}
                                                 </div>
                                             ))}
@@ -448,7 +487,7 @@ export default function CheckoutPage() {
                                                             <p className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] italic">QUANTITY: {item.quantity}</p>
                                                         </div>
                                                     </div>
-                                                    <p className="text-2xl font-black tracking-tighter tabular-nums text-black dark:text-white underline decoration-primary/20 decoration-4 underline-offset-4">${(item.price * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                    <p className="text-2xl font-black tracking-tighter tabular-nums text-black dark:text-white underline decoration-primary/20 decoration-4 underline-offset-4">₹{(item.price * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -466,7 +505,7 @@ export default function CheckoutPage() {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-6">
-                                                        <span className="text-xl font-black tabular-nums">-${appliedCoupon.discountAmount.toFixed(2)}</span>
+                                                        <span className="text-xl font-black tabular-nums">-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
                                                         <button onClick={handleRemoveCoupon} className="h-12 w-12 rounded-2xl hover:bg-rose-100 dark:hover:bg-rose-950 hover:text-rose-500 flex items-center justify-center transition-all bg-emerald-100 dark:bg-emerald-900/50">
                                                             <X className="h-5 w-5" />
                                                         </button>
@@ -498,12 +537,12 @@ export default function CheckoutPage() {
                                         <div className="p-12 bg-black dark:bg-black text-white space-y-6 transition-colors border-t border-white/5">
                                             <div className="flex justify-between items-baseline opacity-30">
                                                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">Gross Subtotal</span>
-                                                <span className="text-2xl font-black tabular-nums">${total.toFixed(2)}</span>
+                                                <span className="text-2xl font-black tabular-nums">₹{total.toFixed(2)}</span>
                                             </div>
                                             {appliedCoupon && (
                                                 <div className="flex justify-between items-baseline text-emerald-400">
                                                     <span className="text-[10px] font-black uppercase tracking-[0.4em]">Coupon Override</span>
-                                                    <span className="text-2xl font-black tabular-nums">-${appliedCoupon.discountAmount.toFixed(2)}</span>
+                                                    <span className="text-2xl font-black tabular-nums">-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
                                                 </div>
                                             )}
                                             <div className="flex justify-between items-end pt-10 border-t-4 border-white/10">
@@ -511,7 +550,7 @@ export default function CheckoutPage() {
                                                     <span className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Final Liability</span>
                                                     <p className="text-[10px] font-bold text-white/30 dark:text-white/20 uppercase tracking-[0.2em] italic">Authorized for Ownership Transfer</p>
                                                 </div>
-                                                <span className="text-7xl font-black tracking-tighter tabular-nums text-primary underline decoration-primary/20 decoration-8 underline-offset-16">${finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                                <span className="text-7xl font-black tracking-tighter tabular-nums text-primary underline decoration-primary/20 decoration-8 underline-offset-16">₹{finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                             </div>
                                         </div>
                                     </div>
