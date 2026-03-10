@@ -30,6 +30,6 @@
   "devDependencies": {
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "turbo": "^2.8.12"
+    "turbo": "^2.8.15"
   }
 }
