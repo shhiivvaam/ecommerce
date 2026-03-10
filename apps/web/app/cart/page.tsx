@@ -605,7 +605,7 @@ export default function CartPage() {
             <div className="cp-ship-bar">
               <p className="cp-ship-text">
                 {remaining > 0
-                  ? <><strong>${remaining.toFixed(2)}</strong> away from free shipping</>
+                  ? <><strong>₹{remaining.toFixed(2)}</strong> away from free shipping</>
                   : <strong style={{ color: "var(--accent)" }}>Free shipping unlocked 🎉</strong>
                 }
               </p>
@@ -694,8 +694,8 @@ export default function CartPage() {
 
                   {/* Price */}
                   <div className="cp-item-price">
-                    <p className="cp-item-total">${(item.price * item.quantity).toFixed(2)}</p>
-                    <p className="cp-item-unit">${item.price.toFixed(2)} each</p>
+                    <p className="cp-item-total">₹{(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="cp-item-unit">₹{item.price.toFixed(2)} each</p>
                   </div>
                 </motion.div>
               ))}
@@ -708,7 +708,7 @@ export default function CartPage() {
               </div>
               <p className="cp-upsell-text">
                 {remaining > 0
-                  ? <>Add <strong>${remaining.toFixed(2)} more</strong> to unlock free standard shipping on this order.</>
+                  ? <>Add <strong>₹{remaining.toFixed(2)} more</strong> to unlock free standard shipping on this order.</>
                   : <>You&apos;ve unlocked <strong>free shipping</strong> on this order — nice work.</>
                 }
               </p>
@@ -723,7 +723,7 @@ export default function CartPage() {
 
               <div className="cp-srow">
                 <span className="cp-skey">Subtotal ({items.length} item{items.length !== 1 ? "s" : ""})</span>
-                <span className="cp-sval">${total.toFixed(2)}</span>
+                <span className="cp-sval">₹{total.toFixed(2)}</span>
               </div>
               <div className="cp-srow">
                 <span className="cp-skey">Shipping</span>
@@ -741,7 +741,7 @@ export default function CartPage() {
                   <span className="cp-total-label">Estimated Total</span>
                   <p className="cp-total-sub">Final amount at checkout</p>
                 </div>
-                <span className="cp-total-amt">${total.toFixed(2)}</span>
+                <span className="cp-total-amt">₹{total.toFixed(2)}</span>
               </div>
 
               <Link href="/checkout" style={{ display: "block" }}>
