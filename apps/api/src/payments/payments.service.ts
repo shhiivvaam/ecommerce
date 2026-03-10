@@ -7,102 +7,84 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentMethod, PaymentStatus, OrderStatus } from '@prisma/client';
-import Stripe from 'stripe';
+import Razorpay from 'razorpay';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
-  private stripe: Stripe;
+  private razorpay: Razorpay;
 
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    const stripeKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    const keyId = this.configService.get<string>('RAZORPAY_LIVE_KEY_ID');
+    const keySecret = this.configService.get<string>('RAZORPAY_LIVE_SECRET');
     const isProduction = this.configService.get('NODE_ENV') === 'production';
 
-    if (!stripeKey && isProduction) {
+    if ((!keyId || !keySecret) && isProduction) {
       throw new InternalServerErrorException(
-        'STRIPE_SECRET_KEY is required in production. Set it in your environment.',
+        'Razorpay keys are required in production. Set them in your environment.',
       );
     }
 
-    // In development, fall back to a placeholder — real payments won't work
-    // but the API will boot successfully for local dev without Stripe keys.
-    this.stripe = new Stripe(stripeKey ?? 'sk_test_placeholder', {
-      apiVersion: '2025-02-24.acacia',
+    this.razorpay = new Razorpay({
+      key_id: keyId ?? 'rzp_test_placeholder',
+      key_secret: keySecret ?? 'test_secret_placeholder',
     });
   }
 
-  async createCheckoutSession(
+  async createRazorpayOrder(
     orderId: string,
-    items: {
-      product?: { title?: string };
-      title?: string;
-      price: number;
-      quantity: number;
-    }[],
-    successUrl: string,
-    cancelUrl: string,
   ) {
-    const stripeKey = this.configService.get<string>('STRIPE_SECRET_KEY');
-    if (!stripeKey) {
+    const keyId = this.configService.get<string>('RAZORPAY_LIVE_KEY_ID');
+    if (!keyId && this.configService.get('NODE_ENV') === 'production') {
       throw new ForbiddenException(
         'Payment processing is not configured. Please contact support.',
       );
     }
 
-    const lineItems = items.map((item) => ({
-      price_data: {
-        currency: 'usd',
-        product_data: {
-          name: item.product?.title || item.title || 'Product Item',
-        },
-        unit_amount: Math.round(item.price * 100),
-      },
-      quantity: item.quantity,
-    }));
-
-    const session = await this.stripe.checkout.sessions.create({
-      line_items: lineItems,
-      mode: 'payment',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
-        orderId: orderId,
-      },
-      payment_intent_data: {
-        metadata: {
-          orderId: orderId,
-        },
-      },
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId }
     });
 
-    return { url: session.url, sessionId: session.id };
-  }
-
-  constructEvent(payload: string | Buffer, signature: string) {
-    const endpointSecret =
-      this.configService.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
-    if (!endpointSecret) {
-      throw new ForbiddenException('Stripe webhook secret is not configured.');
+    if (!order) {
+      throw new BadRequestException('Order not found');
     }
+
+    const totalAmount = Number(order.totalAmount);
+
+    const options = {
+      amount: Math.round(totalAmount * 100), // amount in the smallest currency unit
+      currency: 'INR',
+      receipt: orderId,
+    };
+
     try {
-      return this.stripe.webhooks.constructEvent(
-        payload,
-        signature,
-        endpointSecret,
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown Error';
-      throw new BadRequestException(`Webhook Error: ${msg}`);
+      const order = await this.razorpay.orders.create(options);
+      return { id: order.id, amount: order.amount, currency: order.currency };
+    } catch (error) {
+      console.error('Razorpay Order Creation Error:', error);
+      throw new InternalServerErrorException('Failed to create Razorpay order');
     }
   }
 
   async verifyPayment(
     orderId: string,
-    transactionId: string,
-    method: PaymentMethod = PaymentMethod.STRIPE,
+    razorpayOrderId: string,
+    razorpayPaymentId: string,
+    signature: string,
   ) {
+    const secret = this.configService.get<string>('RAZORPAY_LIVE_SECRET') ?? 'test_secret_placeholder';
+    const generatedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest('hex');
+
+    if (generatedSignature !== signature) {
+      throw new BadRequestException('Invalid signature');
+    }
+
     // Idempotency: if payment already exists for this order, ignore
     const existingPayment = await this.prisma.payment.findUnique({
       where: { orderId },
@@ -121,13 +103,12 @@ export class PaymentsService {
       data: {
         orderId,
         amount: order.totalAmount,
-        method,
+        method: PaymentMethod.RAZORPAY,
         status: PaymentStatus.COMPLETED,
-        transactionId,
+        transactionId: razorpayPaymentId,
       },
     });
 
-    // ✅ Use enum instead of raw string
     await this.prisma.order.update({
       where: { id: orderId },
       data: { status: OrderStatus.PROCESSING },
@@ -148,44 +129,5 @@ export class PaymentsService {
 
     return payment;
   }
-
-  async handlePaymentFailed(transactionId: string, orderId?: string) {
-    if (!orderId) {
-      const payment = await this.prisma.payment.findFirst({
-        where: { transactionId },
-      });
-      if (payment) orderId = payment.orderId;
-    }
-
-    if (orderId) {
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.CANCELLED },
-      });
-      await this.prisma.payment.updateMany({
-        where: { transactionId },
-        data: { status: PaymentStatus.FAILED },
-      });
-    }
-  }
-
-  async handleRefunded(transactionId: string, orderId?: string) {
-    if (!orderId) {
-      const payment = await this.prisma.payment.findFirst({
-        where: { transactionId },
-      });
-      if (payment) orderId = payment.orderId;
-    }
-
-    if (orderId) {
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.RETURNED },
-      });
-      await this.prisma.payment.updateMany({
-        where: { transactionId },
-        data: { status: PaymentStatus.REFUNDED },
-      });
-    }
-  }
 }
+
