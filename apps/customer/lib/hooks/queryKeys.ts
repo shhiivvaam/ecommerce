@@ -31,20 +31,8 @@ export const queryKeys = {
     address: {
         all: ["address"] as const,
     },
-    affiliate: {
-        dashboard: ["affiliate", "dashboard"] as const,
-    },
-    admin: {
-        // sub-resource caches — namespaced so they don't collide with public caches
-        categories: ["admin", "categories"] as const,
-        stats: ["admin", "stats"] as const,
-        settings: ["admin", "settings"] as const,
-        giftCards: ["admin", "gift-cards"] as const,
-        coupons: ["admin", "coupons"] as const,
-        users: (search = "") => ["admin", "users", search] as const,
-        user: (id: string) => ["admin", "users", id] as const,
-        orders: (page = 1, limit = 20) => ["admin", "orders", page, limit] as const,
-        returns: ["admin", "returns"] as const,
+    reviews: {
+        product: (id: string) => ["reviews", id] as const,
     },
     settings: {
         root: ["settings"] as const,
