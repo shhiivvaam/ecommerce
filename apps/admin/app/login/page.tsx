@@ -3,28 +3,32 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
-import { ArrowRight, ChevronLeft, Mail, Lock } from "lucide-react";
+import { ArrowRight, Mail, Lock, ShieldAlert, AlertCircle } from "lucide-react";
 import { useLogin } from "@/lib/hooks/useAuth";
+import { Suspense } from "react";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-const features = [
-  "Early access to new drops & limited releases",
-  "Saved wishlist & one-tap reorder",
-  "Real-time order tracking",
-  "Members-only pricing & perks",
+const adminCapabilities = [
+  "Manage products, orders & inventory",
+  "View analytics & revenue reports",
+  "Manage customers & support tickets",
+  "Configure store settings & promotions",
 ];
 
-export default function LoginPage() {
+function AdminLoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const loginMutation = useLogin();
+
+  const callbackUrl = searchParams.get("callbackUrl") || "/admin";
+  const error = searchParams.get("error");
 
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -34,7 +38,7 @@ export default function LoginPage() {
     try {
       await loginMutation.mutateAsync(values);
       toast.success("Welcome back.");
-      router.push("/");
+      router.push(callbackUrl);
     } catch {
       // Error toast is handled inside useLogin's onError
     }
@@ -47,7 +51,7 @@ export default function LoginPage() {
         :root { --ink:#0a0a0a; --paper:#f5f3ef; --accent:#c8ff00; --mid:#8a8a8a; --border:rgba(10,10,10,0.1); }
 
         .lp-wrap {
-          min-height: 100svh; background: var(--paper);
+          min-height: 100svh; background: var(--ink);
           display: flex; align-items: stretch;
           font-family: 'DM Sans', sans-serif; color: var(--ink);
         }
@@ -76,9 +80,14 @@ export default function LoginPage() {
           font-family: 'Barlow Condensed', sans-serif;
           font-size: 32px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase;
           color: #fff; text-decoration: none; position: relative; z-index: 1;
-          transition: opacity .2s;
+          display: flex; align-items: center; gap: 10px;
         }
-        .lp-logo:hover { opacity: .7; }
+        .lp-logo-pill {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+          background: var(--accent); color: var(--ink);
+          padding: 3px 8px; border-radius: 3px;
+        }
 
         .lp-body { position: relative; z-index: 1; }
         .lp-tag {
@@ -90,21 +99,19 @@ export default function LoginPage() {
           font-size: 60px; font-weight: 900; text-transform: uppercase;
           line-height: 1; letter-spacing: -.01em; color: #fff; margin-bottom: 44px;
         }
-        .lp-feature {
-          display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px;
-        }
+        .lp-feature { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
         .lp-feature-dot {
           width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
           flex-shrink: 0; margin-top: 6px;
         }
         .lp-feature-text { font-size: 14px; font-weight: 300; color: rgba(255,255,255,.55); line-height: 1.5; }
 
-        .lp-quote {
+        .lp-info-card {
           position: relative; z-index: 1;
           padding: 20px 24px; border-left: 2px solid rgba(200,255,0,.35);
         }
-        .lp-quote p { font-size: 14px; font-weight: 300; color: rgba(255,255,255,.45); line-height: 1.6; font-style: italic; margin-bottom: 10px; }
-        .lp-quote footer { font-size: 10px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: rgba(200,255,0,.55); }
+        .lp-info-card p { font-size: 13px; font-weight: 300; color: rgba(255,255,255,.45); line-height: 1.6; margin-bottom: 8px; }
+        .lp-info-card footer { font-size: 10px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: rgba(200,255,0,.55); }
 
         /* ── RIGHT PANEL ── */
         .lp-right {
@@ -118,11 +125,11 @@ export default function LoginPage() {
         .lp-mobile-logo {
           font-family: 'Barlow Condensed', sans-serif;
           font-size: 28px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase;
-          color: var(--ink); text-decoration: none; display: block; margin-bottom: 40px;
+          color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 8px; margin-bottom: 40px;
         }
         @media (min-width: 1024px) { .lp-mobile-logo { display: none; } }
 
-        .lp-head { margin-bottom: 36px; }
+        .lp-head { margin-bottom: 28px; }
         .lp-head-tag {
           font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
           color: var(--mid); display: block; margin-bottom: 12px;
@@ -134,22 +141,21 @@ export default function LoginPage() {
         }
         .lp-head-sub { font-size: 14px; font-weight: 300; color: var(--mid); line-height: 1.5; }
 
+        /* Error banner */
+        .lp-error-banner {
+          display: flex; align-items: flex-start; gap: 10px;
+          background: #fff0f0; border: 1px solid #fecaca; border-radius: 6px;
+          padding: 12px 14px; margin-bottom: 20px;
+        }
+        .lp-error-banner p { font-size: 13px; color: #b91c1c; font-weight: 400; line-height: 1.5; }
+
         /* Fields */
         .lp-field { margin-bottom: 20px; }
-        .lp-label {
-          display: flex; align-items: center; justify-content: space-between;
-          margin-bottom: 8px;
-        }
+        .lp-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
         .lp-label-text {
           display: flex; align-items: center; gap: 6px;
           font-size: 10px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--mid);
         }
-        .lp-forgot {
-          font-size: 11px; font-weight: 500; color: var(--ink);
-          text-decoration: none; border-bottom: 1px solid var(--border);
-          transition: border-color .2s;
-        }
-        .lp-forgot:hover { border-color: var(--ink); }
 
         .lp-input-wrap { position: relative; }
         .lp-input-icon {
@@ -166,7 +172,7 @@ export default function LoginPage() {
         .lp-input:focus { border-color: var(--ink); }
         .lp-input::placeholder { color: rgba(10,10,10,.25); }
         .lp-input.error { border-color: #e11d48; }
-        .lp-error { font-size: 11px; color: #e11d48; margin-top: 5px; display: block; }
+        .lp-field-error { font-size: 11px; color: #e11d48; margin-top: 5px; display: block; }
 
         /* Submit */
         .lp-submit {
@@ -188,17 +194,9 @@ export default function LoginPage() {
         @keyframes lp-sh { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
 
         /* Footer */
-        .lp-divider { height: 1px; background: var(--border); margin: 28px 0; }
-        .lp-footer { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-        .lp-register-text { font-size: 13px; font-weight: 300; color: var(--mid); }
-        .lp-register-text a { color: var(--ink); font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--border); transition: border-color .2s; }
-        .lp-register-text a:hover { border-color: var(--ink); }
-        .lp-back {
-          display: inline-flex; align-items: center; gap: 6px;
-          font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
-          color: var(--mid); text-decoration: none; transition: color .2s;
-        }
-        .lp-back:hover { color: var(--ink); }
+        .lp-divider { height: 1px; background: var(--border); margin: 24px 0; }
+        .lp-footer { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .lp-footer-text { font-size: 12px; font-weight: 300; color: var(--mid); text-align: center; }
       `}</style>
 
       <div className="lp-wrap">
@@ -208,12 +206,14 @@ export default function LoginPage() {
           <div className="lp-noise" />
           <div className="lp-glow" />
 
-          {/* <Link href="/" className="lp-logo">Reyva</Link> */}
+          <div className="lp-logo">
+            Reyva <span className="lp-logo-pill">Admin</span>
+          </div>
 
           <div className="lp-body">
-            <span className="lp-tag">Welcome back</span>
-            <h2 className="lp-headline">Good to<br />See You.</h2>
-            {features.map((f) => (
+            <span className="lp-tag">Staff Portal</span>
+            <h2 className="lp-headline">Back to<br />Business.</h2>
+            {adminCapabilities.map((f) => (
               <div key={f} className="lp-feature">
                 <span className="lp-feature-dot" />
                 <p className="lp-feature-text">{f}</p>
@@ -221,9 +221,9 @@ export default function LoginPage() {
             ))}
           </div>
 
-          <div className="lp-quote">
-            <p>&quot;Checking out is fast, simple, and secure — my details are saved and I can reorder in a few clicks.&quot;</p>
-            <footer>— Reyva Customer</footer>
+          <div className="lp-info-card">
+            <p>This portal is restricted to authorised staff only. Unauthorised access is prohibited and may be subject to legal action.</p>
+            <footer>Reyva — Internal Use Only</footer>
           </div>
         </aside>
 
@@ -231,7 +231,9 @@ export default function LoginPage() {
         <main className="lp-right">
           <div className="lp-right-inner">
 
-            <Link href="/" className="lp-mobile-logo">Reyva</Link>
+            <div className="lp-mobile-logo">
+              Reyva <span style={{ background: "#c8ff00", color: "#0a0a0a", fontSize: 9, fontWeight: 600, letterSpacing: ".14em", padding: "3px 8px", borderRadius: 3, textTransform: "uppercase", fontFamily: "DM Sans, sans-serif" }}>Admin</span>
+            </div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -239,10 +241,24 @@ export default function LoginPage() {
               transition={{ duration: .5, ease: [.16, 1, .3, 1] }}
             >
               <div className="lp-head">
-                <span className="lp-head-tag">Member Sign In</span>
-                <h1 className="lp-head-title">Welcome<br />Back.</h1>
-                <p className="lp-head-sub">Enter your details to access your account and continue shopping.</p>
+                <span className="lp-head-tag">Staff Sign In</span>
+                <h1 className="lp-head-title">Admin<br />Access.</h1>
+                <p className="lp-head-sub">Enter your staff credentials to access the management dashboard.</p>
               </div>
+
+              {/* Error banners from URL params (e.g. middleware redirect) */}
+              {error === "unauthorized" && (
+                <div className="lp-error-banner">
+                  <AlertCircle size={16} color="#b91c1c" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <p>Access denied. This portal is for admin staff only. Please use the customer portal.</p>
+                </div>
+              )}
+              {error === "session_expired" && (
+                <div className="lp-error-banner">
+                  <AlertCircle size={16} color="#b91c1c" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <p>Your session has expired. Please sign in again.</p>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit(onSubmit)} noValidate>
                 {/* Email */}
@@ -252,22 +268,21 @@ export default function LoginPage() {
                   </div>
                   <div className="lp-input-wrap">
                     <span className="lp-input-icon"><Mail size={15} /></span>
-                    <input {...register("email")} type="email" placeholder="you@example.com" className={`lp-input${errors.email ? " error" : ""}`} />
+                    <input {...register("email")} type="email" placeholder="staff@reyva.com" className={`lp-input${errors.email ? " error" : ""}`} autoComplete="email" />
                   </div>
-                  {errors.email && <span className="lp-error">{errors.email.message}</span>}
+                  {errors.email && <span className="lp-field-error">{errors.email.message}</span>}
                 </div>
 
                 {/* Password */}
                 <div className="lp-field">
                   <div className="lp-label">
                     <span className="lp-label-text"><Lock size={11} /> Password</span>
-                    <Link href="/forgot-password" className="lp-forgot">Forgot password?</Link>
                   </div>
                   <div className="lp-input-wrap">
                     <span className="lp-input-icon"><Lock size={15} /></span>
-                    <input {...register("password")} type="password" placeholder="Min. 6 characters" className={`lp-input${errors.password ? " error" : ""}`} />
+                    <input {...register("password")} type="password" placeholder="Your password" className={`lp-input${errors.password ? " error" : ""}`} autoComplete="current-password" />
                   </div>
-                  {errors.password && <span className="lp-error">{errors.password.message}</span>}
+                  {errors.password && <span className="lp-field-error">{errors.password.message}</span>}
                 </div>
 
                 <button type="submit" className="lp-submit" disabled={loginMutation.isPending}>
@@ -282,8 +297,11 @@ export default function LoginPage() {
               <div className="lp-divider" />
 
               <div className="lp-footer">
-                <p className="lp-register-text">New to Reyva? <Link href="/register">Create an account</Link></p>
-                <Link href="/" className="lp-back"><ChevronLeft size={13} /> Back to home</Link>
+                <ShieldAlert size={14} color="#8a8a8a" />
+                <p className="lp-footer-text">
+                  Access restricted to authorised staff. If you&apos;re a customer, visit the&nbsp;
+                  <a href={process.env.NEXT_PUBLIC_CUSTOMER_URL || "http://localhost:1000"} style={{ color: "#0a0a0a", fontWeight: 500 }}>customer portal</a>.
+                </p>
               </div>
 
             </motion.div>
@@ -292,5 +310,13 @@ export default function LoginPage() {
 
       </div>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <AdminLoginInner />
+    </Suspense>
   );
 }
