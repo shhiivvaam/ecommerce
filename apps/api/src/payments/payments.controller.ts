@@ -2,29 +2,21 @@ import {
   Controller,
   Post,
   Body,
-  Req,
-  Headers,
   BadRequestException,
   UseGuards,
 } from '@nestjs/common';
-import type { RawBodyRequest } from '@nestjs/common';
-import type { Request } from 'express';
-import Stripe from 'stripe';
 import {
   ApiTags,
   ApiOperation,
   ApiBody,
   ApiResponse,
   ApiBearerAuth,
-  ApiHeader,
   ApiUnauthorizedResponse,
-  ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import {
   CreateCheckoutSessionDto,
-  CheckoutSessionResponseDto,
 } from './dto/payment.dto';
 
 @ApiTags('Payments')
@@ -36,82 +28,49 @@ export class PaymentsController {
   @Post('checkout')
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Create a Stripe checkout session',
+    summary: 'Create a Razorpay order',
     description:
-      'Initiates a Stripe checkout session for the given order. Returns a redirect URL to the Stripe-hosted payment page.',
+      'Initiates a Razorpay order for the given cart items. Returns the order ID and amount details.',
   })
   @ApiBody({ type: CreateCheckoutSessionDto })
   @ApiResponse({
     status: 201,
-    description: 'Checkout session created',
-    type: CheckoutSessionResponseDto,
+    description: 'Razorpay order created',
   })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
-  async createCheckoutSession(@Body() body: CreateCheckoutSessionDto) {
-    return this.paymentsService.createCheckoutSession(
+  async createRazorpayOrder(@Body() body: CreateCheckoutSessionDto) {
+    return this.paymentsService.createRazorpayOrder(
       body.orderId,
-      body.items,
-      body.successUrl,
-      body.cancelUrl,
     );
   }
 
-  @Post('webhook')
+  @Post('verify')
   @ApiOperation({
-    summary: 'Stripe webhook handler',
+    summary: 'Verify Razorpay payment signature',
     description:
-      'Endpoint for Stripe to send payment event webhooks. Do NOT call this manually — it requires a valid Stripe signature header.',
-  })
-  @ApiHeader({
-    name: 'stripe-signature',
-    description: 'Stripe webhook signature (automatically sent by Stripe)',
-    required: true,
+      'Verifies the payment signature returned by the Razorpay checkout script and finalizes the order.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Webhook received',
-    schema: { example: { received: true } },
+    description: 'Payment verified successfully',
   })
-  @ApiBadRequestResponse({ description: 'Invalid Stripe webhook signature' })
-  async handleStripeWebhook(
-    @Req() req: RawBodyRequest<Request>,
-    @Headers('stripe-signature') signature: string,
+  async verifyPayment(
+    @Body('orderId') orderId: string,
+    @Body('razorpayOrderId') razorpayOrderId: string,
+    @Body('razorpayPaymentId') razorpayPaymentId: string,
+    @Body('signature') signature: string,
   ) {
-    let event: Stripe.Event;
-    try {
-      const rawBody: Buffer | string = req.rawBody ?? (req.body as string);
-      event = this.paymentsService.constructEvent(rawBody, signature);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown Error';
-      throw new BadRequestException(`Webhook Error: ${msg}`);
+    if (!orderId || !razorpayOrderId || !razorpayPaymentId || !signature) {
+      throw new BadRequestException('Missing payment verification details');
     }
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const orderId = session.metadata?.orderId;
-      const paymentIntentId = session.payment_intent as string;
-      if (orderId) {
-        await this.paymentsService.verifyPayment(
-          orderId,
-          paymentIntentId || session.id,
-        );
-      }
-    } else if (event.type === 'charge.refunded') {
-      const charge = event.data.object;
-      const orderId = charge.metadata?.orderId;
-      const paymentIntentId =
-        typeof charge.payment_intent === 'string'
-          ? charge.payment_intent
-          : charge.payment_intent?.id;
-      if (paymentIntentId) {
-        await this.paymentsService.handleRefunded(paymentIntentId, orderId);
-      }
-    } else if (event.type === 'payment_intent.payment_failed') {
-      const intent = event.data.object;
-      const orderId = intent.metadata?.orderId;
-      await this.paymentsService.handlePaymentFailed(intent.id, orderId);
-    }
+    await this.paymentsService.verifyPayment(
+      orderId,
+      razorpayOrderId,
+      razorpayPaymentId,
+      signature,
+    );
 
-    return { received: true };
+    return { success: true };
   }
 }
