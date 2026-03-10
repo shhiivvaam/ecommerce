@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { decodeJwt } from "jose";
 
 /**
  * Customer app middleware — server-side route protection.
  *
- * Runs on the Edge before any page renders. Only /dashboard/* routes
- * are protected. Public-facing pages (products, home, login) are open.
+ * Security model:
+ *  - Reads the `customer-token` HttpOnly cookie set by the BFF login route.
+ *  - Decodes (does NOT verify) the JWT to read the `role` claim for routing.
+ *  - NestJS verifies the JWT signature and expiry on every actual API call.
+ *    Any expired / tampered token causes a 401 → client interceptor logs out.
  *
+ * Why decode-only? Same reason as admin middleware — JWT_SECRET lives in
+ * the NestJS environment. Verification is already enforced at the API layer.
+ *
+ * Only /dashboard/* routes are protected. All storefront pages are public.
  * Allowed role: CUSTOMER only.
- * Admin roles are rejected — they must use the admin portal.
  */
 
-// Routes that require authentication
 const PROTECTED_PREFIXES = ["/dashboard"];
 
-// Routes always allowed through (no auth check)
 const PUBLIC_PATHS = [
   "/login",
   "/register",
@@ -43,16 +47,13 @@ function isPublic(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only protect dashboard routes — everything else is open
+  // Only guard dashboard routes — everything else is open
   if (!isProtected(pathname) || isPublic(pathname)) {
     return NextResponse.next();
   }
 
-  const token =
-    request.cookies.get("customer-token")?.value ??
-    request.headers.get("authorization")?.replace("Bearer ", "");
+  const token = request.cookies.get("customer-token")?.value;
 
-  // No token — redirect to login with callback
   if (!token) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
@@ -60,26 +61,21 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || "fallback-secret"
-    );
-    const { payload } = await jwtVerify(token, secret);
+    // Decode without verification — NestJS verifies on every API call
+    const payload = decodeJwt(token);
     const role = payload.role as string | undefined;
 
-    // Must be a CUSTOMER — admin accounts use the admin portal
     if (role !== "CUSTOMER") {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("error", "admin_account");
       return NextResponse.redirect(loginUrl);
     }
 
-    // Valid customer — let through
     return NextResponse.next();
   } catch {
-    // Token invalid or expired
+    // Completely malformed JWT — clear cookie and redirect
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
-    loginUrl.searchParams.set("error", "session_expired");
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete("customer-token");
     return response;
@@ -87,7 +83,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
