@@ -3,11 +3,27 @@ import { Reflector } from '@nestjs/core';
 import { RoleType } from '@prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
+/**
+ * Role hierarchy for authorization checks.
+ *
+ * Key  = the user's actual role
+ * Value = the set of roles this user is allowed to pass for
+ *
+ * Design rules:
+ *  - SUPERADMIN can perform any admin action (SUPERADMIN + ADMIN + EDITOR + SUPPORT)
+ *  - ADMIN can perform admin + editor + support actions
+ *  - EDITOR can perform editor actions only
+ *  - SUPPORT can perform support actions only
+ *  - CUSTOMER is strictly customer-level — never admin-level
+ *
+ * No cross-contamination: CUSTOMER never gets admin access, and admin roles
+ * never automatically get CUSTOMER-only access (e.g. placing orders as customer).
+ */
 const roleHierarchy: Record<RoleType, RoleType[]> = {
-  SUPERADMIN: ['SUPERADMIN', 'ADMIN', 'EDITOR', 'SUPPORT', 'CUSTOMER'],
-  ADMIN: ['ADMIN', 'EDITOR', 'SUPPORT', 'CUSTOMER'],
-  EDITOR: ['EDITOR', 'CUSTOMER'],
-  SUPPORT: ['SUPPORT', 'CUSTOMER'],
+  SUPERADMIN: ['SUPERADMIN', 'ADMIN', 'EDITOR', 'SUPPORT'],
+  ADMIN: ['ADMIN', 'EDITOR', 'SUPPORT'],
+  EDITOR: ['EDITOR'],
+  SUPPORT: ['SUPPORT'],
   CUSTOMER: ['CUSTOMER'],
 };
 
@@ -21,7 +37,8 @@ export class RolesGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredRoles) {
+    // No role restriction — allow any authenticated user
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
@@ -35,7 +52,7 @@ export class RolesGuard implements CanActivate {
     }
 
     const userRole = user.role.name;
-    const allowedRolesForUser = roleHierarchy[userRole] || [userRole];
+    const allowedRolesForUser = roleHierarchy[userRole] ?? [userRole];
 
     return requiredRoles.some((role) => allowedRolesForUser.includes(role));
   }
