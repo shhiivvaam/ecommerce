@@ -8,12 +8,9 @@
 
 // Internal server-to-server URL (e.g. http://api:3001 inside Docker / same VPC)
 // Falls back to NEXT_PUBLIC_API_URL for local dev where backend is on localhost
-const INTERNAL_API_BASE =
-    process.env.INTERNAL_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://127.0.0.1:3001/api";
+const INTERNAL_API_BASE = "http://127.0.0.1:3001/api";
 
-const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET;
+const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET || "dev-secret-key";
 
 export class ApiError extends Error {
     constructor(
