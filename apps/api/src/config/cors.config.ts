@@ -23,10 +23,10 @@ export const getCorsConfig = (): CorsOptions => {
   ];
 
   const developmentOrigins: string[] = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
+    'http://localhost:1000',
+    'http://localhost:1001',
+    'http://127.0.0.1:1000',
+    'http://127.0.0.1:1001',
   ];
 
   const allowedOrigins = isProduction
