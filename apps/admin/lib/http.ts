@@ -6,9 +6,12 @@
  * Throws a structured ApiError on non-2xx responses.
  */
 
-// Internal server-to-server URL (e.g. http://api:3001 inside Docker / same VPC)
-// Falls back to NEXT_PUBLIC_API_URL for local dev where backend is on localhost
-const INTERNAL_API_BASE = "http://127.0.0.1:3001/api";
+// Server-to-server base URL. Override via INTERNAL_API_URL in .env.local for Docker / prod.
+// Local dev default: NestJS runs on port 3001.
+const INTERNAL_API_BASE =
+    process.env.INTERNAL_API_URL ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    "http://127.0.0.1:3001/api";
 
 const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET || "dev-secret-key";
 
@@ -78,7 +81,7 @@ export async function extractToken(request: Request): Promise<string | undefined
     }
     // Check Next.js 15 cookies API
     const cookieStore = await cookies();
-    const tokenCookie = cookieStore.get("auth-token");
+    const tokenCookie = cookieStore.get("admin-token");
     return tokenCookie?.value;
 }
 
