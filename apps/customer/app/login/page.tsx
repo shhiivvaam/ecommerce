@@ -3,12 +3,13 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
-import { ArrowRight, ChevronLeft, Mail, Lock } from "lucide-react";
+import { ArrowRight, ChevronLeft, Mail, Lock, AlertCircle } from "lucide-react";
 import { useLogin } from "@/lib/hooks/useAuth";
+import { Suspense } from "react";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -22,9 +23,13 @@ const features = [
   "Members-only pricing & perks",
 ];
 
-export default function LoginPage() {
+function CustomerLoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const loginMutation = useLogin();
+
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const error = searchParams.get("error");
 
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -34,7 +39,7 @@ export default function LoginPage() {
     try {
       await loginMutation.mutateAsync(values);
       toast.success("Welcome back.");
-      router.push("/");
+      router.push(callbackUrl);
     } catch {
       // Error toast is handled inside useLogin's onError
     }
@@ -244,6 +249,20 @@ export default function LoginPage() {
                 <p className="lp-head-sub">Enter your details to access your account and continue shopping.</p>
               </div>
 
+              {/* Error banners from middleware redirects */}
+              {error === "admin_account" && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#fff0f0", border: "1px solid #fecaca", borderRadius: 6, padding: "12px 14px", marginBottom: 20 }}>
+                  <AlertCircle size={16} color="#b91c1c" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <p style={{ fontSize: 13, color: "#b91c1c", lineHeight: 1.5 }}>Admin accounts must use the <a href={process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:1001"} style={{ fontWeight: 600 }}>admin portal</a>.</p>
+                </div>
+              )}
+              {error === "session_expired" && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#fff0f0", border: "1px solid #fecaca", borderRadius: 6, padding: "12px 14px", marginBottom: 20 }}>
+                  <AlertCircle size={16} color="#b91c1c" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <p style={{ fontSize: 13, color: "#b91c1c", lineHeight: 1.5 }}>Your session has expired. Please sign in again.</p>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit(onSubmit)} noValidate>
                 {/* Email */}
                 <div className="lp-field">
@@ -292,5 +311,13 @@ export default function LoginPage() {
 
       </div>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <CustomerLoginInner />
+    </Suspense>
   );
 }
