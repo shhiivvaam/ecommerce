@@ -292,11 +292,12 @@ export class OrdersService {
         }
       }
 
-      if (data.expectedTotal !== undefined) {
-        const expectedTotal = data.expectedTotal;
-        if (Math.abs(grandTotal - expectedTotal) > 0.01) {
+      if (data.expectedTotal !== undefined && data.expectedTotal !== null) {
+        const expectedTotal = Number(data.expectedTotal);
+        const expectedBackendTotal = Number(totalAmount) - Number(discountAmount);
+        if (Math.abs(expectedBackendTotal - expectedTotal) > 0.01) {
           throw new ConflictException(
-            `Cart prices have changed. Expected $${expectedTotal.toFixed(2)}, but actual total is $${grandTotal.toFixed(2)}. Please review your cart.`,
+            `Cart prices have changed. Expected $${expectedTotal.toFixed(2)}, but actual total is $${expectedBackendTotal.toFixed(2)}. Please review your cart.`,
           );
         }
       }
