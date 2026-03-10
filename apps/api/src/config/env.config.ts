@@ -20,18 +20,15 @@ export const envValidationSchema = z.object({
   // Frontend
   FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').optional(),
 
-  // Payment (Stripe) - optional for dev, but strictly validated if present
-  STRIPE_SECRET_KEY: z
+  // Payment (Razorpay) - optional for dev
+  RAZORPAY_LIVE_KEY_ID: z
     .string()
-    .refine((val) => !val || val.startsWith('sk_'), {
-      message: 'STRIPE_SECRET_KEY must start with sk_',
+    .refine((val) => !val || val.startsWith('rzp_'), {
+      message: 'RAZORPAY_LIVE_KEY_ID must start with rzp_',
     })
     .optional(),
-  STRIPE_WEBHOOK_SECRET: z
+  RAZORPAY_LIVE_SECRET: z
     .string()
-    .refine((val) => !val || val.startsWith('whsec_'), {
-      message: 'STRIPE_WEBHOOK_SECRET must start with whsec_',
-    })
     .optional(),
 
   // Storage (AWS S3) - optional for dev
