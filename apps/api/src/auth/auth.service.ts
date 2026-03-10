@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -37,16 +37,45 @@ export class AuthService {
   }
 
   login(user: SafeUser) {
-    const payload = { email: user.email, sub: user.id, role: user.role?.name };
+    const roleName = user.role?.name ?? 'CUSTOMER';
+    const payload = { email: user.email, sub: user.id, role: roleName };
     return {
       token: this.jwtService.sign(payload),
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role?.name || 'CUSTOMER',
+        role: roleName,
+        avatar: user.avatar ?? null,
       },
     };
+  }
+
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const { password: _password, ...safeUser } = user;
+    return {
+      id: safeUser.id,
+      email: safeUser.email,
+      name: safeUser.name,
+      role: safeUser.role?.name ?? 'CUSTOMER',
+      avatar: safeUser.avatar ?? null,
+    };
+  }
+
+  async logout(_userId: string) {
+    // JWT is stateless — no server-side session to invalidate.
+    // The client is responsible for deleting the token.
+    // If token blacklisting is needed, implement a Redis store here.
+    return { success: true };
   }
 
   async register(data: RegisterDto) {
