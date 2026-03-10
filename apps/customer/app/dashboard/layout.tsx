@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { User, ShoppingBag, MapPin, Heart, Bell, LogOut, ShieldCheck, ChevronRight, Loader2, Menu, X, DollarSign, Ticket } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useLogout } from "@/lib/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
@@ -580,28 +581,35 @@ function NavItem({
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
+  const { mutate: logoutMutate, isPending: isLoggingOut } = useLogout();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Wait for Zustand to rehydrate from localStorage before checking auth.
-  // Without this guard, the layout briefly sees user=null on every page load
-  // (before the persisted token is read), renders the auth-gate, and fires
-  // requests without an Authorization header — causing spurious 401s that
-  // trigger the api-client logout interceptor.
   useEffect(() => {
-    if (_hasHydrated && !user) {
-      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+    if (_hasHydrated) {
+      if (!user) {
+        router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      } else if (user.role !== "CUSTOMER") {
+        // Admin accounts must use the admin portal
+        router.push("/login?error=admin_account");
+      }
     }
   }, [_hasHydrated, user, router, pathname]);
 
-  // Show a spinner while the store is still rehydrating OR while redirecting
-  if (!_hasHydrated || !user) {
+  // Show spinner while rehydrating or redirecting
+  if (!_hasHydrated || !user || user.role !== "CUSTOMER") {
     return (
       <div style={{ height: "100svh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f3ef" }}>
         <Loader2 size={32} style={{ color: "#0a0a0a", animation: "spin 1s linear infinite" }} />
       </div>
     );
   }
+
+  const handleLogout = () => {
+    setDrawerOpen(false);
+    logoutMutate();
+  };
 
   return (
     <>
@@ -692,7 +700,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <hr className="sidebar-divider" />
                   <button
                     className="nav-logout"
-                    onClick={() => { logout(); setDrawerOpen(false); }}
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
                   >
                     <div className="nav-logout-icon">
                       <LogOut size={13} color="#c0392b" />
@@ -716,7 +725,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <NavItem key={item.href} item={item} isActive={pathname === item.href} />
               ))}
               <hr className="sidebar-divider" />
-              <button className="nav-logout" onClick={() => logout()}>
+              <button className="nav-logout" onClick={handleLogout} disabled={isLoggingOut}>
                 <div className="nav-logout-icon">
                   <LogOut size={13} color="#c0392b" />
                 </div>
