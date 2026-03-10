@@ -7,9 +7,10 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
 import type { AuthResponse, LoginCredentials, RegisterCredentials, User } from "@repo/types";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 /**
- * useMe — fetches the current user's profile.
+ * useMe — fetches the current customer's profile.
  * Only enabled when the user is authenticated.
  */
 export function useMe() {
@@ -27,7 +28,8 @@ export function useMe() {
 }
 
 /**
- * useLogin — mutation that logs in and updates the auth store.
+ * useLogin — mutation that logs in a CUSTOMER and updates the auth store.
+ * Syncs any guest cart items to the server after login.
  */
 export function useLogin() {
     const { login } = useAuthStore();
@@ -41,27 +43,27 @@ export function useLogin() {
         onSuccess: async (data) => {
             login(data.user, data.token);
 
-            // Sync guest cart to server
+            // Sync guest cart items to server after login
             const guestCart = useCartStore.getState();
             if (guestCart.items.length > 0) {
                 try {
                     await Promise.all(
-                        guestCart.items.map(item =>
+                        guestCart.items.map((item) =>
                             apiClient.post("/cart/items", {
                                 productId: item.productId,
                                 variantId: item.variantId,
-                                quantity: item.quantity
+                                quantity: item.quantity,
                             })
                         )
                     );
                     guestCart.clearCart();
                 } catch (error) {
-                    console.error("Failed to sync guest cart", error);
+                    console.error("Failed to sync guest cart:", error);
                 }
             }
 
-            // Invalidate cart so it refetches from server after login
             queryClient.invalidateQueries({ queryKey: queryKeys.cart.root });
+            queryClient.invalidateQueries({ queryKey: queryKeys.user.me });
         },
         onError: (error) => {
             toast.error(getErrorMessage(error));
@@ -70,7 +72,7 @@ export function useLogin() {
 }
 
 /**
- * useRegister — mutation that registers a new user and logs them in.
+ * useRegister — mutation that registers a new customer and logs them in.
  */
 export function useRegister() {
     const { login } = useAuthStore();
@@ -84,22 +86,22 @@ export function useRegister() {
         onSuccess: async (data) => {
             login(data.user, data.token);
 
-            // Sync guest cart to server
+            // Sync guest cart items after registration
             const guestCart = useCartStore.getState();
             if (guestCart.items.length > 0) {
                 try {
                     await Promise.all(
-                        guestCart.items.map(item =>
+                        guestCart.items.map((item) =>
                             apiClient.post("/cart/items", {
                                 productId: item.productId,
                                 variantId: item.variantId,
-                                quantity: item.quantity
+                                quantity: item.quantity,
                             })
                         )
                     );
                     guestCart.clearCart();
                 } catch (error) {
-                    console.error("Failed to sync guest cart", error);
+                    console.error("Failed to sync guest cart:", error);
                 }
             }
 
@@ -112,25 +114,27 @@ export function useRegister() {
 }
 
 /**
- * useLogout — mutation that clears auth state and query cache.
+ * useLogout — clears customer auth state and calls BFF to clear the HttpOnly cookie.
  */
 export function useLogout() {
     const { logout } = useAuthStore();
     const queryClient = useQueryClient();
+    const router = useRouter();
 
     return useMutation<void, Error, void>({
         mutationFn: async () => {
-            // Best-effort server logout (clears httpOnly cookie if used)
+            // Call BFF — clears the HttpOnly customer-token cookie on the server
             await apiClient.post("/auth/logout").catch(() => {
                 // Ignore errors — local state must always be cleared
             });
         },
         onSettled: () => {
             logout();
-            // Clear all user-specific cached data
+            // Clear user-specific cached data
             queryClient.removeQueries({ queryKey: queryKeys.cart.root });
             queryClient.removeQueries({ queryKey: queryKeys.user.me });
             queryClient.removeQueries({ queryKey: queryKeys.orders.all });
+            router.push("/login");
         },
     });
 }
