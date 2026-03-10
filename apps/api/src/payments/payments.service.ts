@@ -34,9 +34,7 @@ export class PaymentsService {
     });
   }
 
-  async createRazorpayOrder(
-    orderId: string,
-  ) {
+  async createRazorpayOrder(orderId: string) {
     const keyId = this.configService.get<string>('RAZORPAY_LIVE_KEY_ID');
     if (!keyId && this.configService.get('NODE_ENV') === 'production') {
       throw new ForbiddenException(
@@ -45,7 +43,7 @@ export class PaymentsService {
     }
 
     const order = await this.prisma.order.findUnique({
-      where: { id: orderId }
+      where: { id: orderId },
     });
 
     if (!order) {
@@ -75,7 +73,9 @@ export class PaymentsService {
     razorpayPaymentId: string,
     signature: string,
   ) {
-    const secret = this.configService.get<string>('RAZORPAY_LIVE_SECRET') ?? 'test_secret_placeholder';
+    const secret =
+      this.configService.get<string>('RAZORPAY_LIVE_SECRET') ??
+      'test_secret_placeholder';
     const generatedSignature = crypto
       .createHmac('sha256', secret)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
@@ -130,4 +130,3 @@ export class PaymentsService {
     return payment;
   }
 }
-

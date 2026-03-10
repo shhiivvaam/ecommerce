@@ -15,9 +15,7 @@ import {
 } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
-import {
-  CreateCheckoutSessionDto,
-} from './dto/payment.dto';
+import { CreateCheckoutSessionDto } from './dto/payment.dto';
 
 @ApiTags('Payments')
 @Controller('payments')
@@ -39,9 +37,7 @@ export class PaymentsController {
   })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
   async createRazorpayOrder(@Body() body: CreateCheckoutSessionDto) {
-    return this.paymentsService.createRazorpayOrder(
-      body.orderId,
-    );
+    return this.paymentsService.createRazorpayOrder(body.orderId);
   }
 
   @Post('verify')
