@@ -42,8 +42,7 @@ export function Navbar() {
     }
   };
 
-  const isAdmin = user?.role === "ADMIN";
-  if (pathname?.startsWith("/admin")) return null;
+  if (pathname?.startsWith("/dashboard")) return null;
 
   const navItems = [
     { label: "All", href: "/products" },
@@ -271,11 +270,6 @@ export function Navbar() {
             {/* Auth */}
             {isAuthenticated ? (
               <>
-                {isAdmin && (
-                  <Link href="/admin">
-                    <span className="nav-text-btn" style={{ color: "#c8ff00", marginLeft: 8 }}>Admin</span>
-                  </Link>
-                )}
                 <Link href="/dashboard">
                   <button className="nav-icon-btn" aria-label="Profile"><User size={18} /></button>
                 </Link>
