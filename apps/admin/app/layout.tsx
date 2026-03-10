@@ -1,41 +1,24 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { Navbar } from '@/components/Navbar';
 import { Toaster } from 'react-hot-toast';
-import { Footer } from '@/components/Footer';
-import { AnalyticsProvider } from '@/lib/analytics';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { Suspense } from 'react';
 import { QueryProvider } from '@/components/QueryProvider';
 import { SettingsProvider } from '@/contexts/SettingsContext';
+import { Suspense } from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://admin.reyva.co.in'),
   title: {
-    default: 'REYVA | Premium E-Commerce',
-    template: '%s | REYVA'
+    default: 'Reyva Admin',
+    template: '%s | Reyva Admin'
   },
-  description: 'A fully functional, production-ready, scalable e-commerce platform.',
-  openGraph: {
-    type: 'website',
-    locale: 'en_US',
-    url: 'https://reyva.co.in',
-    siteName: 'REYVA',
-    images: [{
-      url: '/og-image.jpg',
-      width: 1200,
-      height: 630,
-      alt: 'REYVA - Premium E-Commerce'
-    }]
+  description: 'Reyva internal staff portal — not for public access.',
+  robots: {
+    index: false,
+    follow: false,
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'REYVA | Premium E-Commerce',
-    description: 'A fully functional, production-ready, scalable e-commerce platform.',
-  }
 };
 
 export default function RootLayout({
@@ -44,29 +27,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <QueryProvider>
-            <SettingsProvider>
-              <Suspense>
-                <AnalyticsProvider />
-              </Suspense>
-              <div className="relative flex min-h-screen flex-col bg-background text-foreground transition-colors duration-500">
-                {/* Soft 3D ambient backdrop */}
-                <div className="pointer-events-none fixed inset-0 -z-10">
-                  <div className="absolute inset-x-0 -top-40 h-72 bg-gradient-to-b from-primary/10 via-primary/5 to-transparent blur-3xl" />
-                  <div className="absolute left-[-10%] top-32 h-72 w-72 rounded-full bg-primary/8 blur-3xl" />
-                  <div className="absolute right-[-10%] top-64 h-80 w-80 rounded-full bg-primary/6 blur-3xl" />
-                </div>
-                <Navbar />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
-              <Toaster position="bottom-right" />
-            </SettingsProvider>
-          </QueryProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <SettingsProvider>
+            <Suspense>
+              {children}
+            </Suspense>
+            <Toaster position="bottom-right" />
+          </SettingsProvider>
+        </QueryProvider>
       </body>
     </html>
   );
