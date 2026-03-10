@@ -1,9 +1,12 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
   UnauthorizedException,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -13,6 +16,7 @@ import {
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
   ApiTooManyRequestsResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -24,6 +28,12 @@ import {
   ResetPasswordDto,
 } from './dto/auth.dto';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+
+// Minimal type for controller-level usage — avoids decorator metadata issues
+// with Prisma's interface-based User type under isolatedModules.
+interface AuthUser { id: string; email: string; }
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -31,6 +41,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 attempts per minute
   @ApiOperation({
@@ -57,10 +68,11 @@ export class AuthController {
   }
 
   @Post('register')
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60000, limit: 10 } }) // 10 registrations per minute
   @ApiOperation({
-    summary: 'Register a new user',
+    summary: 'Register a new customer account',
     description:
       'Create a new customer account. Returns a JWT token on success. Limited to 10 registrations per minute.',
   })
@@ -80,7 +92,35 @@ export class AuthController {
     return this.authService.register(body);
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get current authenticated user',
+    description: 'Returns the profile of the currently authenticated user.',
+  })
+  @ApiResponse({ status: 200, description: 'Current user profile' })
+  @ApiUnauthorizedResponse({ description: 'Not authenticated' })
+  async me(@CurrentUser() user: AuthUser) {
+    return this.authService.getMe(user.id);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Logout the current user',
+    description:
+      'Invalidates the session. JWT is stateless — the client must delete the token. This endpoint exists for future token blacklisting support.',
+  })
+  @ApiResponse({ status: 200, description: 'Logged out successfully' })
+  async logout(@CurrentUser() user: AuthUser) {
+    return this.authService.logout(user.id);
+  }
+
   @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 3600000, limit: 3 } }) // 3 resets per hour — protect against email flooding
   @ApiOperation({
@@ -101,6 +141,7 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 attempts per minute
   @ApiOperation({
