@@ -379,6 +379,8 @@ const CSS = `
 
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
+const ADMIN_ROLES = new Set(["SUPERADMIN", "ADMIN", "EDITOR", "SUPPORT"]);
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -388,15 +390,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleSignOut = () => {
     logoutMutate();
-    router.push("/");
+    // Redirect is handled by useLogout (router.push('/login'))
   };
 
   useEffect(() => {
     if (_hasHydrated) {
       if (!user) {
         router.push("/login?callbackUrl=/admin");
-      } else if (user.role !== "ADMIN") {
-        router.push("/");
+      } else if (!ADMIN_ROLES.has(user.role ?? "")) {
+        // CUSTOMER trying to access admin — redirect to login with error
+        router.push("/login?error=unauthorized");
       }
     }
   }, [user, _hasHydrated, router]);
@@ -408,7 +411,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const currentPage = NAV_ITEMS.find((i) => isActive(i.href));
 
-  if (!_hasHydrated || !user || user.role !== "ADMIN") {
+  if (!_hasHydrated || !user || !ADMIN_ROLES.has(user.role ?? "")) {
     return (
       <div style={{ height: "100svh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f3ef" }}>
         <Loader2 size={32} style={{ color: "#0a0a0a", animation: "spin 1s linear infinite" }} />
@@ -462,7 +465,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <p className="al-user-name">{user.name || user.email}</p>
-                  <p className="al-user-role">Admin</p>
+                  <p className="al-user-role">{user.role ?? "Admin"}</p>
                 </div>
               </div>
             )}
