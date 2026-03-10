@@ -45,284 +45,291 @@ export class OrdersService {
       );
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Fetch user email before building the order (avoids Prisma tx type narrowing issues)
-      let userEmail = data.guestEmail ?? '';
+    const result = await this.prisma.$transaction(
+      async (tx) => {
+        // Fetch user email before building the order (avoids Prisma tx type narrowing issues)
+        let userEmail = data.guestEmail ?? '';
 
-      if (userId) {
-        const user = await tx.user.findUnique({
-          where: { id: userId },
-          select: { email: true },
-        });
-        userEmail = user?.email ?? userEmail;
-      }
-
-      const productIds = data.items.map((item) => item.productId);
-
-      const products = await tx.product.findMany({
-        where: { id: { in: productIds } },
-      });
-
-      if (products.length !== productIds.length) {
-        throw new BadRequestException(
-          'One or more products in the order do not exist',
-        );
-      }
-
-      const productMap = new Map(products.map((p) => [p.id, p]));
-
-      let totalAmount = 0;
-      let isDigitalOnly = true;
-      const orderItemsData = [];
-
-      for (const item of data.items) {
-        const product = productMap.get(item.productId)!;
-        if (!product.isDigital) isDigitalOnly = false;
-
-        let currentPrice = product.discounted ?? product.price;
-        let pTitle = product.title;
-        let pSku = product.sku;
-
-        if (item.variantId) {
-          const variant = await tx.variant.findUnique({
-            where: { id: item.variantId },
+        if (userId) {
+          const user = await tx.user.findUnique({
+            where: { id: userId },
+            select: { email: true },
           });
-          if (!variant)
-            throw new BadRequestException(
-              `Variant not found for product: ${product.title}`,
-            );
-
-          const { count: updatedCount } = await tx.variant.updateMany({
-            where: { id: variant.id, stock: { gte: item.quantity } },
-            data: { stock: { decrement: item.quantity } },
-          });
-
-          if (updatedCount === 0) {
-            throw new BadRequestException(
-              `Insufficient stock for variant of product: ${product.title}`,
-            );
-          }
-
-          currentPrice += variant.priceDiff;
-          pTitle = `${product.title} (${[variant.size, variant.color].filter(Boolean).join(', ')})`;
-          pSku = variant.sku || product.sku;
-        } else {
-          // ✅ Atomic global stock deduction
-          const { count: updatedCount } = await tx.product.updateMany({
-            where: { id: product.id, stock: { gte: item.quantity } },
-            data: { stock: { decrement: item.quantity } },
-          });
-
-          if (updatedCount === 0) {
-            throw new BadRequestException(
-              `Insufficient stock for product: ${product.title}`,
-            );
-          }
+          userEmail = user?.email ?? userEmail;
         }
 
-        totalAmount += currentPrice * item.quantity;
+        const productIds = data.items.map((item) => item.productId);
 
-        orderItemsData.push({
-          productId: item.productId,
-          variantId: item.variantId || null,
-          quantity: item.quantity,
-          price: currentPrice,
-          productTitle: pTitle,
-          sku: pSku,
-        });
-      }
-
-      // Tax and Shipping will be calculated later with the final address
-
-      // ✅ Apply coupon discount if a coupon code is provided
-      let discountAmount = 0;
-      let couponId: string | undefined;
-
-      if (data.couponCode) {
-        const coupon = await tx.coupon.findFirst({
-          where: { code: data.couponCode.toUpperCase() },
+        const products = await tx.product.findMany({
+          where: { id: { in: productIds } },
         });
 
-        if (!coupon) {
+        if (products.length !== productIds.length) {
           throw new BadRequestException(
-            `Coupon code "${data.couponCode}" is not valid`,
+            'One or more products in the order do not exist',
           );
         }
 
-        this.couponsService.validateCouponBasic(coupon, totalAmount);
+        const productMap = new Map(products.map((p) => [p.id, p]));
 
-        // Build CouponItem list for discount calculation
-        const couponItems = orderItemsData.map((item) => ({
-          productId: item.productId,
-          categoryId: item.variantId || '', // Simplified for now since Prisma needs categories resolving
-          price: item.price,
-          quantity: item.quantity,
-        }));
+        let totalAmount = 0;
+        let isDigitalOnly = true;
+        const orderItemsData = [];
 
-        discountAmount = this.couponsService.calculateDiscount(
-          coupon,
-          couponItems,
-          totalAmount,
-        );
-        couponId = coupon.id;
+        for (const item of data.items) {
+          const product = productMap.get(item.productId)!;
+          if (!product.isDigital) isDigitalOnly = false;
 
-        // Increment usage count securely to avoid race conditions
-        if (coupon.usageLimit !== null) {
-          const { count: updatedCouponCount } = await tx.coupon.updateMany({
-            where: { id: coupon.id, usedCount: { lt: coupon.usageLimit } },
-            data: { usedCount: { increment: 1 } },
-          });
+          let currentPrice = product.discounted ?? product.price;
+          let pTitle = product.title;
+          let pSku = product.sku;
 
-          if (updatedCouponCount === 0) {
-            throw new BadRequestException(
-              `Coupon code "${data.couponCode}" has reached its usage limit`,
-            );
+          if (item.variantId) {
+            const variant = await tx.variant.findUnique({
+              where: { id: item.variantId },
+            });
+            if (!variant)
+              throw new BadRequestException(
+                `Variant not found for product: ${product.title}`,
+              );
+
+            const { count: updatedCount } = await tx.variant.updateMany({
+              where: { id: variant.id, stock: { gte: item.quantity } },
+              data: { stock: { decrement: item.quantity } },
+            });
+
+            if (updatedCount === 0) {
+              throw new BadRequestException(
+                `Insufficient stock for variant of product: ${product.title}`,
+              );
+            }
+
+            currentPrice += variant.priceDiff;
+            pTitle = `${product.title} (${[variant.size, variant.color].filter(Boolean).join(', ')})`;
+            pSku = variant.sku || product.sku;
+          } else {
+            // ✅ Atomic global stock deduction
+            const { count: updatedCount } = await tx.product.updateMany({
+              where: { id: product.id, stock: { gte: item.quantity } },
+              data: { stock: { decrement: item.quantity } },
+            });
+
+            if (updatedCount === 0) {
+              throw new BadRequestException(
+                `Insufficient stock for product: ${product.title}`,
+              );
+            }
           }
-        } else {
-          await tx.coupon.update({
-            where: { id: coupon.id },
-            data: { usedCount: { increment: 1 } },
+
+          totalAmount += currentPrice * item.quantity;
+
+          orderItemsData.push({
+            productId: item.productId,
+            variantId: item.variantId || null,
+            quantity: item.quantity,
+            price: currentPrice,
+            productTitle: pTitle,
+            sku: pSku,
           });
         }
-      }
 
-      // Resolve address by cloning to prevent silent mutation of past orders
-      let finalAddressObj;
-      let createdAddressId = undefined;
+        // Tax and Shipping will be calculated later with the final address
 
-      if (!isDigitalOnly) {
-        if (data.addressId) {
-          const existingAddress = await tx.address.findUnique({
-            where: { id: data.addressId },
+        // ✅ Apply coupon discount if a coupon code is provided
+        let discountAmount = 0;
+        let couponId: string | undefined;
+
+        if (data.couponCode) {
+          const coupon = await tx.coupon.findFirst({
+            where: { code: data.couponCode.toUpperCase() },
           });
-          if (!existingAddress)
-            throw new BadRequestException('Address not found');
-          finalAddressObj = {
+
+          if (!coupon) {
+            throw new BadRequestException(
+              `Coupon code "${data.couponCode}" is not valid`,
+            );
+          }
+
+          this.couponsService.validateCouponBasic(coupon, totalAmount);
+
+          // Build CouponItem list for discount calculation
+          const couponItems = orderItemsData.map((item) => ({
+            productId: item.productId,
+            categoryId: item.variantId || '', // Simplified for now since Prisma needs categories resolving
+            price: item.price,
+            quantity: item.quantity,
+          }));
+
+          discountAmount = this.couponsService.calculateDiscount(
+            coupon,
+            couponItems,
+            totalAmount,
+          );
+          couponId = coupon.id;
+
+          // Increment usage count securely to avoid race conditions
+          if (coupon.usageLimit !== null) {
+            const { count: updatedCouponCount } = await tx.coupon.updateMany({
+              where: { id: coupon.id, usedCount: { lt: coupon.usageLimit } },
+              data: { usedCount: { increment: 1 } },
+            });
+
+            if (updatedCouponCount === 0) {
+              throw new BadRequestException(
+                `Coupon code "${data.couponCode}" has reached its usage limit`,
+              );
+            }
+          } else {
+            await tx.coupon.update({
+              where: { id: coupon.id },
+              data: { usedCount: { increment: 1 } },
+            });
+          }
+        }
+
+        // Resolve address by cloning to prevent silent mutation of past orders
+        let finalAddressObj;
+        let createdAddressId = undefined;
+
+        if (!isDigitalOnly) {
+          if (data.addressId) {
+            const existingAddress = await tx.address.findUnique({
+              where: { id: data.addressId },
+            });
+            if (!existingAddress)
+              throw new BadRequestException('Address not found');
+            finalAddressObj = {
+              userId: userId || undefined,
+              sessionId: !userId ? data.sessionId : undefined,
+              street: existingAddress.street,
+              city: existingAddress.city,
+              state: existingAddress.state,
+              country: existingAddress.country,
+              zipCode: existingAddress.zipCode,
+              isDefault: false,
+            };
+          } else if (data.address) {
+            finalAddressObj = {
+              userId: userId || undefined,
+              sessionId: !userId ? data.sessionId : undefined,
+              street: data.address.street,
+              city: data.address.city,
+              state: data.address.state,
+              country: data.address.country,
+              zipCode: data.address.zipCode,
+              isDefault: false, // snapshots shouldn't be default
+            };
+          } else {
+            throw new BadRequestException(
+              'Shipping address is required for physical products',
+            );
+          }
+
+          const snapshotAddress = await tx.address.create({
+            data: finalAddressObj,
+          });
+          createdAddressId = snapshotAddress.id;
+        }
+
+        let taxAmount = 0;
+        let shippingAmount = 0;
+        if (!isDigitalOnly && finalAddressObj) {
+          taxAmount = this.taxService.calculateTaxAmount(
+            totalAmount,
+            finalAddressObj as unknown as import('@prisma/client').Address,
+          );
+          shippingAmount = this.shippingService.calculateShippingRate(
+            orderItemsData,
+            finalAddressObj as unknown as import('@prisma/client').Address,
+            totalAmount,
+          );
+        }
+
+        let grandTotal =
+          totalAmount + taxAmount + shippingAmount - discountAmount;
+
+        grandTotal = Math.max(0, grandTotal);
+
+        // Evaluate Affiliate
+        let affiliateId: string | undefined = undefined;
+        const reqUserId = userId || undefined;
+        if (data.affiliateCode) {
+          const affiliate = await tx.affiliate.findUnique({
+            where: { code: data.affiliateCode.toUpperCase() },
+          });
+
+          if (affiliate && affiliate.userId !== reqUserId) {
+            // Give 5% off the grandTotal
+            const affiliateDiscount = grandTotal * 0.05;
+            discountAmount += affiliateDiscount; // keep track globally
+            grandTotal -= affiliateDiscount;
+            affiliateId = affiliate.id;
+          }
+        }
+
+        grandTotal = Math.max(0, grandTotal);
+
+        // Evaluate Gift Card
+        if (data.giftCardCode && grandTotal > 0) {
+          const giftCard = await tx.giftCard.findUnique({
+            where: { code: data.giftCardCode.toUpperCase() },
+          });
+
+          if (
+            !giftCard ||
+            (giftCard.expiresAt && giftCard.expiresAt < new Date())
+          ) {
+            throw new BadRequestException('Invalid or expired gift card code');
+          }
+
+          if (giftCard.currentBalance > 0) {
+            const allocatable = Math.min(grandTotal, giftCard.currentBalance);
+            grandTotal -= allocatable;
+
+            await tx.giftCard.update({
+              where: { id: giftCard.id },
+              data: { currentBalance: { decrement: allocatable } },
+            });
+          }
+        }
+
+        if (data.expectedTotal !== undefined && data.expectedTotal !== null) {
+          const expectedTotal = Number(data.expectedTotal);
+          const expectedBackendTotal =
+            Number(totalAmount) - Number(discountAmount);
+          if (Math.abs(expectedBackendTotal - expectedTotal) > 0.01) {
+            throw new ConflictException(
+              `Cart prices have changed. Expected $${expectedTotal.toFixed(2)}, but actual total is $${expectedBackendTotal.toFixed(2)}. Please review your cart.`,
+            );
+          }
+        }
+
+        const order = await tx.order.create({
+          data: {
             userId: userId || undefined,
             sessionId: !userId ? data.sessionId : undefined,
-            street: existingAddress.street,
-            city: existingAddress.city,
-            state: existingAddress.state,
-            country: existingAddress.country,
-            zipCode: existingAddress.zipCode,
-            isDefault: false,
-          };
-        } else if (data.address) {
-          finalAddressObj = {
-            userId: userId || undefined,
-            sessionId: !userId ? data.sessionId : undefined,
-            street: data.address.street,
-            city: data.address.city,
-            state: data.address.state,
-            country: data.address.country,
-            zipCode: data.address.zipCode,
-            isDefault: false, // snapshots shouldn't be default
-          };
-        } else {
-          throw new BadRequestException(
-            'Shipping address is required for physical products',
-          );
-        }
-
-        const snapshotAddress = await tx.address.create({
-          data: finalAddressObj,
-        });
-        createdAddressId = snapshotAddress.id;
-      }
-
-      let taxAmount = 0;
-      let shippingAmount = 0;
-      if (!isDigitalOnly && finalAddressObj) {
-        taxAmount = this.taxService.calculateTaxAmount(
-          totalAmount,
-          finalAddressObj as unknown as import('@prisma/client').Address,
-        );
-        shippingAmount = this.shippingService.calculateShippingRate(
-          orderItemsData,
-          finalAddressObj as unknown as import('@prisma/client').Address,
-          totalAmount,
-        );
-      }
-
-      let grandTotal =
-        totalAmount + taxAmount + shippingAmount - discountAmount;
-
-      grandTotal = Math.max(0, grandTotal);
-
-      // Evaluate Affiliate
-      let affiliateId: string | undefined = undefined;
-      const reqUserId = userId || undefined;
-      if (data.affiliateCode) {
-        const affiliate = await tx.affiliate.findUnique({
-          where: { code: data.affiliateCode.toUpperCase() },
-        });
-
-        if (affiliate && affiliate.userId !== reqUserId) {
-          // Give 5% off the grandTotal
-          const affiliateDiscount = grandTotal * 0.05;
-          discountAmount += affiliateDiscount; // keep track globally
-          grandTotal -= affiliateDiscount;
-          affiliateId = affiliate.id;
-        }
-      }
-
-      grandTotal = Math.max(0, grandTotal);
-
-      // Evaluate Gift Card
-      if (data.giftCardCode && grandTotal > 0) {
-        const giftCard = await tx.giftCard.findUnique({
-          where: { code: data.giftCardCode.toUpperCase() },
-        });
-
-        if (
-          !giftCard ||
-          (giftCard.expiresAt && giftCard.expiresAt < new Date())
-        ) {
-          throw new BadRequestException('Invalid or expired gift card code');
-        }
-
-        if (giftCard.currentBalance > 0) {
-          const allocatable = Math.min(grandTotal, giftCard.currentBalance);
-          grandTotal -= allocatable;
-
-          await tx.giftCard.update({
-            where: { id: giftCard.id },
-            data: { currentBalance: { decrement: allocatable } },
-          });
-        }
-      }
-
-      if (data.expectedTotal !== undefined && data.expectedTotal !== null) {
-        const expectedTotal = Number(data.expectedTotal);
-        const expectedBackendTotal = Number(totalAmount) - Number(discountAmount);
-        if (Math.abs(expectedBackendTotal - expectedTotal) > 0.01) {
-          throw new ConflictException(
-            `Cart prices have changed. Expected $${expectedTotal.toFixed(2)}, but actual total is $${expectedBackendTotal.toFixed(2)}. Please review your cart.`,
-          );
-        }
-      }
-
-      const order = await tx.order.create({
-        data: {
-          userId: userId || undefined,
-          sessionId: !userId ? data.sessionId : undefined,
-          guestEmail: !userId && userEmail ? userEmail : undefined,
-          status: OrderStatus.PENDING,
-          totalAmount: Math.max(0, grandTotal),
-          taxAmount,
-          shippingAmount,
-          couponId,
-          addressId: createdAddressId,
-          affiliateId,
-          items: {
-            create: orderItemsData,
+            guestEmail: !userId && userEmail ? userEmail : undefined,
+            status: OrderStatus.PENDING,
+            totalAmount: Math.max(0, grandTotal),
+            taxAmount,
+            shippingAmount,
+            couponId,
+            addressId: createdAddressId,
+            affiliateId,
+            items: {
+              create: orderItemsData,
+            },
           },
-        },
-        include: { items: true },
-      });
+          include: { items: true },
+        });
 
-      return { order, userEmail };
-    });
+        return { order, userEmail };
+      },
+      {
+        maxWait: 5000, // default is 2000
+        timeout: 20000, // default is 5000
+      },
+    );
 
     // Send confirmation email — fire and forget, only runs if transaction committed successfully
     if (result.userEmail) {
