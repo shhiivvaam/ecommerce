@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
-import { Button } from "@repo/ui";
-import { Input } from "@repo/ui";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, CreditCard, MapPin, Package, Lock, Plus, Tag, X, ChevronRight, ShieldCheck, Zap, ShieldAlert } from "lucide-react";
+import {
+    CheckCircle2, CreditCard, MapPin, Package, Lock,
+    Plus, Tag, X, ChevronRight, ShieldCheck, Zap, ShieldAlert,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
-
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
 
@@ -23,12 +23,6 @@ interface AppliedCoupon {
     finalTotal: number;
 }
 
-const steps = [
-    { id: 1, name: "Shipping", icon: MapPin, label: "Delivery address" },
-    { id: 2, name: "Payment", icon: CreditCard, label: "Secure payment" },
-    { id: 3, name: "Review", icon: Package, label: "Order summary" },
-];
-
 interface SavedAddress {
     id: string;
     street: string;
@@ -39,574 +33,719 @@ interface SavedAddress {
     isDefault: boolean;
 }
 
+const steps = [
+    { id: 1, name: "Shipping", icon: MapPin, label: "Delivery address" },
+    { id: 2, name: "Payment", icon: CreditCard, label: "Secure payment" },
+    { id: 3, name: "Review", icon: Package, label: "Order summary" },
+];
+
+const STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --ink: #0a0a0a;
+  --paper: #f5f3ef;
+  --accent: #c8ff00;
+  --mid: #8a8a8a;
+  --border: rgba(10,10,10,0.1);
+  --card: #ffffff;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.co-root {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* ─── Header ───────────────────────────────────────── */
+.co-header {
+  background: var(--ink);
+  padding: 88px 0 40px;
+}
+.co-header-inner {
+  max-width: 960px; margin: 0 auto; padding: 0 40px;
+  display: flex; align-items: flex-end;
+  justify-content: space-between; gap: 32px; flex-wrap: wrap;
+}
+.co-eyebrow {
+  font-size: 10px; font-weight: 500; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 10px;
+}
+.co-page-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(40px, 5.5vw, 64px); font-weight: 900;
+  text-transform: uppercase; line-height: .92;
+  color: #fff; letter-spacing: -.01em;
+}
+
+/* ─── Stepper ──────────────────────────────────────── */
+.co-stepper { display: flex; align-items: center; gap: 0; }
+.co-step { display: flex; align-items: center; gap: 10px; }
+.co-step-dot {
+  width: 36px; height: 36px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  background: transparent; color: rgba(255,255,255,0.3);
+  transition: background .2s, border-color .2s, color .2s; flex-shrink: 0;
+}
+.co-step-dot.active { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+.co-step-dot.done { background: rgba(200,255,0,.12); border-color: rgba(200,255,0,.35); color: var(--accent); }
+.co-step-name { font-size: 11px; font-weight: 500; color: rgba(255,255,255,.45); line-height: 1; }
+.co-step-name.on { color: #fff; }
+.co-step-sub { font-size: 10px; font-weight: 300; color: rgba(255,255,255,.25); margin-top: 2px; }
+.co-connector { width: 28px; height: 1px; background: rgba(255,255,255,.1); margin: 0 8px; flex-shrink: 0; }
+.co-connector.done { background: rgba(200,255,0,.3); }
+
+/* ─── Body shell ───────────────────────────────────── */
+.co-body { max-width: 960px; margin: 0 auto; padding: 48px 40px 100px; }
+
+/* ─── Step header ──────────────────────────────────── */
+.co-step-eyebrow {
+  font-size: 10px; font-weight: 500; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--mid); display: block; margin-bottom: 8px;
+}
+.co-step-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(32px, 4.5vw, 48px); font-weight: 900;
+  text-transform: uppercase; line-height: .95; margin-bottom: 6px;
+}
+.co-step-desc { font-size: 13px; font-weight: 300; color: var(--mid); line-height: 1.65; }
+
+/* ─── Inputs ───────────────────────────────────────── */
+.co-label {
+  display: block; font-size: 10px; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--mid); margin-bottom: 8px;
+}
+.co-input {
+  width: 100%; height: 48px; padding: 0 16px;
+  border-radius: 6px; border: 1.5px solid var(--border);
+  background: var(--paper); font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 400; color: var(--ink);
+  outline: none; transition: border-color .2s, background .2s;
+  -webkit-appearance: none;
+}
+.co-input:focus { border-color: var(--ink); background: #fff; }
+.co-input::placeholder { color: rgba(10,10,10,.26); }
+.co-input:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ─── Buttons ──────────────────────────────────────── */
+.co-btn {
+  height: 52px; padding: 0 28px; border-radius: 6px; border: none;
+  background: var(--ink); color: #fff; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 11px;
+  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+  transition: background .2s, transform .15s;
+}
+.co-btn:hover:not(:disabled) { background: #1c1c1c; transform: translateY(-1px); }
+.co-btn:active:not(:disabled) { transform: translateY(0); }
+.co-btn:disabled { opacity: .36; cursor: not-allowed; transform: none; }
+
+.co-btn-ghost {
+  height: 52px; padding: 0 24px; border-radius: 6px;
+  border: 1.5px solid var(--border); background: transparent; color: var(--mid);
+  cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 11px;
+  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: border-color .2s, color .2s;
+}
+.co-btn-ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.co-btn-ghost:disabled { opacity: .36; cursor: not-allowed; }
+
+.co-btn-dashed {
+  width: 100%; height: 46px; border-radius: 6px;
+  border: 1.5px dashed var(--border); background: transparent; color: var(--mid);
+  cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 11px;
+  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.co-btn-dashed:hover { border-color: var(--ink); color: var(--ink); background: rgba(10,10,10,.02); }
+
+/* ─── Address tile ─────────────────────────────────── */
+.co-addr {
+  padding: 18px 20px; border-radius: 8px;
+  border: 1.5px solid var(--border); background: var(--card);
+  cursor: pointer; transition: border-color .2s, box-shadow .2s, opacity .2s;
+}
+.co-addr.selected { border-color: var(--ink); box-shadow: 0 2px 16px rgba(10,10,10,.09); opacity: 1; }
+.co-addr:not(.selected) { opacity: .68; }
+.co-addr:not(.selected):hover { opacity: 1; border-color: rgba(10,10,10,.28); }
+
+/* ─── Inset form panel ─────────────────────────────── */
+.co-inset {
+  background: var(--paper); border: 1px solid var(--border);
+  border-radius: 10px; padding: 28px;
+}
+
+/* ─── Card wrapper ─────────────────────────────────── */
+.co-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+
+/* ─── Order item row ───────────────────────────────── */
+.co-item-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.co-item-row:last-child { border-bottom: none; }
+
+/* ─── Coupon applied ───────────────────────────────── */
+.co-coupon-tag {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 12px 16px; border-radius: 6px;
+  background: rgba(200,255,0,.1); border: 1px solid rgba(200,255,0,.26);
+}
+
+/* ─── Total panel ──────────────────────────────────── */
+.co-totals {
+  background: var(--ink); color: #fff;
+  padding: 24px 28px;
+  border-radius: 0 0 9px 9px;
+}
+.co-totals-row {
+  display: flex; align-items: baseline;
+  justify-content: space-between; gap: 16px;
+}
+
+/* ─── Payment info card ────────────────────────────── */
+.co-pay-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 48px 40px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.co-pay-icon {
+  width: 60px; height: 60px; border-radius: 10px;
+  background: var(--paper); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px; color: var(--ink);
+}
+.co-pay-badge {
+  height: 32px; padding: 0 14px; border-radius: 5px;
+  border: 1.5px solid var(--border); background: var(--paper);
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mid);
+  display: inline-flex; align-items: center;
+}
+
+/* ─── Nav row ──────────────────────────────────────── */
+.co-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 24px; border-top: 1px solid var(--border);
+  gap: 16px; flex-wrap: wrap;
+}
+
+/* ─── Success ──────────────────────────────────────── */
+.co-success-icon {
+  width: 72px; height: 72px; border-radius: 12px; background: #16a34a;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 28px; color: #fff;
+}
+
+/* ─── Rule ─────────────────────────────────────────── */
+.co-rule { height: 1px; background: var(--border); border: none; margin: 0; }
+
+/* ─── Responsive ───────────────────────────────────── */
+@media (max-width: 680px) {
+  .co-header-inner, .co-body { padding-left: 20px; padding-right: 20px; }
+  .co-stepper { display: none; }
+  .co-btn, .co-btn-ghost { height: 48px; padding: 0 18px; font-size: 10px; }
+  .co-pay-card { padding: 28px 20px; }
+  .co-totals { padding: 20px; }
+  .co-item-row { padding: 14px 16px; }
+}
+`;
+
 export default function CheckoutPage() {
     const [currentStep, setCurrentStep] = useState(1);
     const { items } = useCartStore();
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Address state
     const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
 
-    // Coupon state
     const [couponCode, setCouponCode] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-    // Calculate total
-    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
     const finalTotal = appliedCoupon ? appliedCoupon.finalTotal : total;
 
     const [address, setAddress] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        street: "",
-        city: "",
-        zipCode: "",
-        state: "NY",
-        country: "US"
+        firstName: "", lastName: "", email: "",
+        street: "", city: "", zipCode: "", state: "NY", country: "US",
     });
+    const updateAddress = (f: string, v: string) =>
+        setAddress((p) => ({ ...p, [f]: v }));
+
+    const { isAuthenticated, _hasHydrated } = useAuthStore();
+
+    useEffect(() => {
+        if (!_hasHydrated) return;
+        if (!isAuthenticated) { setIsAddingNew(true); return; }
+        (async () => {
+            try {
+                const { data } = await api.get("/addresses");
+                setSavedAddresses(data);
+                if (data.length > 0) {
+                    const def = data.find((a: SavedAddress) => a.isDefault);
+                    setSelectedAddressId(def ? def.id : data[0].id);
+                } else setIsAddingNew(true);
+            } catch { setIsAddingNew(true); }
+        })();
+    }, [isAuthenticated, _hasHydrated]);
+
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get("canceled") === "true")
+            toast.error("Payment canceled. Your cart has been preserved.");
+    }, []);
 
     const handleApplyCouponOrAffiliate = async () => {
         if (!couponCode.trim()) return;
         setIsApplyingCoupon(true);
         try {
-            // First check if it's an affiliate code
             try {
-                const affRes = await api.get(`/affiliates/verify/${couponCode.trim()}`);
-                if (affRes.data && affRes.data.valid) {
-                    const discountAmount = total * affRes.data.commissionRate;
-                    setAppliedCoupon({
-                        affiliateId: affRes.data.affiliateId,
-                        affiliateCode: couponCode.trim(),
-                        code: couponCode.trim(),
-                        discountAmount,
-                        finalTotal: total - discountAmount
-                    });
-                    toast.success(`Referral applied: -${discountAmount.toFixed(2)} Credits`);
-                    setIsApplyingCoupon(false);
-                    return;
+                const aff = await api.get(`/affiliates/verify/${couponCode.trim()}`);
+                if (aff.data?.valid) {
+                    const disc = total * aff.data.commissionRate;
+                    setAppliedCoupon({ affiliateId: aff.data.affiliateId, affiliateCode: couponCode.trim(), code: couponCode.trim(), discountAmount: disc, finalTotal: total - disc });
+                    toast.success(`Referral applied: -$${disc.toFixed(2)}`);
+                    setIsApplyingCoupon(false); return;
                 }
-            } catch {
-                // Not an affiliate code, try coupon
-            }
-
-            const { data } = await api.post('/coupons/apply', { code: couponCode.trim(), cartTotal: total });
+            } catch { /* not affiliate */ }
+            const { data } = await api.post("/coupons/apply", { code: couponCode.trim(), cartTotal: total });
             setAppliedCoupon(data);
-            toast.success(`Coupon authorized: -${data.discountAmount.toFixed(2)} Credits`);
+            toast.success(`Coupon applied: -$${data.discountAmount.toFixed(2)}`);
         } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message || 'Invalid promotion or referral signature');
-        } finally {
-            setIsApplyingCoupon(false);
-        }
+            const e = err as { response?: { data?: { message?: string } } };
+            toast.error(e.response?.data?.message || "Invalid coupon or referral code");
+        } finally { setIsApplyingCoupon(false); }
     };
 
-    const handleRemoveCoupon = () => {
-        setAppliedCoupon(null);
-        setCouponCode("");
+    const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode(""); };
+    const handleNext = () => setCurrentStep((p) => Math.min(p + 1, 3));
+    const handleBack = () => setCurrentStep((p) => Math.max(p - 1, 1));
+
+    const canProceed = () => {
+        if (!isAddingNew && selectedAddressId) return true;
+        if (isAddingNew && address.street && address.city && address.zipCode &&
+            (isAuthenticated || address.email)) return true;
+        return false;
     };
-
-    const { isAuthenticated, _hasHydrated } = useAuthStore();
-
-    useEffect(() => {
-        if (!_hasHydrated) return; // Wait for Zustand hydration
-        if (!isAuthenticated) {
-            setIsAddingNew(true);
-            return;
-        }
-
-        const fetchAddresses = async () => {
-            try {
-                const { data } = await api.get('/addresses');
-                setSavedAddresses(data);
-                if (data.length > 0) {
-                    const def = data.find((a: SavedAddress) => a.isDefault);
-                    setSelectedAddressId(def ? def.id : data[0].id);
-                } else {
-                    setIsAddingNew(true);
-                }
-            } catch (error) {
-                console.error("Address registry retrieval failure", error);
-                setIsAddingNew(true);
-            }
-        };
-        fetchAddresses();
-    }, [isAuthenticated, _hasHydrated]);
-
-    // Handle payment cancellation
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('canceled') === 'true') {
-            toast.error('Payment canceled. Your cart has been preserved.');
-        }
-    }, []);
-
-    if (items.length === 0 && currentStep !== 4) {
-        return (
-            <div className="container mx-auto min-h-[70vh] flex flex-col items-center justify-center text-center px-8 bg-background transition-colors duration-500">
-                <div className="h-20 w-20 bg-card border border-border rounded-3xl flex items-center justify-center mb-8 text-muted-foreground">
-                    <ShieldAlert className="h-10 w-10" />
-                </div>
-                <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-                    Your cart is empty
-                </h2>
-                <p className="text-sm text-muted-foreground mt-3">
-                    Add some products to your cart before going to checkout.
-                </p>
-                <Link href="/products" className="mt-4">
-                    <Button size="lg" className="rounded-full h-11 px-8 text-sm font-medium">
-                        Browse products
-                    </Button>
-                </Link>
-            </div>
-        );
-    }
-
-    const handleNext = () => setCurrentStep(prev => Math.min(prev + 1, 3));
-    const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
     const handlePlaceOrder = async () => {
         setIsProcessing(true);
         try {
-            const orderPayload: Record<string, unknown> = {
-                items: items.map(i => ({ productId: i.productId, variantId: i.variantId || undefined, quantity: i.quantity })),
+            const payload: Record<string, unknown> = {
+                items: items.map((i) => ({ productId: i.productId, variantId: i.variantId || undefined, quantity: i.quantity })),
                 expectedTotal: finalTotal,
                 ...(!isAuthenticated && address.email ? { guestEmail: address.email, sessionId: Math.random().toString(36).substring(2, 15) } : {}),
                 ...(appliedCoupon?.couponId && { couponId: appliedCoupon.couponId }),
-                ...(appliedCoupon?.affiliateCode && { affiliateCode: appliedCoupon.affiliateCode })
+                ...(appliedCoupon?.affiliateCode && { affiliateCode: appliedCoupon.affiliateCode }),
             };
+            if (selectedAddressId && !isAddingNew) payload.addressId = selectedAddressId;
+            else payload.address = { street: address.street, city: address.city, state: address.state, country: address.country, zipCode: address.zipCode };
 
-            if (selectedAddressId && !isAddingNew) {
-                orderPayload.addressId = selectedAddressId;
-            } else {
-                orderPayload.address = {
-                    street: address.street,
-                    city: address.city,
-                    state: address.state,
-                    country: address.country,
-                    zipCode: address.zipCode
-                };
-            }
-
-            const orderRes = await api.post('/orders', orderPayload);
-            const orderId = orderRes.data.id;
-
-            // Store order ID in sessionStorage for potential cleanup on success page
-            sessionStorage.setItem('pendingOrderId', orderId);
-
-            const checkoutPayload = {
-                orderId,
+            const { data: order } = await api.post("/orders", payload);
+            sessionStorage.setItem("pendingOrderId", order.id);
+            const { data: pay } = await api.post("/payments/checkout", {
+                orderId: order.id,
                 ...(appliedCoupon && { discountAmount: appliedCoupon.discountAmount }),
-            };
+            });
 
-            const paymentRes = await api.post('/payments/checkout', checkoutPayload);
-
-            if (paymentRes.data.id) {
-                const options = {
-                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-                    amount: paymentRes.data.amount,
-                    currency: paymentRes.data.currency,
-                    name: "E-Commerce",
-                    description: "Order Payment",
-                    order_id: paymentRes.data.id,
-                    handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+            if (pay.id) {
+                const opts = {
+                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder",
+                    amount: pay.amount, currency: pay.currency,
+                    name: "Reyva", description: "Order Payment", order_id: pay.id,
+                    handler: async (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
                         try {
                             setIsProcessing(true);
-                            await api.post('/payments/verify', {
-                                orderId: orderId,
-                                razorpayOrderId: response.razorpay_order_id,
-                                razorpayPaymentId: response.razorpay_payment_id,
-                                signature: response.razorpay_signature
+                            await api.post("/payments/verify", {
+                                orderId: order.id,
+                                razorpayOrderId: r.razorpay_order_id,
+                                razorpayPaymentId: r.razorpay_payment_id,
+                                signature: r.razorpay_signature,
                             });
                             setCurrentStep(4);
                         } catch (err: unknown) {
-                            const error = err as { response?: { data?: { message?: string } } };
-                            toast.error(error.response?.data?.message || "Payment verification failed.");
-                        } finally {
-                            setIsProcessing(false);
-                        }
+                            const e = err as { response?: { data?: { message?: string } } };
+                            toast.error(e.response?.data?.message || "Payment verification failed.");
+                        } finally { setIsProcessing(false); }
                     },
-                    prefill: {
-                        name: `${address.firstName} ${address.lastName}`.trim(),
-                        email: address.email || '',
-                    },
-                    theme: {
-                        color: "#0a0a0a"
-                    }
+                    prefill: { name: `${address.firstName} ${address.lastName}`.trim(), email: address.email || "" },
+                    theme: { color: "#0a0a0a" },
                 };
-
-                const RazorpayWindow = window as unknown as {
-                    Razorpay: new (opts: Record<string, unknown>) => {
-                        on: (event: string, callback: (res: { error: { description: string } }) => void) => void;
-                        open: () => void;
-                    }
-                };
-                const rzp = new RazorpayWindow.Razorpay(options);
-                rzp.on('payment.failed', function (response: { error: { description: string } }) {
-                    toast.error(response.error.description);
-                    setIsProcessing(false);
-                });
+                type RzpWindow = { Razorpay: new (o: Record<string, unknown>) => { on: (e: string, cb: (r: { error: { description: string } }) => void) => void; open: () => void } };
+                const rzp = new (window as unknown as RzpWindow).Razorpay(opts);
+                rzp.on("payment.failed", (r) => { toast.error(r.error.description); setIsProcessing(false); });
                 rzp.open();
-            } else {
-                setCurrentStep(4);
-            }
-
+            } else { setCurrentStep(4); }
         } catch (err: unknown) {
-            console.error("Acquisition failure", err);
-            const error = err as { response?: { status?: number, data?: { statusCode?: number, message?: string | string[] } } };
-            if (error.response?.status === 409 || error.response?.data?.statusCode === 409) {
-                toast.error("Prices or stock have changed since you loaded the cart. Please review your cart.", { duration: 8000 });
-            } else if (error.response?.data?.message) {
-                const msgs = Array.isArray(error.response.data.message) ? error.response.data.message.join(', ') : error.response.data.message;
-                toast.error(msgs);
-            } else {
-                toast.error("Protocol rejection. Verify data integrity and re-initialize.");
-            }
+            const e = err as { response?: { status?: number; data?: { statusCode?: number; message?: string | string[] } } };
+            if (e.response?.status === 409 || e.response?.data?.statusCode === 409)
+                toast.error("Prices or stock have changed. Please review your cart.", { duration: 8000 });
+            else if (e.response?.data?.message) {
+                const m = e.response.data.message;
+                toast.error(Array.isArray(m) ? m.join(", ") : m);
+            } else toast.error("Something went wrong. Please try again.");
             setIsProcessing(false);
         }
     };
 
-    const updateAddress = (field: string, value: string) => {
-        setAddress(prev => ({ ...prev, [field]: value }));
-    };
-
-    const canProceedFromAddress = () => {
-        if (!isAddingNew && selectedAddressId) return true;
-        if (isAddingNew && address.street && address.city && address.zipCode && (isAuthenticated || address.email)) return true;
-        return false;
-    };
+    /* ── empty cart ── */
+    if (items.length === 0 && currentStep !== 4) return (
+        <>
+            <style>{STYLES}</style>
+            <div className="co-root" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", padding: "0 32px", textAlign: "center" }}>
+                <div style={{ width: 56, height: 56, borderRadius: 10, border: "1.5px solid var(--border)", background: "var(--card)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                    <ShieldAlert size={22} style={{ color: "var(--mid)" }} />
+                </div>
+                <h2 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 40, fontWeight: 900, textTransform: "uppercase", marginBottom: 8 }}>Cart Is Empty</h2>
+                <p style={{ fontSize: 14, fontWeight: 300, color: "var(--mid)", marginBottom: 24 }}>Add products to your cart before checking out.</p>
+                <Link href="/products"><button className="co-btn">Browse Products</button></Link>
+            </div>
+        </>
+    );
 
     return (
-        <div className="bg-background min-h-screen pb-40 transition-colors duration-500">
+        <>
+            <style>{STYLES}</style>
             <Script src="https://checkout.razorpay.com/v1/checkout.js" crossOrigin="anonymous" strategy="lazyOnload" />
-            {/* Header */}
-            <header className="pt-20 pb-12 border-b-2 border-slate-50 dark:border-slate-900 transition-colors">
-                <div className="container mx-auto px-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-12">
-                    <div className="space-y-4">
-                        <span className="text-xs font-medium text-primary/80 tracking-wide uppercase">
-                            Secure checkout
-                        </span>
-                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight leading-snug text-foreground">
-                            Complete your order
-                        </h1>
-                        <p className="text-sm text-muted-foreground mt-3 max-w-lg leading-relaxed">
-                            Enter your shipping details, confirm payment with our trusted provider, and review your order before placing it.
-                        </p>
-                    </div>
 
-                    {/* Stepper */}
-                    {currentStep < 4 && (
-                        <div className="flex gap-4 md:gap-10 pb-4 w-full md:w-auto overflow-x-auto no-scrollbar">
-                            {steps.map((step) => {
-                                const isActive = currentStep >= step.id;
-                                const isDone = currentStep > step.id;
-                                return (
-                                    <div key={step.id} className="flex items-center gap-6 shrink-0">
-                                        <div className={`h-12 w-12 rounded-2xl border flex items-center justify-center transition-all ${isActive ? "bg-primary text-primary-foreground border-primary shadow-md" : "bg-card border-border text-muted-foreground"}`}>
-                                            {isDone ? <CheckCircle2 className="h-7 w-7" /> : <step.icon className="h-7 w-7" />}
-                                        </div>
-                                        <div className="hidden xl:block space-y-0.5">
-                                            <p className={`text-xs font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>{step.name}</p>
-                                            <p className="text-[11px] text-muted-foreground">{step.label}</p>
-                                        </div>
-                                        {step.id < 3 && <div className="hidden lg:block h-px w-16 bg-slate-100 dark:bg-slate-900" />}
-                                    </div>
-                                );
-                            })}
+            <div className="co-root">
+
+                {/* ── HEADER ── */}
+                <div className="co-header">
+                    <div className="co-header-inner">
+                        <div>
+                            <span className="co-eyebrow">Secure Checkout</span>
+                            <h1 className="co-page-title">Complete<br />Your Order</h1>
                         </div>
-                    )}
-                </div>
-            </header>
 
-            <div className="container px-8 py-20 mx-auto max-w-7xl">
-                <div className="max-w-4xl mx-auto">
-                    {/* Steps */}
+                        {currentStep < 4 && (
+                            <div className="co-stepper">
+                                {steps.map((step, idx) => {
+                                    const active = currentStep >= step.id;
+                                    const done = currentStep > step.id;
+                                    return (
+                                        <div key={step.id} style={{ display: "flex", alignItems: "center" }}>
+                                            <div className="co-step">
+                                                <div className={`co-step-dot${done ? " done" : active ? " active" : ""}`}>
+                                                    {done ? <CheckCircle2 size={15} /> : <step.icon size={15} />}
+                                                </div>
+                                                <div>
+                                                    <p className={`co-step-name${active ? " on" : ""}`}>{step.name}</p>
+                                                    <p className="co-step-sub">{step.label}</p>
+                                                </div>
+                                            </div>
+                                            {idx < steps.length - 1 && (
+                                                <div className={`co-connector${done ? " done" : ""}`} />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── BODY ── */}
+                <div className="co-body">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentStep}
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 14 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.4 }}
-                            className="space-y-16"
+                            exit={{ opacity: 0, y: -14 }}
+                            transition={{ duration: 0.27 }}
                         >
+
+                            {/* ══ STEP 1 ── SHIPPING ══ */}
                             {currentStep === 1 && (
-                                <div className="space-y-12">
-                                    <div className="space-y-3">
-                                        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-                                            Shipping address
-                                        </h2>
-                                        <p className="text-xs text-muted-foreground">
-                                            Choose a saved address or add a new one for this order.
-                                        </p>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                                    <div>
+                                        <span className="co-step-eyebrow">Step 1 of 3</span>
+                                        <h2 className="co-step-title">Shipping Address</h2>
+                                        <p className="co-step-desc">Choose a saved address or enter a new one.</p>
                                     </div>
 
                                     {savedAddresses.length > 0 && !isAddingNew && (
-                                        <div className="space-y-8">
-                                            <div className="grid gap-8 sm:grid-cols-2">
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
                                                 {savedAddresses.map((addr) => (
-                                                    <motion.div
-                                                        whileHover={{ y: -5 }}
-                                                        whileTap={{ scale: 0.98 }}
+                                                    <div
                                                         key={addr.id}
+                                                        className={`co-addr${selectedAddressId === addr.id ? " selected" : ""}`}
                                                         onClick={() => setSelectedAddressId(addr.id)}
-                                                        className={`p-10 rounded-[40px] border-2 cursor-pointer transition-all ${selectedAddressId === addr.id ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-3xl shadow-primary/10' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 opacity-60 dark:opacity-40'}`}
                                                     >
-                                                        <div className="flex justify-between items-start mb-10">
-                                                            <div className={`h-12 w-12 rounded-2xl flex items-center justify-center border-2 ${selectedAddressId === addr.id ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' : 'border-slate-100 dark:border-slate-800 text-slate-200 dark:text-slate-800'}`}>
-                                                                <MapPin className="h-6 w-6" />
+                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                                                            <div style={{ width: 32, height: 32, borderRadius: 6, border: "1.5px solid var(--border)", background: selectedAddressId === addr.id ? "var(--ink)" : "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                                <MapPin size={13} style={{ color: selectedAddressId === addr.id ? "#fff" : "var(--mid)" }} />
                                                             </div>
-                                                            {selectedAddressId === addr.id && <div className="h-3 w-3 rounded-full bg-primary animate-pulse mt-4" />}
+                                                            {addr.isDefault && (
+                                                                <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 4, background: "rgba(200,255,0,.14)", color: "#3d5200", border: "1px solid rgba(200,255,0,.28)" }}>Default</span>
+                                                            )}
                                                         </div>
-                                                        <p className="text-xl font-black uppercase tracking-tight text-black dark:text-white">{addr.street}</p>
-                                                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest mt-2 italic">{addr.city}, {addr.state} {addr.zipCode}</p>
-                                                    </motion.div>
+                                                        <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 3 }}>{addr.street}</p>
+                                                        <p style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)" }}>{addr.city}, {addr.state} {addr.zipCode}</p>
+                                                    </div>
                                                 ))}
                                             </div>
-                                            <Button variant="outline" onClick={() => setIsAddingNew(true)} className="w-full h-20 rounded-[30px] border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-black dark:hover:border-white hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all gap-4 font-black uppercase tracking-widest text-[10px]">
-                                                <Plus className="h-5 w-5" /> Define New Protocol Address
-                                            </Button>
+                                            <button className="co-btn-dashed" onClick={() => setIsAddingNew(true)}>
+                                                <Plus size={13} /> Add New Address
+                                            </button>
                                         </div>
                                     )}
 
                                     {isAddingNew && (
-                                        <div className="bg-slate-50 dark:bg-slate-900/50 p-12 rounded-[56px] border-2 border-slate-100 dark:border-slate-800 space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-500 transition-colors">
+                                        <div className="co-inset">
                                             {savedAddresses.length > 0 && (
-                                                <Button variant="ghost" onClick={() => setIsAddingNew(false)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600 hover:text-black dark:hover:text-white p-0 h-auto">
-                                                    &larr; Return to Registry
-                                                </Button>
+                                                <button
+                                                    onClick={() => setIsAddingNew(false)}
+                                                    style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--mid)", display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: 0 }}
+                                                >
+                                                    ← Back to saved
+                                                </button>
                                             )}
-                                            <div className="grid sm:grid-cols-2 gap-10">
-                                                <div className="space-y-4">
-                                                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">Acquirer First Name</label>
-                                                    <Input value={address.firstName} onChange={e => updateAddress('firstName', e.target.value)} placeholder="e.g. MARCUS" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-bold focus-visible:ring-primary/20 text-black dark:text-white uppercase tracking-widest text-xs" />
+                                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                                                <div>
+                                                    <label className="co-label">First Name</label>
+                                                    <input className="co-input" placeholder="First name" value={address.firstName} onChange={(e) => updateAddress("firstName", e.target.value)} />
                                                 </div>
-                                                <div className="space-y-4">
-                                                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">Acquirer Last Name</label>
-                                                    <Input value={address.lastName} onChange={e => updateAddress('lastName', e.target.value)} placeholder="e.g. AURELIUS" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-bold focus-visible:ring-primary/20 text-black dark:text-white uppercase tracking-widest text-xs" />
+                                                <div>
+                                                    <label className="co-label">Last Name</label>
+                                                    <input className="co-input" placeholder="Last name" value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
                                                 </div>
                                                 {!isAuthenticated && (
-                                                    <div className="space-y-4 sm:col-span-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">Digital Comms (Email)</label>
-                                                        <Input type="email" value={address.email} onChange={e => updateAddress('email', e.target.value)} placeholder="guest@example.com" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-bold focus-visible:ring-primary/20 text-black dark:text-white uppercase tracking-widest text-xs" />
+                                                    <div style={{ gridColumn: "1 / -1" }}>
+                                                        <label className="co-label">Email Address</label>
+                                                        <input className="co-input" type="email" placeholder="you@example.com" value={address.email} onChange={(e) => updateAddress("email", e.target.value)} />
                                                     </div>
                                                 )}
-                                                <div className="space-y-4 sm:col-span-2">
-                                                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">Primary Conduit (Street)</label>
-                                                    <Input value={address.street} onChange={e => updateAddress('street', e.target.value)} placeholder="e.g. 742 EVERGREEN TERRACE" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-bold focus-visible:ring-primary/20 text-black dark:text-white uppercase tracking-widest text-xs" />
+                                                <div style={{ gridColumn: "1 / -1" }}>
+                                                    <label className="co-label">Street Address</label>
+                                                    <input className="co-input" placeholder="123 Main Street" value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
                                                 </div>
-                                                <div className="space-y-4">
-                                                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">City Node</label>
-                                                    <Input value={address.city} onChange={e => updateAddress('city', e.target.value)} placeholder="e.g. SPRINGFIELD" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-bold focus-visible:ring-primary/20 text-black dark:text-white uppercase tracking-widest text-xs" />
+                                                <div>
+                                                    <label className="co-label">City</label>
+                                                    <input className="co-input" placeholder="New York" value={address.city} onChange={(e) => updateAddress("city", e.target.value)} />
                                                 </div>
-                                                <div className="space-y-4">
-                                                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 ml-2">Postal Reference</label>
-                                                    <Input value={address.zipCode} onChange={e => updateAddress('zipCode', e.target.value)} placeholder="e.g. 52401" className="h-16 rounded-2xl border-2 dark:border-slate-800 dark:bg-black font-black tracking-[0.4em] focus-visible:ring-primary/20 text-black dark:text-white text-xs text-center" />
+                                                <div>
+                                                    <label className="co-label">ZIP Code</label>
+                                                    <input className="co-input" placeholder="10001" value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value)} />
                                                 </div>
                                             </div>
                                         </div>
                                     )}
 
-                                    <div className="pt-12 flex justify-between items-center border-t-2 border-slate-50 dark:border-slate-900 transition-colors">
-                                        <p className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] italic">Step 01 / 03 — Operational Verification</p>
-                                        <Button
-                                            size="lg"
-                                            onClick={handleNext}
-                                            disabled={!canProceedFromAddress()}
-                                            className="h-20 px-16 rounded-[30px] font-black uppercase tracking-widest text-[10px] gap-4 shadow-3xl transition-all active:scale-95"
-                                        >
-                                            Authorize & Proceed <ChevronRight className="h-5 w-5" />
-                                        </Button>
+                                    <div className="co-nav">
+                                        <span style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)" }}>
+                                            {items.length} item{items.length !== 1 ? "s" : ""} &nbsp;·&nbsp; ₹{total.toFixed(2)}
+                                        </span>
+                                        <button className="co-btn" onClick={handleNext} disabled={!canProceed()}>
+                                            Continue <ChevronRight size={14} />
+                                        </button>
                                     </div>
                                 </div>
                             )}
 
+                            {/* ══ STEP 2 ── PAYMENT ══ */}
                             {currentStep === 2 && (
-                                <div className="space-y-12">
-                                    <div className="space-y-3">
-                                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black dark:text-white">Acquisition Gateway</h2>
-                                        <p className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] italic">Financial synchronization protocol</p>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                                    <div>
+                                        <span className="co-step-eyebrow">Step 2 of 3</span>
+                                        <h2 className="co-step-title">Payment</h2>
+                                        <p className="co-step-desc">You'll be redirected to Razorpay's secure gateway to complete payment.</p>
                                     </div>
 
-                                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-[64px] p-16 border-4 border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center gap-10 text-center relative overflow-hidden transition-colors">
-                                        <div className="absolute top-0 right-0 p-16 opacity-[0.03] dark:opacity-[0.05] pointer-events-none transition-transform hover:scale-110 duration-700">
-                                            <CreditCard className="h-64 w-64 -rotate-12 text-black dark:text-white" />
+                                    <div className="co-pay-card">
+                                        <div className="co-pay-icon">
+                                            <Lock size={24} />
                                         </div>
-
-                                        <div className="h-32 w-32 bg-white dark:bg-black rounded-3xl flex items-center justify-center text-primary shadow-3xl relative z-10 transition-colors">
-                                            <Lock className="h-12 w-12 fill-primary/10" />
-                                        </div>
-
-                                        <div className="space-y-6 relative z-10">
-                                            <h3 className="text-3xl font-black uppercase tracking-tighter text-black dark:text-white">RAZORPAY SECURE PROTOCOL</h3>
-                                            <p className="text-base font-medium text-slate-400 dark:text-slate-500 max-w-md mx-auto italic leading-relaxed">External redirection to Razorpay encryption hub for INR financial settlement. Universal Indian payment methods supported.</p>
-                                        </div>
-
-                                        <div className="flex gap-6 pt-6 relative z-10">
-                                            {['UPI', 'CARD', 'NETBANKING', 'WALLET'].map(brand => (
-                                                <div key={brand} className="h-12 w-24 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl flex items-center justify-center grayscale opacity-40 dark:opacity-20 font-black text-[10px] tracking-widest">
-                                                    {brand}
-                                                </div>
+                                        <h3 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 28, fontWeight: 900, textTransform: "uppercase", marginBottom: 10 }}>
+                                            Razorpay Secure Payment
+                                        </h3>
+                                        <p style={{ fontSize: 14, fontWeight: 300, color: "var(--mid)", maxWidth: 380, lineHeight: 1.7, marginBottom: 24 }}>
+                                            All major Indian payment methods supported — UPI, cards, net banking, and wallets. Fully encrypted.
+                                        </p>
+                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                                            {["UPI", "Cards", "Net Banking", "Wallets"].map((m) => (
+                                                <span key={m} className="co-pay-badge">{m}</span>
                                             ))}
                                         </div>
                                     </div>
 
-                                    <div className="pt-12 flex justify-between items-center border-t-2 border-slate-50 dark:border-slate-900 transition-colors">
-                                        <Button variant="ghost" onClick={handleBack} className="h-20 px-10 rounded-[24px] font-black uppercase tracking-widest text-[10px] text-slate-400 dark:text-slate-600 hover:text-black dark:hover:text-white transition-all">Revert Stage</Button>
-                                        <Button
-                                            size="lg"
-                                            onClick={handleNext}
-                                            className="h-20 px-16 rounded-[30px] font-black uppercase tracking-widest text-[10px] gap-4 shadow-3xl transition-all active:scale-95"
-                                        >
-                                            Initialize Review <ChevronRight className="h-5 w-5" />
-                                        </Button>
+                                    <div className="co-nav">
+                                        <button className="co-btn-ghost" onClick={handleBack}>← Back</button>
+                                        <button className="co-btn" onClick={handleNext}>
+                                            Review Order <ChevronRight size={14} />
+                                        </button>
                                     </div>
                                 </div>
                             )}
 
+                            {/* ══ STEP 3 ── REVIEW ══ */}
                             {currentStep === 3 && (
-                                <div className="space-y-12">
-                                    <div className="space-y-3">
-                                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black dark:text-white">Manifest Finalization</h2>
-                                        <p className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] italic">Asset validation & loyalty synchronization</p>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                                    <div>
+                                        <span className="co-step-eyebrow">Step 3 of 3</span>
+                                        <h2 className="co-step-title">Review Order</h2>
+                                        <p className="co-step-desc">Confirm your items and apply any discount codes before placing your order.</p>
                                     </div>
 
-                                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-[56px] border-2 border-slate-100 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 transition-colors shadow-2xl dark:shadow-none">
-                                        <div className="p-12 space-y-10">
-                                            {items.map(item => (
-                                                <div key={item.id} className="flex justify-between items-center gap-12">
-                                                    <div className="flex items-center gap-10">
-                                                        <div className="relative h-24 w-24 bg-white dark:bg-black border-2 border-slate-100 dark:border-slate-800 rounded-3xl overflow-hidden shrink-0 shadow-sm transition-colors">
-                                                            <Image src={item.image ?? ''} alt={item.title} fill unoptimized className="object-cover" />
+                                    <div className="co-card">
+                                        {/* Item list */}
+                                        <div>
+                                            {items.map((item) => (
+                                                <div key={item.id} className="co-item-row">
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
+                                                        <div style={{ position: "relative", width: 56, height: 56, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)", flexShrink: 0, background: "var(--paper)" }}>
+                                                            <Image src={item.image ?? ""} alt={item.title} fill unoptimized style={{ objectFit: "cover" }} />
                                                         </div>
-                                                        <div className="space-y-2">
-                                                            <p className="text-xl font-black uppercase tracking-tight line-clamp-1 text-black dark:text-white">{item.title}</p>
-                                                            <p className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] italic">QUANTITY: {item.quantity}</p>
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</p>
+                                                            <p style={{ fontSize: 11, fontWeight: 300, color: "var(--mid)" }}>Qty {item.quantity}</p>
                                                         </div>
                                                     </div>
-                                                    <p className="text-2xl font-black tracking-tighter tabular-nums text-black dark:text-white underline decoration-primary/20 decoration-4 underline-offset-4">₹{(item.price * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                    <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 20, fontWeight: 700, flexShrink: 0 }}>
+                                                        ₹{(item.price * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
 
-                                        <div className="p-12 bg-white/50 dark:bg-black/20 space-y-8 transition-colors">
-                                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600 ml-2">Loyalty Credits / Coupon Protocol</label>
-
+                                        {/* Coupon zone */}
+                                        <div style={{ padding: "20px 24px", borderTop: "1px solid var(--border)", background: "var(--paper)" }}>
+                                            <label className="co-label" style={{ marginBottom: 10 }}>Coupon / Referral Code</label>
                                             {appliedCoupon ? (
-                                                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-100 dark:border-emerald-900/50 rounded-[32px] px-10 py-6 text-emerald-800 dark:text-emerald-400">
-                                                    <div className="flex items-center gap-6">
-                                                        <Tag className="h-6 w-6" />
-                                                        <div className="space-y-1">
-                                                            <span className="font-black uppercase tracking-[0.2em] text-xs leading-none">{appliedCoupon.code} Authorized</span>
-                                                            <p className="text-[10px] font-bold italic opacity-60 uppercase tracking-widest text-emerald-400 dark:text-emerald-600">Protocol Discount Applied</p>
+                                                <div className="co-coupon-tag">
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                                        <Tag size={13} style={{ color: "#3d5200", flexShrink: 0 }} />
+                                                        <div>
+                                                            <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: ".07em", textTransform: "uppercase" }}>{appliedCoupon.code}</p>
+                                                            <p style={{ fontSize: 10, fontWeight: 300, color: "var(--mid)", marginTop: 1 }}>Discount applied</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <span className="text-xl font-black tabular-nums">-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
-                                                        <button onClick={handleRemoveCoupon} className="h-12 w-12 rounded-2xl hover:bg-rose-100 dark:hover:bg-rose-950 hover:text-rose-500 flex items-center justify-center transition-all bg-emerald-100 dark:bg-emerald-900/50">
-                                                            <X className="h-5 w-5" />
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                                        <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700, color: "#3d5200" }}>
+                                                            -₹{appliedCoupon.discountAmount.toFixed(2)}
+                                                        </span>
+                                                        <button
+                                                            onClick={handleRemoveCoupon}
+                                                            style={{ width: 28, height: 28, borderRadius: 5, border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mid)" }}
+                                                        >
+                                                            <X size={12} />
                                                         </button>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex gap-6">
-                                                    <div className="relative flex-1">
-                                                        <Input
-                                                            value={couponCode}
-                                                            onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                                                            placeholder="ENTER CODE"
-                                                            className="h-20 rounded-[28px] border-2 dark:border-slate-800 dark:bg-black font-black tracking-[0.5em] uppercase text-center focus-visible:ring-primary/20 placeholder:text-slate-200 dark:placeholder:text-slate-800 text-black dark:text-white"
-                                                            onKeyDown={e => e.key === 'Enter' && handleApplyCouponOrAffiliate()}
-                                                        />
-                                                    </div>
-                                                    <Button
-                                                        variant="outline"
+                                                <div style={{ display: "flex", gap: 8 }}>
+                                                    <input
+                                                        className="co-input"
+                                                        style={{ letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 500 }}
+                                                        placeholder="Enter code"
+                                                        value={couponCode}
+                                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                        onKeyDown={(e) => e.key === "Enter" && handleApplyCouponOrAffiliate()}
+                                                    />
+                                                    <button
+                                                        className="co-btn-ghost"
                                                         onClick={handleApplyCouponOrAffiliate}
                                                         disabled={isApplyingCoupon || !couponCode.trim()}
-                                                        className="h-20 px-12 rounded-[28px] border-4 dark:border-slate-800 dark:bg-slate-900 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all"
+                                                        style={{ flexShrink: 0 }}
                                                     >
-                                                        {isApplyingCoupon ? '...' : 'Validate'}
-                                                    </Button>
+                                                        {isApplyingCoupon ? "…" : "Apply"}
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className="p-12 bg-black dark:bg-black text-white space-y-6 transition-colors border-t border-white/5">
-                                            <div className="flex justify-between items-baseline opacity-30">
-                                                <span className="text-[10px] font-black uppercase tracking-[0.4em]">Gross Subtotal</span>
-                                                <span className="text-2xl font-black tabular-nums">₹{total.toFixed(2)}</span>
+                                        {/* Totals */}
+                                        <div className="co-totals">
+                                            <div className="co-totals-row" style={{ marginBottom: 10, opacity: .48 }}>
+                                                <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: ".1em", textTransform: "uppercase" }}>Subtotal</span>
+                                                <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700 }}>₹{total.toFixed(2)}</span>
                                             </div>
                                             {appliedCoupon && (
-                                                <div className="flex justify-between items-baseline text-emerald-400">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.4em]">Coupon Override</span>
-                                                    <span className="text-2xl font-black tabular-nums">-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
+                                                <div className="co-totals-row" style={{ marginBottom: 10, color: "var(--accent)" }}>
+                                                    <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: ".1em", textTransform: "uppercase" }}>Discount</span>
+                                                    <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700 }}>-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
                                                 </div>
                                             )}
-                                            <div className="flex justify-between items-end pt-10 border-t-4 border-white/10">
-                                                <div className="space-y-2">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Final Liability</span>
-                                                    <p className="text-[10px] font-bold text-white/30 dark:text-white/20 uppercase tracking-[0.2em] italic">Authorized for Ownership Transfer</p>
+                                            <div style={{ height: 1, background: "rgba(255,255,255,.1)", margin: "16px 0" }} />
+                                            <div className="co-totals-row" style={{ alignItems: "flex-end" }}>
+                                                <div>
+                                                    <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--accent)", display: "block", marginBottom: 4 }}>Total</span>
+                                                    <span style={{ fontSize: 11, fontWeight: 300, color: "rgba(255,255,255,.38)" }}>Including all taxes</span>
                                                 </div>
-                                                <span className="text-7xl font-black tracking-tighter tabular-nums text-primary underline decoration-primary/20 decoration-8 underline-offset-16">₹{finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                                <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 52, fontWeight: 900, lineHeight: 1 }}>
+                                                    ₹{finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="pt-12 flex justify-between items-center border-t-2 border-slate-50 dark:border-slate-900 transition-colors">
-                                        <Button variant="ghost" onClick={handleBack} disabled={isProcessing} className="h-20 px-10 rounded-[28px] font-black uppercase tracking-widest text-[10px] text-slate-400 dark:text-slate-600 hover:text-black dark:hover:text-white transition-all">Revert Manifest</Button>
-                                        <Button
-                                            size="lg"
+                                    <div className="co-nav">
+                                        <button className="co-btn-ghost" onClick={handleBack} disabled={isProcessing}>← Back</button>
+                                        <button
+                                            className="co-btn"
                                             onClick={handlePlaceOrder}
                                             disabled={isProcessing}
-                                            className="h-20 px-20 rounded-[30px] font-black uppercase tracking-widest text-[10px] gap-6 shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] transition-all active:scale-95 group relative overflow-hidden"
+                                            style={{ minWidth: 172, justifyContent: "center" }}
                                         >
-                                            <span className="relative z-10">{isProcessing ? "Transmitting..." : "Establish Final Acquisition"}</span>
-                                            <Zap className="h-6 w-6 relative z-10 transition-transform group-hover:scale-125" />
-                                            {isProcessing && (
-                                                <div className="absolute inset-0 bg-primary/20 animate-pulse" />
-                                            )}
-                                        </Button>
+                                            {isProcessing ? "Processing…" : <><Zap size={14} /> Place Order</>}
+                                        </button>
                                     </div>
                                 </div>
                             )}
 
+                            {/* ══ STEP 4 ── SUCCESS ══ */}
                             {currentStep === 4 && (
-                                <div className="text-center space-y-16 py-32 px-12 bg-slate-50 dark:bg-slate-900/50 rounded-[72px] border-4 border-slate-100 dark:border-slate-800 relative overflow-hidden transition-colors">
-                                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
-
+                                <div style={{ textAlign: "center", padding: "72px 32px" }}>
                                     <motion.div
-                                        initial={{ scale: 0.5, opacity: 0 }}
+                                        initial={{ scale: 0.55, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
-                                        transition={{ type: "spring", damping: 12, stiffness: 100 }}
-                                        className="mx-auto h-40 w-40 bg-emerald-500 text-white rounded-[48px] flex items-center justify-center shadow-[0_40px_80px_-15px_rgba(16,185,129,0.4)] dark:shadow-none"
+                                        transition={{ type: "spring", damping: 14, stiffness: 120 }}
                                     >
-                                        <ShieldCheck className="h-20 w-20" />
+                                        <div className="co-success-icon">
+                                            <ShieldCheck size={32} />
+                                        </div>
                                     </motion.div>
 
-                                    <div className="space-y-6">
-                                        <h2 className="text-6xl  md:text-8xl font-black uppercase tracking-tighter text-black dark:text-white leading-[0.9]">Acquisition <br /><span className="text-emerald-500 dark:text-emerald-400">Authorized.</span></h2>
-                                        <p className="text-xl text-slate-400 dark:text-slate-500 font-medium max-w-xl mx-auto italic leading-relaxed">
-                                            Registry updated successfully. Your assets have been committed to the logistics flow and will materialize at the destination node shortly.
-                                        </p>
-                                    </div>
+                                    <span className="co-eyebrow" style={{ color: "var(--mid)", display: "block", marginBottom: 10 }}>
+                                        Order Confirmed
+                                    </span>
+                                    <h2 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: "clamp(44px,7vw,80px)", fontWeight: 900, textTransform: "uppercase", lineHeight: .9, marginBottom: 16 }}>
+                                        Order Placed<br />
+                                        <span style={{ color: "#16a34a" }}>Successfully.</span>
+                                    </h2>
+                                    <p style={{ fontSize: 15, fontWeight: 300, color: "var(--mid)", maxWidth: 380, margin: "0 auto 36px", lineHeight: 1.7 }}>
+                                        Your order is confirmed and will be dispatched shortly. You'll receive an email with tracking details.
+                                    </p>
 
-                                    <div className="pt-16 flex flex-col md:flex-row justify-center gap-8">
+                                    <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
                                         <Link href="/dashboard/orders">
-                                            <Button size="lg" variant="outline" className="h-20 px-16 rounded-[30px] font-black uppercase tracking-widest text-[10px] border-4 dark:border-slate-800 dark:bg-slate-900 transition-all active:scale-95 shadow-xl dark:shadow-none">Monitor Dispatch</Button>
+                                            <button className="co-btn-ghost">View Orders</button>
                                         </Link>
                                         <Link href="/">
-                                            <Button size="lg" className="h-20 px-16 rounded-[30px] font-black uppercase tracking-widest text-[10px] shadow-3xl transition-all active:scale-95">Return to Core</Button>
+                                            <button className="co-btn">Continue Shopping</button>
                                         </Link>
                                     </div>
                                 </div>
                             )}
+
                         </motion.div>
                     </AnimatePresence>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
