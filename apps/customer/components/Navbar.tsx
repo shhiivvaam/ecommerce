@@ -1,751 +1,381 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useCartStore } from "@/store/useCartStore";
-import { useAuthStore } from "@/store/useAuthStore";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  CheckCircle2, CreditCard, MapPin, Package, Lock,
-  Plus, Tag, X, ChevronRight, ShieldCheck, Zap, ShieldAlert,
-} from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
-import Script from "next/script";
-import { api } from "@/lib/api";
-import toast from "react-hot-toast";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useCartStore } from "@/store/useCartStore";
+import { useLogout } from "@/lib/hooks/useAuth";
+import { Heart, ShoppingBag, User, LogOut, Search, X, Menu } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
-interface AppliedCoupon {
-  couponId?: string;
-  affiliateId?: string;
-  affiliateCode?: string;
-  code: string;
-  discountAmount: number;
-  finalTotal: number;
-}
+export function Navbar() {
+  const { isAuthenticated, user } = useAuthStore();
+  const { mutate: logout } = useLogout();
+  const cartItems = useCartStore((state) => state.items);
+  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-interface SavedAddress {
-  id: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  isDefault: boolean;
-}
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-const steps = [
-  { id: 1, name: "Shipping", icon: MapPin, label: "Delivery address" },
-  { id: 2, name: "Payment", icon: CreditCard, label: "Secure payment" },
-  { id: 3, name: "Review", icon: Package, label: "Order summary" },
-];
+  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
 
-const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
+  // Close mobile menu on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-:root {
-  --ink: #0a0a0a;
-  --paper: #f5f3ef;
-  --accent: #c8ff00;
-  --mid: #8a8a8a;
-  --border: rgba(10,10,10,0.1);
-  --card: #ffffff;
-}
-
-*, *::before, *::after { box-sizing: border-box; }
-
-.co-root {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--paper);
-  color: var(--ink);
-  min-height: 100vh;
-}
-
-/* ─── Header ───────────────────────────────────────── */
-.co-header {
-  background: var(--ink);
-  padding: 88px 0 40px;
-}
-.co-header-inner {
-  max-width: 960px; margin: 0 auto; padding: 0 40px;
-  display: flex; align-items: flex-end;
-  justify-content: space-between; gap: 32px; flex-wrap: wrap;
-}
-.co-eyebrow {
-  font-size: 10px; font-weight: 500; letter-spacing: .18em;
-  text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 10px;
-}
-.co-page-title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: clamp(40px, 5.5vw, 64px); font-weight: 900;
-  text-transform: uppercase; line-height: .92;
-  color: #fff; letter-spacing: -.01em;
-}
-
-/* ─── Stepper ──────────────────────────────────────── */
-.co-stepper { display: flex; align-items: center; gap: 0; }
-.co-step { display: flex; align-items: center; gap: 10px; }
-.co-step-dot {
-  width: 36px; height: 36px; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1.5px solid rgba(255,255,255,0.18);
-  background: transparent; color: rgba(255,255,255,0.3);
-  transition: background .2s, border-color .2s, color .2s; flex-shrink: 0;
-}
-.co-step-dot.active { background: var(--accent); border-color: var(--accent); color: var(--ink); }
-.co-step-dot.done { background: rgba(200,255,0,.12); border-color: rgba(200,255,0,.35); color: var(--accent); }
-.co-step-name { font-size: 11px; font-weight: 500; color: rgba(255,255,255,.45); line-height: 1; }
-.co-step-name.on { color: #fff; }
-.co-step-sub { font-size: 10px; font-weight: 300; color: rgba(255,255,255,.25); margin-top: 2px; }
-.co-connector { width: 28px; height: 1px; background: rgba(255,255,255,.1); margin: 0 8px; flex-shrink: 0; }
-.co-connector.done { background: rgba(200,255,0,.3); }
-
-/* ─── Body shell ───────────────────────────────────── */
-.co-body { max-width: 960px; margin: 0 auto; padding: 48px 40px 100px; }
-
-/* ─── Step header ──────────────────────────────────── */
-.co-step-eyebrow {
-  font-size: 10px; font-weight: 500; letter-spacing: .16em;
-  text-transform: uppercase; color: var(--mid); display: block; margin-bottom: 8px;
-}
-.co-step-title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: clamp(32px, 4.5vw, 48px); font-weight: 900;
-  text-transform: uppercase; line-height: .95; margin-bottom: 6px;
-}
-.co-step-desc { font-size: 13px; font-weight: 300; color: var(--mid); line-height: 1.65; }
-
-/* ─── Inputs ───────────────────────────────────────── */
-.co-label {
-  display: block; font-size: 10px; font-weight: 500;
-  letter-spacing: .16em; text-transform: uppercase;
-  color: var(--mid); margin-bottom: 8px;
-}
-.co-input {
-  width: 100%; height: 48px; padding: 0 16px;
-  border-radius: 6px; border: 1.5px solid var(--border);
-  background: var(--paper); font-family: 'DM Sans', sans-serif;
-  font-size: 14px; font-weight: 400; color: var(--ink);
-  outline: none; transition: border-color .2s, background .2s;
-  -webkit-appearance: none;
-}
-.co-input:focus { border-color: var(--ink); background: #fff; }
-.co-input::placeholder { color: rgba(10,10,10,.26); }
-.co-input:disabled { opacity: .4; cursor: not-allowed; }
-
-/* ─── Buttons ──────────────────────────────────────── */
-.co-btn {
-  height: 52px; padding: 0 28px; border-radius: 6px; border: none;
-  background: var(--ink); color: #fff; cursor: pointer;
-  font-family: 'DM Sans', sans-serif; font-size: 11px;
-  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
-  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
-  transition: background .2s, transform .15s;
-}
-.co-btn:hover:not(:disabled) { background: #1c1c1c; transform: translateY(-1px); }
-.co-btn:active:not(:disabled) { transform: translateY(0); }
-.co-btn:disabled { opacity: .36; cursor: not-allowed; transform: none; }
-
-.co-btn-ghost {
-  height: 52px; padding: 0 24px; border-radius: 6px;
-  border: 1.5px solid var(--border); background: transparent; color: var(--mid);
-  cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 11px;
-  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
-  display: inline-flex; align-items: center; gap: 8px;
-  transition: border-color .2s, color .2s;
-}
-.co-btn-ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
-.co-btn-ghost:disabled { opacity: .36; cursor: not-allowed; }
-
-.co-btn-dashed {
-  width: 100%; height: 46px; border-radius: 6px;
-  border: 1.5px dashed var(--border); background: transparent; color: var(--mid);
-  cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 11px;
-  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: border-color .2s, color .2s, background .2s;
-}
-.co-btn-dashed:hover { border-color: var(--ink); color: var(--ink); background: rgba(10,10,10,.02); }
-
-/* ─── Address tile ─────────────────────────────────── */
-.co-addr {
-  padding: 18px 20px; border-radius: 8px;
-  border: 1.5px solid var(--border); background: var(--card);
-  cursor: pointer; transition: border-color .2s, box-shadow .2s, opacity .2s;
-}
-.co-addr.selected { border-color: var(--ink); box-shadow: 0 2px 16px rgba(10,10,10,.09); opacity: 1; }
-.co-addr:not(.selected) { opacity: .68; }
-.co-addr:not(.selected):hover { opacity: 1; border-color: rgba(10,10,10,.28); }
-
-/* ─── Inset form panel ─────────────────────────────── */
-.co-inset {
-  background: var(--paper); border: 1px solid var(--border);
-  border-radius: 10px; padding: 28px;
-}
-
-/* ─── Card wrapper ─────────────────────────────────── */
-.co-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 10px; overflow: hidden;
-}
-
-/* ─── Order item row ───────────────────────────────── */
-.co-item-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 18px 24px;
-  border-bottom: 1px solid var(--border);
-}
-.co-item-row:last-child { border-bottom: none; }
-
-/* ─── Coupon applied ───────────────────────────────── */
-.co-coupon-tag {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 12px 16px; border-radius: 6px;
-  background: rgba(200,255,0,.1); border: 1px solid rgba(200,255,0,.26);
-}
-
-/* ─── Total panel ──────────────────────────────────── */
-.co-totals {
-  background: var(--ink); color: #fff;
-  padding: 24px 28px;
-  border-radius: 0 0 9px 9px;
-}
-.co-totals-row {
-  display: flex; align-items: baseline;
-  justify-content: space-between; gap: 16px;
-}
-
-/* ─── Payment info card ────────────────────────────── */
-.co-pay-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 10px; padding: 48px 40px;
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-}
-.co-pay-icon {
-  width: 60px; height: 60px; border-radius: 10px;
-  background: var(--paper); border: 1.5px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 20px; color: var(--ink);
-}
-.co-pay-badge {
-  height: 32px; padding: 0 14px; border-radius: 5px;
-  border: 1.5px solid var(--border); background: var(--paper);
-  font-size: 10px; font-weight: 600; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--mid);
-  display: inline-flex; align-items: center;
-}
-
-/* ─── Nav row ──────────────────────────────────────── */
-.co-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-top: 24px; border-top: 1px solid var(--border);
-  gap: 16px; flex-wrap: wrap;
-}
-
-/* ─── Success ──────────────────────────────────────── */
-.co-success-icon {
-  width: 72px; height: 72px; border-radius: 12px; background: #16a34a;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 28px; color: #fff;
-}
-
-/* ─── Rule ─────────────────────────────────────────── */
-.co-rule { height: 1px; background: var(--border); border: none; margin: 0; }
-
-/* ─── Responsive ───────────────────────────────────── */
-@media (max-width: 680px) {
-  .co-header-inner, .co-body { padding-left: 20px; padding-right: 20px; }
-  .co-stepper { display: none; }
-  .co-btn, .co-btn-ghost { height: 48px; padding: 0 18px; font-size: 10px; }
-  .co-pay-card { padding: 28px 20px; }
-  .co-totals { padding: 20px; }
-  .co-item-row { padding: 14px 16px; }
-}
-`;
-
-export default function CheckoutPage() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const { items } = useCartStore();
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [isAddingNew, setIsAddingNew] = useState(false);
-
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
-  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
-
-  const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
-  const finalTotal = appliedCoupon ? appliedCoupon.finalTotal : total;
-
-  const [address, setAddress] = useState({
-    firstName: "", lastName: "", email: "",
-    street: "", city: "", zipCode: "", state: "NY", country: "US",
-  });
-  const updateAddress = (f: string, v: string) =>
-    setAddress((p) => ({ ...p, [f]: v }));
-
-  const { isAuthenticated, _hasHydrated } = useAuthStore();
-
-  useEffect(() => {
-    if (!_hasHydrated) return;
-    if (!isAuthenticated) { setIsAddingNew(true); return; }
-    (async () => {
-      try {
-        const { data } = await api.get("/addresses");
-        setSavedAddresses(data);
-        if (data.length > 0) {
-          const def = data.find((a: SavedAddress) => a.isDefault);
-          setSelectedAddressId(def ? def.id : data[0].id);
-        } else setIsAddingNew(true);
-      } catch { setIsAddingNew(true); }
-    })();
-  }, [isAuthenticated, _hasHydrated]);
-
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("canceled") === "true")
-      toast.error("Payment canceled. Your cart has been preserved.");
-  }, []);
-
-  const handleApplyCouponOrAffiliate = async () => {
-    if (!couponCode.trim()) return;
-    setIsApplyingCoupon(true);
-    try {
-      try {
-        const aff = await api.get(`/affiliates/verify/${couponCode.trim()}`);
-        if (aff.data?.valid) {
-          const disc = total * aff.data.commissionRate;
-          setAppliedCoupon({ affiliateId: aff.data.affiliateId, affiliateCode: couponCode.trim(), code: couponCode.trim(), discountAmount: disc, finalTotal: total - disc });
-          toast.success(`Referral applied: -$${disc.toFixed(2)}`);
-          setIsApplyingCoupon(false); return;
-        }
-      } catch { /* not affiliate */ }
-      const { data } = await api.post("/coupons/apply", { code: couponCode.trim(), cartTotal: total });
-      setAppliedCoupon(data);
-      toast.success(`Coupon applied: -$${data.discountAmount.toFixed(2)}`);
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || "Invalid coupon or referral code");
-    } finally { setIsApplyingCoupon(false); }
-  };
-
-  const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode(""); };
-  const handleNext = () => setCurrentStep((p) => Math.min(p + 1, 3));
-  const handleBack = () => setCurrentStep((p) => Math.max(p - 1, 1));
-
-  const canProceed = () => {
-    if (!isAddingNew && selectedAddressId) return true;
-    if (isAddingNew && address.street && address.city && address.zipCode &&
-      (isAuthenticated || address.email)) return true;
-    return false;
-  };
-
-  const handlePlaceOrder = async () => {
-    setIsProcessing(true);
-    try {
-      const payload: Record<string, unknown> = {
-        items: items.map((i) => ({ productId: i.productId, variantId: i.variantId || undefined, quantity: i.quantity })),
-        expectedTotal: finalTotal,
-        ...(!isAuthenticated && address.email ? { guestEmail: address.email, sessionId: Math.random().toString(36).substring(2, 15) } : {}),
-        ...(appliedCoupon?.couponId && { couponId: appliedCoupon.couponId }),
-        ...(appliedCoupon?.affiliateCode && { affiliateCode: appliedCoupon.affiliateCode }),
-      };
-      if (selectedAddressId && !isAddingNew) payload.addressId = selectedAddressId;
-      else payload.address = { street: address.street, city: address.city, state: address.state, country: address.country, zipCode: address.zipCode };
-
-      const { data: order } = await api.post("/orders", payload);
-      sessionStorage.setItem("pendingOrderId", order.id);
-      const { data: pay } = await api.post("/payments/checkout", {
-        orderId: order.id,
-        ...(appliedCoupon && { discountAmount: appliedCoupon.discountAmount }),
-      });
-
-      if (pay.id) {
-        const opts = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder",
-          amount: pay.amount, currency: pay.currency,
-          name: "Reyva", description: "Order Payment", order_id: pay.id,
-          handler: async (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-            try {
-              setIsProcessing(true);
-              await api.post("/payments/verify", {
-                orderId: order.id,
-                razorpayOrderId: r.razorpay_order_id,
-                razorpayPaymentId: r.razorpay_payment_id,
-                signature: r.razorpay_signature,
-              });
-              setCurrentStep(4);
-            } catch (err: unknown) {
-              const e = err as { response?: { data?: { message?: string } } };
-              toast.error(e.response?.data?.message || "Payment verification failed.");
-            } finally { setIsProcessing(false); }
-          },
-          prefill: { name: `${address.firstName} ${address.lastName}`.trim(), email: address.email || "" },
-          theme: { color: "#0a0a0a" },
-        };
-        type RzpWindow = { Razorpay: new (o: Record<string, unknown>) => { on: (e: string, cb: (r: { error: { description: string } }) => void) => void; open: () => void } };
-        const rzp = new (window as unknown as RzpWindow).Razorpay(opts);
-        rzp.on("payment.failed", (r) => { toast.error(r.error.description); setIsProcessing(false); });
-        rzp.open();
-      } else { setCurrentStep(4); }
-    } catch (err: unknown) {
-      const e = err as { response?: { status?: number; data?: { statusCode?: number; message?: string | string[] } } };
-      if (e.response?.status === 409 || e.response?.data?.statusCode === 409)
-        toast.error("Prices or stock have changed. Please review your cart.", { duration: 8000 });
-      else if (e.response?.data?.message) {
-        const m = e.response.data.message;
-        toast.error(Array.isArray(m) ? m.join(", ") : m);
-      } else toast.error("Something went wrong. Please try again.");
-      setIsProcessing(false);
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchOpen(false);
+      setSearchQuery("");
     }
   };
 
-  /* ── empty cart ── */
-  if (items.length === 0 && currentStep !== 4) return (
-    <>
-      <style>{STYLES}</style>
-      <div className="co-root" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", padding: "0 32px", textAlign: "center" }}>
-        <div style={{ width: 56, height: 56, borderRadius: 10, border: "1.5px solid var(--border)", background: "var(--card)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-          <ShieldAlert size={22} style={{ color: "var(--mid)" }} />
-        </div>
-        <h2 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 40, fontWeight: 900, textTransform: "uppercase", marginBottom: 8 }}>Cart Is Empty</h2>
-        <p style={{ fontSize: 14, fontWeight: 300, color: "var(--mid)", marginBottom: 24 }}>Add products to your cart before checking out.</p>
-        <Link href="/products"><button className="co-btn">Browse Products</button></Link>
-      </div>
-    </>
-  );
+  if (pathname?.startsWith("/dashboard")) return null;
+
+  const navItems = [
+    { label: "All", href: "/products" },
+    { label: "Men", href: "/men" },
+    { label: "Women", href: "/women" },
+    { label: "Gift Cards", href: "/gift-cards" },
+    { label: "New Arrivals", href: "/new-arrivals" },
+    { label: "Sale", href: "/sale", accent: true },
+  ];
+
+  const navBg = "rgba(10,10,10,0.97)";
+  const navBorder = "rgba(255,255,255,0.08)";
 
   return (
     <>
-      <style>{STYLES}</style>
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" crossOrigin="anonymous" strategy="lazyOnload" />
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
 
-      <div className="co-root">
+        .nav-root {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+          border-bottom: 1px solid;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+        }
+        .nav-inner {
+          max-width: 1400px; margin: 0 auto;
+          padding: 0 32px;
+          height: 64px;
+          display: flex; align-items: center; justify-content: space-between; gap: 24px;
+        }
+        @media (max-width: 640px) { .nav-inner { padding: 0 20px; height: 56px; } }
 
-        {/* ── HEADER ── */}
-        <div className="co-header">
-          <div className="co-header-inner">
-            <div>
-              <span className="co-eyebrow">Secure Checkout</span>
-              <h1 className="co-page-title">Complete<br />Your Order</h1>
-            </div>
+        /* Logo */
+        .nav-logo {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 26px; font-weight: 900;
+          letter-spacing: .04em; text-transform: uppercase;
+          color: #fff; text-decoration: none;
+          flex-shrink: 0;
+          transition: opacity .2s;
+        }
+        .nav-logo:hover { opacity: .75; }
 
-            {currentStep < 4 && (
-              <div className="co-stepper">
-                {steps.map((step, idx) => {
-                  const active = currentStep >= step.id;
-                  const done = currentStep > step.id;
-                  return (
-                    <div key={step.id} style={{ display: "flex", alignItems: "center" }}>
-                      <div className="co-step">
-                        <div className={`co-step-dot${done ? " done" : active ? " active" : ""}`}>
-                          {done ? <CheckCircle2 size={15} /> : <step.icon size={15} />}
-                        </div>
-                        <div>
-                          <p className={`co-step-name${active ? " on" : ""}`}>{step.name}</p>
-                          <p className="co-step-sub">{step.label}</p>
-                        </div>
-                      </div>
-                      {idx < steps.length - 1 && (
-                        <div className={`co-connector${done ? " done" : ""}`} />
-                      )}
-                    </div>
-                  );
-                })}
+        /* Center nav links */
+        .nav-links {
+          display: flex; align-items: center; gap: 36px;
+          list-style: none; margin: 0; padding: 0;
+        }
+        @media (max-width: 1023px) { .nav-links { display: none; } }
+
+        .nav-link {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 12px; font-weight: 500;
+          letter-spacing: .1em; text-transform: uppercase;
+          color: rgba(255,255,255,.6);
+          text-decoration: none;
+          position: relative; padding-bottom: 2px;
+          transition: color .2s;
+        }
+        .nav-link::after {
+          content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+          height: 1.5px; background: #c8ff00;
+          transform: scaleX(0); transform-origin: left;
+          transition: transform .3s cubic-bezier(.4,0,.2,1);
+        }
+        .nav-link:hover, .nav-link.active { color: #fff; }
+        .nav-link:hover::after, .nav-link.active::after { transform: scaleX(1); }
+        .nav-link.sale { color: #c8ff00; }
+        .nav-link.sale:hover { color: #c8ff00; opacity: .8; }
+        .nav-link.sale::after { background: #c8ff00; }
+
+        /* Icon buttons */
+        .nav-icon-btn {
+          width: 40px; height: 40px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          background: transparent; border: none; cursor: pointer;
+          color: rgba(255,255,255,.7);
+          transition: background .2s, color .2s;
+        }
+        .nav-icon-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+        /* Cart badge */
+        .nav-cart-badge {
+          position: absolute; top: -2px; right: -2px;
+          width: 17px; height: 17px; border-radius: 50%;
+          background: #c8ff00; color: #0a0a0a;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 9px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
+          pointer-events: none;
+        }
+
+        /* Text btns */
+        .nav-text-btn {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+          background: transparent; border: none; cursor: pointer;
+          color: rgba(255,255,255,.6); text-decoration: none;
+          transition: color .2s; white-space: nowrap;
+        }
+        .nav-text-btn:hover { color: #fff; }
+
+        .nav-join-btn {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+          padding: 9px 20px; border-radius: 4px;
+          background: #c8ff00; color: #0a0a0a;
+          border: none; cursor: pointer; text-decoration: none;
+          transition: opacity .2s;
+        }
+        .nav-join-btn:hover { opacity: .85; }
+
+        /* ── SEARCH OVERLAY ── */
+        .search-overlay {
+          position: fixed; inset: 0; z-index: 200;
+          background: rgba(10,10,10,.96);
+          backdrop-filter: blur(16px);
+          display: flex; flex-direction: column;
+        }
+        .search-inner {
+          max-width: 800px; margin: 0 auto; padding: 0 32px;
+          height: 80px; display: flex; align-items: center; gap: 20px;
+          border-bottom: 1px solid rgba(255,255,255,.1);
+          width: 100%;
+        }
+        .search-input {
+          flex: 1; background: transparent; border: none; outline: none;
+          font-family: 'DM Sans', sans-serif;
+          font-size: clamp(24px, 4vw, 40px); font-weight: 300;
+          color: #fff; caret-color: #c8ff00;
+        }
+        .search-input::placeholder { color: rgba(255,255,255,.2); }
+        .search-hint {
+          max-width: 800px; margin: 32px auto 0; padding: 0 32px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+          color: rgba(255,255,255,.25); width: 100%;
+        }
+
+        /* ── MOBILE MENU ── */
+        .mobile-menu {
+          position: fixed; inset: 0; z-index: 150;
+          background: #0a0a0a;
+          display: flex; flex-direction: column;
+          padding: 24px 28px 48px;
+          overflow-y: auto;
+        }
+        .mobile-menu-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 48px;
+        }
+        .mobile-nav-link {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 52px; font-weight: 900; text-transform: uppercase;
+          color: rgba(255,255,255,.35);
+          text-decoration: none; line-height: 1.1;
+          transition: color .2s;
+          display: block; padding: 4px 0;
+        }
+        .mobile-nav-link:hover, .mobile-nav-link.active { color: #fff; }
+        .mobile-nav-link.sale { color: #c8ff00 !important; }
+        .mobile-menu-footer {
+          margin-top: auto; padding-top: 48px;
+          border-top: 1px solid rgba(255,255,255,.1);
+          display: flex; gap: 16px; flex-wrap: wrap;
+        }
+      `}</style>
+
+      {/* ── NAVBAR ──────────────────────────────────────────────────── */}
+      <nav
+        className="nav-root"
+        style={{ background: navBg, borderColor: navBorder }}
+      >
+        <div className="nav-inner">
+          {/* Logo */}
+          <Link href="/" className="nav-logo">Reyva</Link>
+
+          {/* Center nav */}
+          <ul className="nav-links">
+            {navItems.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className={`nav-link${active ? " active" : ""}${item.accent ? " sale" : ""}`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Right actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {/* Search */}
+            <button
+              className="nav-icon-btn"
+              onClick={() => { setSearchOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
+              aria-label="Search"
+            >
+              <Search size={18} />
+            </button>
+
+            {/* Wishlist */}
+            <button className="nav-icon-btn" aria-label="Wishlist">
+              <Heart size={18} />
+            </button>
+
+            {/* Cart */}
+            <Link href="/cart" style={{ position: "relative" }}>
+              <button className="nav-icon-btn" aria-label="Cart">
+                <ShoppingBag size={18} />
+                {cartCount > 0 && <span className="nav-cart-badge">{cartCount}</span>}
+              </button>
+            </Link>
+
+            {/* Auth */}
+            {isAuthenticated ? (
+              <>
+                <Link href="/dashboard">
+                  <button className="nav-icon-btn" aria-label="Profile"><User size={18} /></button>
+                </Link>
+                <button className="nav-icon-btn" onClick={() => logout()} aria-label="Sign out"
+                  style={{ color: "rgba(255,255,255,.4)" }}
+                  onMouseOver={(e) => (e.currentTarget.style.color = "#ff6b6b")}
+                  onMouseOut={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.4)")}
+                >
+                  <LogOut size={18} />
+                </button>
+              </>
+            ) : (
+              <div className="hidden sm:flex items-center gap-3" style={{ marginLeft: 8 }}>
+                <Link href="/login" className="nav-text-btn">Sign In</Link>
+                <Link href="/register" className="nav-join-btn">Join</Link>
               </div>
             )}
+
+            {/* Mobile hamburger */}
+            <button
+              className="nav-icon-btn lg:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={20} />
+            </button>
           </div>
         </div>
+      </nav>
 
-        {/* ── BODY ── */}
-        <div className="co-body">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -14 }}
-              transition={{ duration: 0.27 }}
-            >
+      {/* ── SEARCH OVERLAY ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {searchOpen && (
+          <motion.div
+            className="search-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: .25 }}
+          >
+            <div className="search-inner" style={{ maxWidth: "100%" }}>
+              <Search size={22} style={{ color: "rgba(255,255,255,.3)", flexShrink: 0 }} />
+              <form onSubmit={handleSearchSubmit} style={{ flex: 1 }}>
+                <input
+                  ref={inputRef}
+                  className="search-input"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products…"
+                  autoFocus
+                />
+              </form>
+              <button
+                className="nav-icon-btn"
+                onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                aria-label="Close search"
+              >
+                <X size={22} />
+              </button>
+            </div>
+            <p className="search-hint">Press Enter to search</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              {/* ══ STEP 1 ── SHIPPING ══ */}
-              {currentStep === 1 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-                  <div>
-                    <span className="co-step-eyebrow">Step 1 of 3</span>
-                    <h2 className="co-step-title">Shipping Address</h2>
-                    <p className="co-step-desc">Choose a saved address or enter a new one.</p>
-                  </div>
+      {/* ── MOBILE MENU ─────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            className="mobile-menu"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: .4, ease: [.4, 0, .2, 1] }}
+          >
+            <div className="mobile-menu-header">
+              <Link href="/" className="nav-logo" onClick={() => setMobileOpen(false)}>Reyva</Link>
+              <button className="nav-icon-btn" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+                <X size={22} />
+              </button>
+            </div>
 
-                  {savedAddresses.length > 0 && !isAddingNew && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
-                        {savedAddresses.map((addr) => (
-                          <div
-                            key={addr.id}
-                            className={`co-addr${selectedAddressId === addr.id ? " selected" : ""}`}
-                            onClick={() => setSelectedAddressId(addr.id)}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                              <div style={{ width: 32, height: 32, borderRadius: 6, border: "1.5px solid var(--border)", background: selectedAddressId === addr.id ? "var(--ink)" : "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <MapPin size={13} style={{ color: selectedAddressId === addr.id ? "#fff" : "var(--mid)" }} />
-                              </div>
-                              {addr.isDefault && (
-                                <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 4, background: "rgba(200,255,0,.14)", color: "#3d5200", border: "1px solid rgba(200,255,0,.28)" }}>Default</span>
-                              )}
-                            </div>
-                            <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 3 }}>{addr.street}</p>
-                            <p style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)" }}>{addr.city}, {addr.state} {addr.zipCode}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <button className="co-btn-dashed" onClick={() => setIsAddingNew(true)}>
-                        <Plus size={13} /> Add New Address
-                      </button>
-                    </div>
-                  )}
-
-                  {isAddingNew && (
-                    <div className="co-inset">
-                      {savedAddresses.length > 0 && (
-                        <button
-                          onClick={() => setIsAddingNew(false)}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--mid)", display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: 0 }}
-                        >
-                          ← Back to saved
-                        </button>
-                      )}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                        <div>
-                          <label className="co-label">First Name</label>
-                          <input className="co-input" placeholder="First name" value={address.firstName} onChange={(e) => updateAddress("firstName", e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="co-label">Last Name</label>
-                          <input className="co-input" placeholder="Last name" value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
-                        </div>
-                        {!isAuthenticated && (
-                          <div style={{ gridColumn: "1 / -1" }}>
-                            <label className="co-label">Email Address</label>
-                            <input className="co-input" type="email" placeholder="you@example.com" value={address.email} onChange={(e) => updateAddress("email", e.target.value)} />
-                          </div>
-                        )}
-                        <div style={{ gridColumn: "1 / -1" }}>
-                          <label className="co-label">Street Address</label>
-                          <input className="co-input" placeholder="123 Main Street" value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="co-label">City</label>
-                          <input className="co-input" placeholder="New York" value={address.city} onChange={(e) => updateAddress("city", e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="co-label">ZIP Code</label>
-                          <input className="co-input" placeholder="10001" value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value)} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="co-nav">
-                    <span style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)" }}>
-                      {items.length} item{items.length !== 1 ? "s" : ""} &nbsp;·&nbsp; ₹{total.toFixed(2)}
-                    </span>
-                    <button className="co-btn" onClick={handleNext} disabled={!canProceed()}>
-                      Continue <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ══ STEP 2 ── PAYMENT ══ */}
-              {currentStep === 2 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-                  <div>
-                    <span className="co-step-eyebrow">Step 2 of 3</span>
-                    <h2 className="co-step-title">Payment</h2>
-                    <p className="co-step-desc">You'll be redirected to Razorpay's secure gateway to complete payment.</p>
-                  </div>
-
-                  <div className="co-pay-card">
-                    <div className="co-pay-icon">
-                      <Lock size={24} />
-                    </div>
-                    <h3 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 28, fontWeight: 900, textTransform: "uppercase", marginBottom: 10 }}>
-                      Razorpay Secure Payment
-                    </h3>
-                    <p style={{ fontSize: 14, fontWeight: 300, color: "var(--mid)", maxWidth: 380, lineHeight: 1.7, marginBottom: 24 }}>
-                      All major Indian payment methods supported — UPI, cards, net banking, and wallets. Fully encrypted.
-                    </p>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-                      {["UPI", "Cards", "Net Banking", "Wallets"].map((m) => (
-                        <span key={m} className="co-pay-badge">{m}</span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="co-nav">
-                    <button className="co-btn-ghost" onClick={handleBack}>← Back</button>
-                    <button className="co-btn" onClick={handleNext}>
-                      Review Order <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ══ STEP 3 ── REVIEW ══ */}
-              {currentStep === 3 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-                  <div>
-                    <span className="co-step-eyebrow">Step 3 of 3</span>
-                    <h2 className="co-step-title">Review Order</h2>
-                    <p className="co-step-desc">Confirm your items and apply any discount codes before placing your order.</p>
-                  </div>
-
-                  <div className="co-card">
-                    {/* Item list */}
-                    <div>
-                      {items.map((item) => (
-                        <div key={item.id} className="co-item-row">
-                          <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
-                            <div style={{ position: "relative", width: 56, height: 56, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)", flexShrink: 0, background: "var(--paper)" }}>
-                              <Image src={item.image ?? ""} alt={item.title} fill unoptimized style={{ objectFit: "cover" }} />
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</p>
-                              <p style={{ fontSize: 11, fontWeight: 300, color: "var(--mid)" }}>Qty {item.quantity}</p>
-                            </div>
-                          </div>
-                          <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 20, fontWeight: 700, flexShrink: 0 }}>
-                            ₹{(item.price * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Coupon zone */}
-                    <div style={{ padding: "20px 24px", borderTop: "1px solid var(--border)", background: "var(--paper)" }}>
-                      <label className="co-label" style={{ marginBottom: 10 }}>Coupon / Referral Code</label>
-                      {appliedCoupon ? (
-                        <div className="co-coupon-tag">
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <Tag size={13} style={{ color: "#3d5200", flexShrink: 0 }} />
-                            <div>
-                              <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: ".07em", textTransform: "uppercase" }}>{appliedCoupon.code}</p>
-                              <p style={{ fontSize: 10, fontWeight: 300, color: "var(--mid)", marginTop: 1 }}>Discount applied</p>
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700, color: "#3d5200" }}>
-                              -₹{appliedCoupon.discountAmount.toFixed(2)}
-                            </span>
-                            <button
-                              onClick={handleRemoveCoupon}
-                              style={{ width: 28, height: 28, borderRadius: 5, border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mid)" }}
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <input
-                            className="co-input"
-                            style={{ letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 500 }}
-                            placeholder="Enter code"
-                            value={couponCode}
-                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                            onKeyDown={(e) => e.key === "Enter" && handleApplyCouponOrAffiliate()}
-                          />
-                          <button
-                            className="co-btn-ghost"
-                            onClick={handleApplyCouponOrAffiliate}
-                            disabled={isApplyingCoupon || !couponCode.trim()}
-                            style={{ flexShrink: 0 }}
-                          >
-                            {isApplyingCoupon ? "…" : "Apply"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Totals */}
-                    <div className="co-totals">
-                      <div className="co-totals-row" style={{ marginBottom: 10, opacity: .48 }}>
-                        <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: ".1em", textTransform: "uppercase" }}>Subtotal</span>
-                        <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700 }}>₹{total.toFixed(2)}</span>
-                      </div>
-                      {appliedCoupon && (
-                        <div className="co-totals-row" style={{ marginBottom: 10, color: "var(--accent)" }}>
-                          <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: ".1em", textTransform: "uppercase" }}>Discount</span>
-                          <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700 }}>-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <div style={{ height: 1, background: "rgba(255,255,255,.1)", margin: "16px 0" }} />
-                      <div className="co-totals-row" style={{ alignItems: "flex-end" }}>
-                        <div>
-                          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--accent)", display: "block", marginBottom: 4 }}>Total</span>
-                          <span style={{ fontSize: 11, fontWeight: 300, color: "rgba(255,255,255,.38)" }}>Including all taxes</span>
-                        </div>
-                        <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 52, fontWeight: 900, lineHeight: 1 }}>
-                          ₹{finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="co-nav">
-                    <button className="co-btn-ghost" onClick={handleBack} disabled={isProcessing}>← Back</button>
-                    <button
-                      className="co-btn"
-                      onClick={handlePlaceOrder}
-                      disabled={isProcessing}
-                      style={{ minWidth: 172, justifyContent: "center" }}
-                    >
-                      {isProcessing ? "Processing…" : <><Zap size={14} /> Place Order</>}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ══ STEP 4 ── SUCCESS ══ */}
-              {currentStep === 4 && (
-                <div style={{ textAlign: "center", padding: "72px 32px" }}>
+            <nav style={{ flex: 1 }}>
+              {navItems.map((item, i) => {
+                const active = pathname === item.href;
+                return (
                   <motion.div
-                    initial={{ scale: 0.55, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", damping: 14, stiffness: 120 }}
+                    key={item.label}
+                    initial={{ opacity: 0, x: 24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.06 }}
                   >
-                    <div className="co-success-icon">
-                      <ShieldCheck size={32} />
-                    </div>
+                    <Link
+                      href={item.href}
+                      className={`mobile-nav-link${active ? " active" : ""}${item.accent ? " sale" : ""}`}
+                    >
+                      {item.label}
+                    </Link>
                   </motion.div>
+                );
+              })}
+            </nav>
 
-                  <span className="co-eyebrow" style={{ color: "var(--mid)", display: "block", marginBottom: 10 }}>
-                    Order Confirmed
-                  </span>
-                  <h2 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: "clamp(44px,7vw,80px)", fontWeight: 900, textTransform: "uppercase", lineHeight: .9, marginBottom: 16 }}>
-                    Order Placed<br />
-                    <span style={{ color: "#16a34a" }}>Successfully.</span>
-                  </h2>
-                  <p style={{ fontSize: 15, fontWeight: 300, color: "var(--mid)", maxWidth: 380, margin: "0 auto 36px", lineHeight: 1.7 }}>
-                    Your order is confirmed and will be dispatched shortly. You'll receive an email with tracking details.
-                  </p>
-
-                  <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
-                    <Link href="/dashboard/orders">
-                      <button className="co-btn-ghost">View Orders</button>
-                    </Link>
-                    <Link href="/">
-                      <button className="co-btn">Continue Shopping</button>
-                    </Link>
-                  </div>
-                </div>
+            <div className="mobile-menu-footer">
+              {isAuthenticated ? (
+                <>
+                  <Link href="/dashboard" className="nav-join-btn">Profile</Link>
+                  <button className="nav-text-btn" style={{ color: "rgba(255,255,255,.5)" }} onClick={() => logout()}>Sign Out</button>
+                </>
+              ) : (
+                <>
+                  <Link href="/register" className="nav-join-btn">Join – It&apos;s Free</Link>
+                  <Link href="/login" className="nav-text-btn" style={{ color: "rgba(255,255,255,.5)" }}>Sign In</Link>
+                </>
               )}
-
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

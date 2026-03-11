@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { Navbar } from '@/components/Navbar';
+
 import { Toaster } from 'react-hot-toast';
 import { Footer } from '@/components/Footer';
 import { AnalyticsProvider } from '@/lib/analytics';
@@ -9,6 +9,8 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { Suspense } from 'react';
 import { QueryProvider } from '@/components/QueryProvider';
 import { SettingsProvider } from '@/contexts/SettingsContext';
+import { Navbar } from '@/components/Navbar';
+
 
 const inter = Inter({ subsets: ['latin'] });
 
