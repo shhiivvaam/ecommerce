@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@repo/ui";
-import { Input } from "@repo/ui";
 import {
   Ticket, Plus, Trash2, Calendar, Percent,
   Banknote, X, Activity, DollarSign, Pencil,
@@ -693,7 +691,7 @@ export default function AdminCouponsPage() {
                     </div>
 
                     {/* Usage progress bar */}
-                    {c.usageLimit > 0 && (
+                    {typeof c.usageLimit === "number" && c.usageLimit > 0 && (
                       <div
                         style={{
                           height: 3,
@@ -706,7 +704,7 @@ export default function AdminCouponsPage() {
                           style={{
                             height: "100%",
                             borderRadius: 2,
-                            width: `${Math.min(100, (c.usedCount / c.usageLimit) * 100)}%`,
+                            width: `${Math.min(100, (c.usedCount / (c.usageLimit || 1)) * 100)}%`,
                             background: isLimitReached
                               ? "#e11d48"
                               : "#c8ff00",

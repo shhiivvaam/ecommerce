@@ -563,7 +563,7 @@ export default function CheckoutPage() {
                                     <div>
                                         <span className="co-step-eyebrow">Step 2 of 3</span>
                                         <h2 className="co-step-title">Payment</h2>
-                                        <p className="co-step-desc">You'll be redirected to Razorpay's secure gateway to complete payment.</p>
+                                        <p className="co-step-desc">You&apos;ll be redirected to Razorpay&apos;s secure gateway to complete payment.</p>
                                     </div>
 
                                     <div className="co-pay-card">
@@ -728,7 +728,7 @@ export default function CheckoutPage() {
                                         <span style={{ color: "#16a34a" }}>Successfully.</span>
                                     </h2>
                                     <p style={{ fontSize: 15, fontWeight: 300, color: "var(--mid)", maxWidth: 380, margin: "0 auto 36px", lineHeight: 1.7 }}>
-                                        Your order is confirmed and will be dispatched shortly. You'll receive an email with tracking details.
+                                        Your order is confirmed and will be dispatched shortly. You&apos;ll receive an email with tracking details.
                                     </p>
 
                                     <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
