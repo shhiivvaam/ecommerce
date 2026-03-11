@@ -237,7 +237,7 @@ export default function CheckoutPage() {
                         color: "#0a0a0a"
                     }
                 };
-                
+
                 const RazorpayWindow = window as unknown as {
                     Razorpay: new (opts: Record<string, unknown>) => {
                         on: (event: string, callback: (res: { error: { description: string } }) => void) => void;
@@ -245,7 +245,7 @@ export default function CheckoutPage() {
                     }
                 };
                 const rzp = new RazorpayWindow.Razorpay(options);
-                rzp.on('payment.failed', function (response: { error: { description: string } }){
+                rzp.on('payment.failed', function (response: { error: { description: string } }) {
                     toast.error(response.error.description);
                     setIsProcessing(false);
                 });
@@ -587,7 +587,7 @@ export default function CheckoutPage() {
                                     </motion.div>
 
                                     <div className="space-y-6">
-                                        <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-black dark:text-white leading-[0.9]">Acquisition <br /><span className="text-emerald-500 dark:text-emerald-400">Authorized.</span></h2>
+                                        <h2 className="text-6xl  md:text-8xl font-black uppercase tracking-tighter text-black dark:text-white leading-[0.9]">Acquisition <br /><span className="text-emerald-500 dark:text-emerald-400">Authorized.</span></h2>
                                         <p className="text-xl text-slate-400 dark:text-slate-500 font-medium max-w-xl mx-auto italic leading-relaxed">
                                             Registry updated successfully. Your assets have been committed to the logistics flow and will materialize at the destination node shortly.
                                         </p>
