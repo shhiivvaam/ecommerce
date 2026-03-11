@@ -3,231 +3,793 @@
 import { useState } from "react";
 import { Button } from "@repo/ui";
 import { Input } from "@repo/ui";
-import { Ticket, Plus, Trash2, Calendar, Percent, Banknote, X, Activity, DollarSign, Pencil } from "lucide-react";
+import {
+  Ticket, Plus, Trash2, Calendar, Percent,
+  Banknote, X, Activity, DollarSign, Pencil,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    useAdminCoupons,
-    useCreateCoupon,
-    useUpdateCoupon,
-    useDeleteCoupon,
+  useAdminCoupons,
+  useCreateCoupon,
+  useUpdateCoupon,
+  useDeleteCoupon,
 } from "@/lib/hooks/useAdminCoupons";
 
 interface CouponFormData {
-    code: string;
-    discount: number;
-    isFlat: boolean;
-    expiryDate: string;
-    usageLimit: number;
-    minTotal: number;
+  code: string;
+  discount: number;
+  isFlat: boolean;
+  expiryDate: string;
+  usageLimit: number;
+  minTotal: number;
 }
 
 const defaultForm = (): CouponFormData => ({
-    code: "",
-    discount: 0,
-    isFlat: false,
-    expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    usageLimit: 100,
-    minTotal: 0,
+  code: "",
+  discount: 0,
+  isFlat: false,
+  expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0],
+  usageLimit: 100,
+  minTotal: 0,
 });
 
+const STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
+
+.cp-wrap {
+  font-family: 'DM Sans', sans-serif;
+  color: #0a0a0a;
+}
+
+/* ── Field label ── */
+.cp-label {
+  display: block;
+  font-size: 10px; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: #8a8a8a; margin-bottom: 8px;
+}
+
+/* ── Text input ── */
+.cp-input {
+  width: 100%; height: 48px;
+  padding: 0 16px; border-radius: 6px;
+  border: 1.5px solid rgba(10,10,10,0.1);
+  background: #f5f3ef;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 400; color: #0a0a0a;
+  outline: none; transition: border-color .2s;
+}
+.cp-input:focus { border-color: #0a0a0a; }
+.cp-input::placeholder { color: rgba(10,10,10,.28); }
+.cp-input:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Toggle type button ── */
+.cp-type-toggle {
+  height: 48px; width: 48px; border-radius: 6px; flex-shrink: 0;
+  border: 1.5px solid rgba(10,10,10,0.1); background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .2s, border-color .2s;
+}
+.cp-type-toggle:hover { border-color: #0a0a0a; }
+.cp-type-toggle.flat { background: #0a0a0a; border-color: #0a0a0a; }
+
+/* ── Primary button ── */
+.cp-btn-primary {
+  height: 48px; padding: 0 28px; border-radius: 6px; border: none;
+  background: #0a0a0a; color: #fff; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 11px;
+  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background .2s, transform .15s; flex-shrink: 0;
+}
+.cp-btn-primary:hover { background: #1a1a1a; transform: translateY(-1px); }
+.cp-btn-primary:active { transform: translateY(0); }
+
+/* ── Ghost button ── */
+.cp-btn-ghost {
+  height: 48px; padding: 0 24px; border-radius: 6px;
+  border: 1.5px solid rgba(10,10,10,0.1); background: transparent;
+  color: #8a8a8a; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 11px;
+  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: border-color .2s, color .2s;
+}
+.cp-btn-ghost:hover { border-color: #0a0a0a; color: #0a0a0a; }
+
+/* ── Icon button ── */
+.cp-icon-btn {
+  width: 36px; height: 36px; border-radius: 6px; flex-shrink: 0;
+  border: 1.5px solid rgba(10,10,10,0.1); background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .2s, border-color .2s, color .2s;
+  color: #8a8a8a;
+}
+.cp-icon-btn:hover { border-color: #0a0a0a; color: #0a0a0a; background: #fff; }
+.cp-icon-btn.danger:hover { background: #e11d48; border-color: #e11d48; color: #fff; }
+
+/* ── Form card ── */
+.cp-form-card {
+  background: #fff; border: 1px solid rgba(10,10,10,0.1); border-radius: 10px;
+  padding: 36px; margin-bottom: 0;
+}
+
+/* ── Coupon card ── */
+.cp-card {
+  background: #fff; border: 1px solid rgba(10,10,10,0.1); border-radius: 10px;
+  padding: 28px; display: flex; flex-direction: column;
+  transition: box-shadow .2s, transform .2s, border-color .2s;
+  position: relative; overflow: hidden;
+}
+.cp-card:hover {
+  box-shadow: 0 8px 32px rgba(10,10,10,0.1);
+  transform: translateY(-2px);
+  border-color: rgba(10,10,10,0.18);
+}
+.cp-card.inactive { opacity: .55; }
+
+/* ── Status badge ── */
+.cp-badge {
+  display: inline-flex; align-items: center;
+  font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 4px;
+}
+.cp-badge.active { background: rgba(200,255,0,.18); color: #3d5200; border: 1px solid rgba(200,255,0,.35); }
+.cp-badge.expired { background: rgba(225,29,72,.08); color: #be123c; border: 1px solid rgba(225,29,72,.15); }
+.cp-badge.voided { background: rgba(10,10,10,.06); color: #8a8a8a; border: 1px solid rgba(10,10,10,.1); }
+
+/* ── Dashed divider ── */
+.cp-dashed { border: none; border-top: 1.5px dashed rgba(10,10,10,.1); margin: 20px 0; }
+
+/* ── Skeleton ── */
+@keyframes cp-pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+.cp-skel { background: rgba(10,10,10,.07); border-radius: 8px; animation: cp-pulse 1.6s ease-in-out infinite; }
+
+/* ── Section eyebrow ── */
+.cp-eyebrow {
+  font-size: 10px; font-weight: 500; letter-spacing: .18em;
+  text-transform: uppercase; color: #c8ff00;
+  display: block; margin-bottom: 10px;
+}
+.cp-eyebrow-dark { color: #0a0a0a; }
+
+/* ── Rule ── */
+.cp-rule { height: 1px; background: rgba(10,10,10,.1); border: none; margin: 0; }
+`;
+
 export default function AdminCouponsPage() {
-    const { data: coupons = [], isLoading: loading } = useAdminCoupons();
-    const { mutate: createCoupon } = useCreateCoupon();
-    const { mutate: updateCoupon } = useUpdateCoupon();
-    const { mutate: deleteCoupon } = useDeleteCoupon();
+  const { data: coupons = [], isLoading: loading } = useAdminCoupons();
+  const { mutate: createCoupon } = useCreateCoupon();
+  const { mutate: updateCoupon } = useUpdateCoupon();
+  const { mutate: deleteCoupon } = useDeleteCoupon();
 
-    const [showForm, setShowForm] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [formData, setFormData] = useState<CouponFormData>(defaultForm());
+  const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<CouponFormData>(defaultForm());
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const payload = { ...formData, expiryDate: new Date(formData.expiryDate).toISOString() };
-        const onSuccess = () => {
-            toast.success(isEditing ? "Coupon updated" : "Coupon created");
-            setShowForm(false);
-            setFormData(defaultForm());
-            setIsEditing(false);
-            setSelectedId(null);
-        };
-
-        if (isEditing && selectedId) {
-            updateCoupon({ id: selectedId, ...payload }, { onSuccess });
-        } else {
-            createCoupon(payload, { onSuccess });
-        }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      ...formData,
+      expiryDate: new Date(formData.expiryDate).toISOString(),
     };
-
-    const handleDelete = (id: string) => {
-        if (!confirm("Delete this coupon?")) return;
-        deleteCoupon(id, { onSuccess: () => toast.success("Coupon deleted") });
+    const onSuccess = () => {
+      toast.success(isEditing ? "Coupon updated" : "Coupon created");
+      setShowForm(false);
+      setFormData(defaultForm());
+      setIsEditing(false);
+      setSelectedId(null);
     };
+    if (isEditing && selectedId) {
+      updateCoupon({ id: selectedId, ...payload }, { onSuccess });
+    } else {
+      createCoupon(payload, { onSuccess });
+    }
+  };
 
-    const handleEdit = (c: (typeof coupons)[0]) => {
-        setFormData({
-            code: c.code, discount: c.discount, isFlat: c.isFlat,
-            expiryDate: c.expiryDate.split("T")[0],
-            usageLimit: c.usageLimit || 100, minTotal: c.minTotal,
-        });
-        setSelectedId(c.id);
-        setIsEditing(true);
-        setShowForm(true);
-    };
+  const handleDelete = (id: string) => {
+    if (!confirm("Delete this coupon?")) return;
+    deleteCoupon(id, { onSuccess: () => toast.success("Coupon deleted") });
+  };
 
-    const handleNew = () => { setFormData(defaultForm()); setIsEditing(false); setShowForm(true); };
+  const handleEdit = (c: (typeof coupons)[0]) => {
+    setFormData({
+      code: c.code,
+      discount: c.discount,
+      isFlat: c.isFlat,
+      expiryDate: c.expiryDate.split("T")[0],
+      usageLimit: c.usageLimit || 100,
+      minTotal: c.minTotal,
+    });
+    setSelectedId(c.id);
+    setIsEditing(true);
+    setShowForm(true);
+  };
 
-    return (
-        <div className="space-y-16 pb-20">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-                <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                        <span className="h-px w-12 bg-black/10 dark:bg-white/10" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Promotion Core</span>
-                    </div>
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black dark:text-white">
-                        Discount <br />Manifests
-                    </h2>
-                    <p className="text-lg font-medium text-slate-400 dark:text-slate-500 italic max-w-xl">
-                        Control discount codes and promotional sequences across the ecosystem.
-                    </p>
-                </div>
-                <div className="flex gap-4 pt-4">
-                    <Button onClick={handleNew} className="rounded-[24px] h-16 px-10 gap-4 shadow-2xl shadow-primary/20 font-black uppercase tracking-[0.2em] text-[11px] active:scale-95 transition-all">
-                        <Plus className="h-5 w-5" /> Initialize Node
-                    </Button>
-                </div>
-            </header>
+  const handleNew = () => {
+    setFormData(defaultForm());
+    setIsEditing(false);
+    setShowForm(true);
+  };
 
-            <AnimatePresence>
-                {showForm && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.98, y: -20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98, y: -20 }}
-                        className="overflow-hidden"
-                    >
-                        <form onSubmit={handleSubmit} className="bg-white dark:bg-black border-4 border-primary/20 rounded-[56px] p-12 shadow-3xl space-y-12 relative overflow-hidden transition-colors">
-                            <div className="absolute top-0 right-0 p-20 opacity-[0.05] pointer-events-none dark:invert">
-                                <Ticket className="h-64 w-64 rotate-12" />
-                            </div>
-                            <div className="flex items-center justify-between relative z-10">
-                                <div className="space-y-2">
-                                    <h3 className="text-4xl font-black uppercase tracking-tighter text-black dark:text-white">
-                                        {isEditing ? "Modify Protocol" : "New Promotional Protocol"}
-                                    </h3>
-                                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] italic">Liability Reduction Injection</p>
-                                </div>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => setShowForm(false)} className="rounded-2xl h-16 w-16 border-4 border-slate-100 dark:border-slate-800">
-                                    <X className="h-8 w-8 text-black dark:text-white" />
-                                </Button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 relative z-10">
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600 ml-2 italic">Node Identifier (Code)</label>
-                                    <Input required placeholder="E.G. NEXUS-50" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })} disabled={isEditing} className="rounded-[28px] h-20 bg-slate-50 dark:bg-transparent border-4 border-slate-50 dark:border-slate-800 text-xl font-black uppercase tracking-widest focus-visible:ring-primary/20 transition-all px-10" />
-                                </div>
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600 ml-2 italic">Reduction Magnitude</label>
-                                    <div className="flex gap-4">
-                                        <Input type="number" required value={formData.discount} onChange={e => setFormData({ ...formData, discount: parseFloat(e.target.value) })} className="rounded-[28px] h-20 bg-slate-50 dark:bg-transparent border-4 border-slate-50 dark:border-slate-800 text-2xl font-black uppercase tracking-widest focus-visible:ring-primary/20 transition-all px-10 flex-1" />
-                                        <Button type="button" variant="ghost" onClick={() => setFormData({ ...formData, isFlat: !formData.isFlat })} className="rounded-[24px] h-20 w-20 border-4 border-slate-50 dark:border-slate-800 flex items-center justify-center transition-all bg-white dark:bg-black shadow-xl">
-                                            {formData.isFlat ? <Banknote className="h-8 w-8 text-emerald-500" /> : <Percent className="h-8 w-8 text-primary" />}
-                                        </Button>
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600 ml-2 italic">Temporal Threshold (Expiry)</label>
-                                    <Input type="date" required value={formData.expiryDate} onChange={e => setFormData({ ...formData, expiryDate: e.target.value })} className="rounded-[28px] h-20 bg-slate-50 dark:bg-transparent border-4 border-slate-50 dark:border-slate-800 text-xs font-black uppercase tracking-widest transition-all px-10" />
-                                </div>
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600 ml-2 italic">Sequence Limit (Usage)</label>
-                                    <Input type="number" value={formData.usageLimit} onChange={e => setFormData({ ...formData, usageLimit: parseInt(e.target.value) })} className="rounded-[28px] h-20 bg-slate-50 dark:bg-transparent border-4 border-slate-50 dark:border-slate-800 text-xl font-black tracking-widest transition-all px-10" />
-                                </div>
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600 ml-2 italic">Min. Purchase Liability</label>
-                                    <Input type="number" value={formData.minTotal} onChange={e => setFormData({ ...formData, minTotal: parseFloat(e.target.value) })} className="rounded-[28px] h-20 bg-slate-50 dark:bg-transparent border-4 border-slate-50 dark:border-slate-800 text-xl font-black tracking-widest transition-all px-10" />
-                                </div>
-                            </div>
-                            <div className="flex justify-end gap-6 pt-10 border-t-4 border-slate-50 dark:border-slate-900 relative z-10 mt-10">
-                                <Button type="button" variant="ghost" onClick={() => setShowForm(false)} className="rounded-[24px] h-16 px-12 font-black uppercase text-[11px] tracking-widest text-slate-400 dark:text-slate-600">Deactivate</Button>
-                                <Button type="submit" className="rounded-[24px] h-16 px-16 shadow-2xl shadow-primary/30 font-black uppercase text-[11px] tracking-widest min-w-[240px]">
-                                    {isEditing ? "Commit Protocol" : "Activate Node"}
-                                </Button>
-                            </div>
-                        </form>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+  return (
+    <>
+      <style>{STYLES}</style>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                {loading ? (
-                    Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="h-64 bg-slate-50/50 dark:bg-white/5 animate-pulse rounded-[48px] border-4 border-slate-50 dark:border-slate-900" />
-                    ))
-                ) : coupons.length > 0 ? (
-                    coupons.map((c, i) => {
-                        const isExpired = new Date(c.expiryDate) < new Date();
-                        const isLimitReached = c.usageLimit ? c.usedCount >= c.usageLimit : false;
-                        const isActive = !isExpired && !isLimitReached;
-                        return (
-                            <motion.div
-                                layout key={c.id}
-                                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                                className={`group relative p-10 rounded-[56px] border-4 border-slate-50 dark:border-slate-800 bg-white dark:bg-[#0a0a0a] transition-all hover:shadow-3xl hover:-translate-y-2 hover:border-primary/20 ${!isActive ? "opacity-60 grayscale" : ""}`}
-                            >
-                                <div className="flex justify-between items-start mb-8">
-                                    <div className={`h-16 w-16 rounded-[24px] flex items-center justify-center border-2 shadow-inner transition-colors ${isActive ? "bg-primary/10 border-primary/20 text-primary" : "bg-slate-50 dark:bg-black border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-700"}`}>
-                                        <Ticket className="h-8 w-8" />
-                                    </div>
-                                    <div className="flex gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="h-11 w-11 border-2 border-slate-50 dark:border-slate-800 rounded-2xl hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"><Pencil className="h-5 w-5" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="h-11 w-11 border-2 border-slate-50 dark:border-slate-800 rounded-2xl text-slate-300 dark:text-slate-700 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-500 hover:border-transparent"><Trash2 className="h-5 w-5" /></Button>
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-3xl font-black tracking-[0.1em] uppercase text-black dark:text-white font-mono">{c.code}</span>
-                                        <span className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border-2 shadow-sm ${isActive ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-950/30" : "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-950/30"}`}>
-                                            {isActive ? "NOMINAL" : isExpired ? "EXPIRED" : "VOIDED"}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-5xl font-black text-primary tracking-tighter tabular-nums">{c.isFlat ? `$${c.discount}` : `${c.discount}%`}</span>
-                                        <span className="text-[10px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.4em] italic">Liability Drop</span>
-                                    </div>
-                                </div>
-                                <div className="mt-10 pt-10 border-t-4 border-dashed border-slate-50 dark:border-slate-900 space-y-4">
-                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest italic text-slate-400 dark:text-slate-600">
-                                        <span className="flex items-center gap-3"><Calendar className="h-4 w-4" /> Threshold</span>
-                                        <span className="text-black dark:text-white">{new Date(c.expiryDate).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest italic text-slate-400 dark:text-slate-600">
-                                        <span className="flex items-center gap-3"><Activity className="h-4 w-4" /> Sequences</span>
-                                        <span className="text-black dark:text-white">{c.usedCount} / {c.usageLimit || "∞"}</span>
-                                    </div>
-                                    {c.minTotal > 0 && (
-                                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest italic text-slate-400 dark:text-slate-600">
-                                            <span className="flex items-center gap-3"><DollarSign className="h-4 w-4" /> Min. Capture</span>
-                                            <span className="text-black dark:text-white">${c.minTotal}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
-                        );
-                    })
-                ) : (
-                    <div className="col-span-full py-60 text-center bg-slate-50/30 dark:bg-white/5 rounded-[64px] border-4 border-dashed border-slate-100 dark:border-slate-900 relative overflow-hidden transition-colors">
-                        <Ticket className="h-32 w-32 mx-auto text-slate-100 dark:text-slate-900 mb-10 opacity-50" />
-                        <h3 className="text-4xl font-black uppercase tracking-[0.2em] text-slate-200 dark:text-slate-800">Promotional Void</h3>
-                        <p className="text-sm font-black text-slate-300 dark:text-slate-700 mt-4 max-w-sm mx-auto italic uppercase tracking-widest leading-relaxed">No promotional manifests detected in the current stream.</p>
-                        <Button onClick={handleNew} className="mt-12 rounded-[28px] h-20 px-16 font-black uppercase tracking-[0.2em] text-[11px] shadow-3xl">
-                            Establish First Node
-                        </Button>
-                    </div>
-                )}
-            </div>
+      <div className="cp-wrap" style={{ paddingBottom: 80 }}>
+
+        {/* ── PAGE HEADER ── */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 24,
+            marginBottom: 48,
+          }}
+        >
+          <div>
+            <span className="cp-eyebrow cp-eyebrow-dark">Promotions</span>
+            <h1
+              style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: "clamp(40px, 5vw, 64px)",
+                fontWeight: 900,
+                textTransform: "uppercase",
+                lineHeight: 0.95,
+                letterSpacing: "-.01em",
+                margin: 0,
+              }}
+            >
+              Discount
+              <br />
+              Coupons
+            </h1>
+          </div>
+          <button className="cp-btn-primary" onClick={handleNew}>
+            <Plus size={15} />
+            New Coupon
+          </button>
         </div>
-    );
+
+        <hr className="cp-rule" style={{ marginBottom: 40 }} />
+
+        {/* ── CREATE / EDIT FORM ── */}
+        <AnimatePresence>
+          {showForm && (
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
+              style={{ marginBottom: 40 }}
+            >
+              <div className="cp-form-card">
+
+                {/* Form header */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    marginBottom: 32,
+                    gap: 16,
+                  }}
+                >
+                  <div>
+                    <span className="cp-eyebrow cp-eyebrow-dark">
+                      {isEditing ? "Edit Coupon" : "Create Coupon"}
+                    </span>
+                    <h2
+                      style={{
+                        fontFamily: "'Barlow Condensed', sans-serif",
+                        fontSize: 32,
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        lineHeight: 1,
+                        margin: 0,
+                      }}
+                    >
+                      {isEditing ? "Update Details" : "New Promotion"}
+                    </h2>
+                  </div>
+                  <button
+                    className="cp-icon-btn"
+                    onClick={() => setShowForm(false)}
+                    style={{ width: 40, height: 40, marginTop: 4 }}
+                    aria-label="Close"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                  {/* Fields grid */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fill, minmax(220px, 1fr))",
+                      gap: 20,
+                      marginBottom: 28,
+                    }}
+                  >
+                    {/* Code */}
+                    <div>
+                      <label className="cp-label">Coupon Code</label>
+                      <input
+                        className="cp-input"
+                        required
+                        placeholder="e.g. SUMMER20"
+                        value={formData.code}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            code: e.target.value.toUpperCase(),
+                          })
+                        }
+                        disabled={isEditing}
+                        style={{
+                          fontWeight: 600,
+                          letterSpacing: ".08em",
+                          textTransform: "uppercase",
+                        }}
+                      />
+                    </div>
+
+                    {/* Discount + type toggle */}
+                    <div>
+                      <label className="cp-label">
+                        Discount Amount&nbsp;
+                        <span style={{ color: "#0a0a0a", fontWeight: 600 }}>
+                          ({formData.isFlat ? "$" : "%"})
+                        </span>
+                      </label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          className="cp-input"
+                          type="number"
+                          required
+                          min={0}
+                          value={formData.discount}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              discount: parseFloat(e.target.value),
+                            })
+                          }
+                          style={{ fontWeight: 600 }}
+                        />
+                        <button
+                          type="button"
+                          className={`cp-type-toggle${formData.isFlat ? " flat" : ""}`}
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              isFlat: !formData.isFlat,
+                            })
+                          }
+                          title={
+                            formData.isFlat
+                              ? "Flat amount — click to switch to %"
+                              : "Percentage — click to switch to $"
+                          }
+                        >
+                          {formData.isFlat ? (
+                            <Banknote
+                              size={17}
+                              color={formData.isFlat ? "#c8ff00" : "#8a8a8a"}
+                            />
+                          ) : (
+                            <Percent size={17} color="#8a8a8a" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expiry */}
+                    <div>
+                      <label className="cp-label">Expiry Date</label>
+                      <input
+                        className="cp-input"
+                        type="date"
+                        required
+                        value={formData.expiryDate}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            expiryDate: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Usage limit */}
+                    <div>
+                      <label className="cp-label">Usage Limit</label>
+                      <input
+                        className="cp-input"
+                        type="number"
+                        min={0}
+                        value={formData.usageLimit}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            usageLimit: parseInt(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Min total */}
+                    <div>
+                      <label className="cp-label">Min. Order Total ($)</label>
+                      <input
+                        className="cp-input"
+                        type="number"
+                        min={0}
+                        value={formData.minTotal}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            minTotal: parseFloat(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Form actions */}
+                  <hr className="cp-rule" style={{ marginBottom: 24 }} />
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: 10,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="cp-btn-ghost"
+                      onClick={() => setShowForm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="cp-btn-primary">
+                      {isEditing ? "Save Changes" : "Create Coupon"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── COUPONS GRID ── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {loading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="cp-skel"
+                style={{ height: 240, borderRadius: 10 }}
+              />
+            ))
+          ) : coupons.length > 0 ? (
+            coupons.map((c, i) => {
+              const isExpired = new Date(c.expiryDate) < new Date();
+              const isLimitReached = c.usageLimit
+                ? c.usedCount >= c.usageLimit
+                : false;
+              const isActive = !isExpired && !isLimitReached;
+              const statusLabel = isActive
+                ? "Active"
+                : isExpired
+                ? "Expired"
+                : "Voided";
+              const statusClass = isActive
+                ? "active"
+                : isExpired
+                ? "expired"
+                : "voided";
+
+              return (
+                <motion.div
+                  layout
+                  key={c.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className={`cp-card${!isActive ? " inactive" : ""}`}
+                >
+                  {/* Card header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 20,
+                    }}
+                  >
+                    {/* Icon */}
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 8,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: isActive
+                          ? "rgba(200,255,0,.14)"
+                          : "rgba(10,10,10,.05)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Ticket
+                        size={18}
+                        color={isActive ? "#3d5200" : "#8a8a8a"}
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        className="cp-icon-btn"
+                        onClick={() => handleEdit(c)}
+                        title="Edit"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        className="cp-icon-btn danger"
+                        onClick={() => handleDelete(c.id)}
+                        title="Delete"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Code + status */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                      gap: 8,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "'Barlow Condensed', sans-serif",
+                        fontSize: 22,
+                        fontWeight: 900,
+                        letterSpacing: ".08em",
+                        textTransform: "uppercase",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {c.code}
+                    </span>
+                    <span className={`cp-badge ${statusClass}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+
+                  {/* Discount value */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: 8,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "'Barlow Condensed', sans-serif",
+                        fontSize: 44,
+                        fontWeight: 900,
+                        lineHeight: 1,
+                        color: "#0a0a0a",
+                      }}
+                    >
+                      {c.isFlat ? `$${c.discount}` : `${c.discount}%`}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 500,
+                        letterSpacing: ".1em",
+                        textTransform: "uppercase",
+                        color: "#8a8a8a",
+                      }}
+                    >
+                      {c.isFlat ? "Flat Off" : "Discount"}
+                    </span>
+                  </div>
+
+                  <hr className="cp-dashed" />
+
+                  {/* Meta rows */}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontSize: 11,
+                          color: "#8a8a8a",
+                          fontWeight: 400,
+                        }}
+                      >
+                        <Calendar size={12} />
+                        Expires
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: isExpired ? "#be123c" : "#0a0a0a",
+                        }}
+                      >
+                        {new Date(c.expiryDate).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontSize: 11,
+                          color: "#8a8a8a",
+                          fontWeight: 400,
+                        }}
+                      >
+                        <Activity size={12} />
+                        Usage
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 500 }}>
+                        {c.usedCount}{" "}
+                        <span style={{ color: "#8a8a8a", fontWeight: 300 }}>
+                          / {c.usageLimit || "∞"}
+                        </span>
+                      </span>
+                    </div>
+
+                    {/* Usage progress bar */}
+                    {c.usageLimit > 0 && (
+                      <div
+                        style={{
+                          height: 3,
+                          borderRadius: 2,
+                          background: "rgba(10,10,10,.08)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            borderRadius: 2,
+                            width: `${Math.min(100, (c.usedCount / c.usageLimit) * 100)}%`,
+                            background: isLimitReached
+                              ? "#e11d48"
+                              : "#c8ff00",
+                            transition: "width .4s ease",
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {c.minTotal > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 11,
+                            color: "#8a8a8a",
+                            fontWeight: 400,
+                          }}
+                        >
+                          <DollarSign size={12} />
+                          Min. Order
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 500 }}>
+                          ${c.minTotal}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })
+          ) : (
+            /* ── Empty state ── */
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                padding: "80px 32px",
+                textAlign: "center",
+                border: "1.5px dashed rgba(10,10,10,.12)",
+                borderRadius: 10,
+              }}
+            >
+              <Ticket
+                size={40}
+                style={{ color: "#d0cec9", margin: "0 auto 20px" }}
+              />
+              <p
+                style={{
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: 32,
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  marginBottom: 8,
+                }}
+              >
+                No Coupons Yet
+              </p>
+              <p
+                style={{
+                  fontSize: 14,
+                  color: "#8a8a8a",
+                  fontWeight: 300,
+                  marginBottom: 28,
+                }}
+              >
+                Create your first promotional coupon to get started.
+              </p>
+              <button className="cp-btn-primary" onClick={handleNew}>
+                <Plus size={15} />
+                Create First Coupon
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
