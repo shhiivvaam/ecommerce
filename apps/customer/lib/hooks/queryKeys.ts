@@ -37,4 +37,7 @@ export const queryKeys = {
     settings: {
         root: ["settings"] as const,
     },
+    affiliate: {
+        dashboard: ["affiliate", "dashboard"] as const,
+    },
 };

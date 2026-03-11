@@ -33,7 +33,10 @@ import { CurrentUser } from './decorators/current-user.decorator';
 
 // Minimal type for controller-level usage — avoids decorator metadata issues
 // with Prisma's interface-based User type under isolatedModules.
-interface AuthUser { id: string; email: string; }
+interface AuthUser {
+  id: string;
+  email: string;
+}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -115,7 +118,7 @@ export class AuthController {
       'Invalidates the session. JWT is stateless — the client must delete the token. This endpoint exists for future token blacklisting support.',
   })
   @ApiResponse({ status: 200, description: 'Logged out successfully' })
-  async logout(@CurrentUser() user: AuthUser) {
+  logout(@CurrentUser() user: AuthUser) {
     return this.authService.logout(user.id);
   }
 

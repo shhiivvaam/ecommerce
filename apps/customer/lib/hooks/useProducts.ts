@@ -61,7 +61,7 @@ export function useDeleteProduct() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
+
         },
         onError: (error) => {
             toast.error(getErrorMessage(error));

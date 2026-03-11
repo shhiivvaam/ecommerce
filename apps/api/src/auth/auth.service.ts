@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -71,7 +75,7 @@ export class AuthService {
     };
   }
 
-  async logout(_userId: string) {
+  logout(_userId: string) {
     // JWT is stateless — no server-side session to invalidate.
     // The client is responsible for deleting the token.
     // If token blacklisting is needed, implement a Redis store here.
