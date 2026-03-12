@@ -66,7 +66,7 @@ describe('CartService', () => {
 
       prismaService.cart.findFirst.mockResolvedValue(mockCart);
 
-      const result = await service.getCart('user-1', undefined);
+      const result = await service.getCart('user-1');
 
       expect(result).toEqual(mockCart);
     });
@@ -81,7 +81,7 @@ describe('CartService', () => {
       prismaService.cart.findFirst.mockResolvedValue(null);
       prismaService.cart.create.mockResolvedValue(mockNewCart);
 
-      const result = await service.getCart('user-1', undefined);
+      const result = await service.getCart('user-1');
 
       expect(result).toEqual(mockNewCart);
     });
@@ -111,7 +111,7 @@ describe('CartService', () => {
     });
 
     it('should add item to cart successfully', async () => {
-      await service.addItem(userId, undefined, addItemDto);
+      await service.addItem(userId, addItemDto);
 
       expect(prismaService.cartItem.create).toHaveBeenCalled();
       expect(prismaService.cart.update).toHaveBeenCalled();
@@ -120,17 +120,17 @@ describe('CartService', () => {
     it('should throw NotFoundException if product does not exist', async () => {
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.addItem(userId, undefined, addItemDto),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.addItem(userId, addItemDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException if insufficient stock', async () => {
       const highQtyDto = { ...addItemDto, quantity: 20 };
 
-      await expect(
-        service.addItem(userId, undefined, highQtyDto),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.addItem(userId, highQtyDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should update existing item quantity', async () => {
@@ -140,7 +140,7 @@ describe('CartService', () => {
       };
       prismaService.cartItem.findFirst.mockResolvedValue(mockExistingItem);
 
-      await service.addItem(userId, undefined, addItemDto);
+      await service.addItem(userId, addItemDto);
 
       expect(prismaService.cartItem.update).toHaveBeenCalled();
     });
@@ -165,12 +165,12 @@ describe('CartService', () => {
     });
 
     it('should update item quantity successfully', async () => {
-      await service.updateItem(userId, undefined, itemId, updateItemDto);
+      await service.updateItem(userId, itemId, updateItemDto);
       expect(prismaService.cartItem.update).toHaveBeenCalled();
     });
 
     it('should remove item if quantity is 0', async () => {
-      await service.updateItem(userId, undefined, itemId, { quantity: 0 });
+      await service.updateItem(userId, itemId, { quantity: 0 });
       expect(prismaService.cartItem.delete).toHaveBeenCalled();
     });
   });
@@ -197,7 +197,7 @@ describe('CartService', () => {
 
       prismaService.cart.findFirst.mockResolvedValue(mockCart);
 
-      const result = await service.getCartSummary('user-1', undefined);
+      const result = await service.getCartSummary('user-1');
 
       expect(result).toEqual({
         totalItems: 3,
@@ -211,7 +211,7 @@ describe('CartService', () => {
     it('should return empty summary for empty cart', async () => {
       prismaService.cart.findFirst.mockResolvedValue(null);
 
-      const result = await service.getCartSummary('user-1', undefined);
+      const result = await service.getCartSummary('user-1');
 
       expect(result.totalItems).toBe(0);
       expect(result.total).toBe(0);

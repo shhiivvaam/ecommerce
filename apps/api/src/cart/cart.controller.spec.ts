@@ -62,7 +62,7 @@ describe('CartController', () => {
       const result = await controller.getCart({ user: mockUser });
 
       expect(result).toEqual(mockCart);
-      expect(cartService.getCart).toHaveBeenCalledWith('user-1', undefined);
+      expect(cartService.getCart).toHaveBeenCalledWith('user-1');
     });
   });
 
@@ -84,18 +84,10 @@ describe('CartController', () => {
 
       cartService.addItem.mockResolvedValue(mockCartItem as any);
 
-      const result = await controller.addItem(
-        { user: mockUser },
-        undefined,
-        addItemDto,
-      );
+      const result = await controller.addItem({ user: mockUser }, addItemDto);
 
       expect(result).toEqual(mockCartItem);
-      expect(cartService.addItem).toHaveBeenCalledWith(
-        'user-1',
-        undefined,
-        addItemDto,
-      );
+      expect(cartService.addItem).toHaveBeenCalledWith('user-1', addItemDto);
     });
   });
 
@@ -114,7 +106,6 @@ describe('CartController', () => {
 
       const result = await controller.updateItem(
         { user: mockUser },
-        undefined,
         'item-1',
         updateItemDto,
       );
@@ -122,7 +113,6 @@ describe('CartController', () => {
       expect(result).toEqual(mockUpdatedItem);
       expect(cartService.updateItem).toHaveBeenCalledWith(
         'user-1',
-        undefined,
         'item-1',
         updateItemDto,
       );
@@ -135,13 +125,9 @@ describe('CartController', () => {
 
       cartService.removeItem.mockResolvedValue({} as any);
 
-      await controller.removeItem({ user: mockUser }, undefined, 'item-1');
+      await controller.removeItem({ user: mockUser }, 'item-1');
 
-      expect(cartService.removeItem).toHaveBeenCalledWith(
-        'user-1',
-        undefined,
-        'item-1',
-      );
+      expect(cartService.removeItem).toHaveBeenCalledWith('user-1', 'item-1');
     });
   });
 
@@ -153,7 +139,7 @@ describe('CartController', () => {
 
       await controller.clearCart({ user: mockUser });
 
-      expect(cartService.clearCart).toHaveBeenCalledWith('user-1', undefined);
+      expect(cartService.clearCart).toHaveBeenCalledWith('user-1');
     });
   });
 });
