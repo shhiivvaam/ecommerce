@@ -14,11 +14,12 @@ import { decodeJwt } from "jose";
  * Why decode-only? Same reason as admin middleware — JWT_SECRET lives in
  * the NestJS environment. Verification is already enforced at the API layer.
  *
- * Only /dashboard/* routes are protected. All storefront pages are public.
+ * Protected routes: /dashboard/*, /cart/*, /checkout/*
+ * All storefront browse pages (products, search, home) remain public.
  * Allowed role: CUSTOMER only.
  */
 
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/cart", "/checkout"];
 
 const PUBLIC_PATHS = [
   "/login",
@@ -31,8 +32,6 @@ const PUBLIC_PATHS = [
   "/fonts/",
   "/products",
   "/search",
-  "/cart",
-  "/checkout",
   "/gift-cards",
 ];
 
@@ -47,8 +46,13 @@ function isPublic(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only guard dashboard routes — everything else is open
-  if (!isProtected(pathname) || isPublic(pathname)) {
+  // Public paths are always allowed through
+  if (isPublic(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Only guard protected routes — everything else is open (/, /about, etc.)
+  if (!isProtected(pathname)) {
     return NextResponse.next();
   }
 
