@@ -589,7 +589,10 @@ export class OrdersService {
 
     const expires = Date.now() + 60 * 60 * 1000; // 1 hour
     const payload = `${orderId}:${productId}:${order.userId}:${expires}`;
-    const secret = process.env.JWT_SECRET || 'fallback_secret_ecommerce';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required');
+    }
     const signature = crypto
       .createHmac('sha256', secret)
       .update(payload)
@@ -615,7 +618,10 @@ export class OrdersService {
     }
 
     const payload = `${orderId}:${productId}:${userId}:${expires}`;
-    const secret = process.env.JWT_SECRET || 'fallback_secret_ecommerce';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required');
+    }
     const expectedHmac = crypto
       .createHmac('sha256', secret)
       .update(payload)
