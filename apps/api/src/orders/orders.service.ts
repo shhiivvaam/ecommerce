@@ -292,7 +292,7 @@ export class OrdersService {
             Number(totalAmount) - Number(discountAmount);
           if (Math.abs(expectedBackendTotal - expectedTotal) > 0.01) {
             throw new ConflictException(
-              `Cart prices have changed. Expected $${expectedTotal.toFixed(2)}, but actual total is $${expectedBackendTotal.toFixed(2)}. Please review your cart.`,
+              `Cart prices have changed. Expected ₹${expectedTotal.toFixed(2)}, but actual total is ₹${expectedBackendTotal.toFixed(2)}. Please review your cart.`,
             );
           }
         }
