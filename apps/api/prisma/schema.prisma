@@ -296,11 +296,15 @@ model Address {
   id        String  @id @default(cuid())
   userId    String?
   user      User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String? // e.g., 'Home', 'Office'
+  phone     String?
   street    String
   city      String
   state     String
   country   String
   zipCode   String
+  latitude  Float?
+  longitude Float?
   isDefault Boolean @default(false)
 
   orders Order[]
