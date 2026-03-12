@@ -13,6 +13,12 @@ import Image from "next/image";
 import Script from "next/script";
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
+import dynamic from "next/dynamic";
+
+const AddressMap = dynamic(() => import("@/components/AddressMap"), { 
+    ssr: false,
+    loading: () => <div style={{ height: "300px", width: "100%", background: "rgba(10,10,10,.05)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>Loading Map...</div>
+});
 
 interface AppliedCoupon {
     couponId?: string;
@@ -31,6 +37,8 @@ interface SavedAddress {
     zipCode: string;
     country: string;
     isDefault: boolean;
+    label?: string;
+    phone?: string;
 }
 
 const steps = [
@@ -280,11 +288,101 @@ export default function CheckoutPage() {
     const finalTotal = appliedCoupon ? appliedCoupon.finalTotal : total;
 
     const [address, setAddress] = useState({
-        firstName: "", lastName: "", email: "",
-        street: "", city: "", zipCode: "", state: "NY", country: "US",
+        firstName: "", lastName: "", email: "", phone: "", label: "Home",
+        street: "", city: "", zipCode: "", state: "MH", country: "IN",
+        latitude: null as number | null, longitude: null as number | null,
     });
-    const updateAddress = (f: string, v: string) =>
+    const [customLabel, setCustomLabel] = useState("");
+    const updateAddress = (f: string, v: string | number | null) =>
         setAddress((p) => ({ ...p, [f]: v }));
+
+    const [isDetecting, setIsDetecting] = useState(false);
+    const handleDetectLocation = () => {
+        setIsDetecting(true);
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            try {
+                const { latitude, longitude } = pos.coords;
+                handleMapChange(latitude, longitude);
+            } catch {
+                toast.error("Failed to detect address details");
+            } finally {
+                setIsDetecting(false);
+            }
+        }, () => {
+            toast.error("Location access denied or unavailable");
+            setIsDetecting(false);
+        });
+    };
+
+    const handleMapChange = async (lat: number, lng: number) => {
+        setAddress(p => ({ ...p, latitude: lat, longitude: lng }));
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            if (data.address) {
+                setAddress(p => ({
+                    ...p,
+                    street: data.address.road || data.address.suburb || data.address.neighbourhood || p.street,
+                    city: data.address.city || data.address.town || data.address.village || p.city,
+                    state: data.address.state || p.state,
+                    zipCode: data.address.postcode?.replace(/\s/g, '') || p.zipCode,
+                }));
+            }
+        } catch (e) { console.error("Reverse geocode failed", e); }
+    };
+
+    const [isSavingAddress, setIsSavingAddress] = useState(false);
+    const saveNewAddressProfile = async () => {
+        if (!canProceed()) {
+            toast.error("Please fill all required fields correctly (PIN: 6 digits, Phone: 10 digits)");
+            return;
+        }
+        setIsSavingAddress(true);
+        try {
+            const payload = {
+                street: address.street,
+                city: address.city,
+                state: address.state,
+                zipCode: address.zipCode,
+                country: "IN",
+                phone: address.phone,
+                label: address.label === "Custom" ? customLabel : address.label,
+                latitude: address.latitude,
+                longitude: address.longitude,
+                isDefault: savedAddresses.length === 0
+            };
+            const { data } = await api.post("/addresses", payload);
+            setSavedAddresses(prev => [...prev, data]);
+            setSelectedAddressId(data.id);
+            setIsAddingNew(false);
+            toast.success("Address saved to your profile");
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
+            toast.error(e.response?.data?.message || "Failed to save address");
+        } finally {
+            setIsSavingAddress(false);
+        }
+    };
+
+    useEffect(() => {
+        if (address.zipCode?.length === 6) {
+            (async () => {
+                try {
+                    const res = await fetch(`https://api.postalpincode.in/pincode/${address.zipCode}`);
+                    const data = await res.json();
+                    if (data[0]?.Status === "Success") {
+                        const postOffice = data[0].PostOffice[0];
+                        setAddress(p => ({
+                            ...p,
+                            city: postOffice.District || postOffice.Name,
+                            state: postOffice.State
+                        }));
+                        toast.success(`Detected: ${postOffice.District}, ${postOffice.State}`);
+                    }
+                } catch { /* silent fail */ }
+            })();
+        }
+    }, [address.zipCode]);
 
     const { isAuthenticated, _hasHydrated } = useAuthStore();
 
@@ -317,13 +415,13 @@ export default function CheckoutPage() {
                 if (aff.data?.valid) {
                     const disc = total * aff.data.commissionRate;
                     setAppliedCoupon({ affiliateId: aff.data.affiliateId, affiliateCode: couponCode.trim(), code: couponCode.trim(), discountAmount: disc, finalTotal: total - disc });
-                    toast.success(`Referral applied: -$${disc.toFixed(2)}`);
+                    toast.success(`Referral applied: -₹${disc.toFixed(2)}`);
                     setIsApplyingCoupon(false); return;
                 }
             } catch { /* not affiliate */ }
             const { data } = await api.post("/coupons/apply", { code: couponCode.trim(), cartTotal: total });
             setAppliedCoupon(data);
-            toast.success(`Coupon applied: -$${data.discountAmount.toFixed(2)}`);
+            toast.success(`Coupon applied: -₹${data.discountAmount.toFixed(2)}`);
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
             toast.error(e.response?.data?.message || "Invalid coupon or referral code");
@@ -336,7 +434,7 @@ export default function CheckoutPage() {
 
     const canProceed = () => {
         if (!isAddingNew && selectedAddressId) return true;
-        if (isAddingNew && address.street && address.city && address.zipCode) return true;
+        if (isAddingNew && address.street && address.city && address.zipCode?.match(/^\d{6}$/) && address.phone?.match(/^\d{10}$/)) return true;
         return false;
     };
 
@@ -350,7 +448,7 @@ export default function CheckoutPage() {
                 ...(appliedCoupon?.affiliateCode && { affiliateCode: appliedCoupon.affiliateCode }),
             };
             if (selectedAddressId && !isAddingNew) payload.addressId = selectedAddressId;
-            else payload.address = { street: address.street, city: address.city, state: address.state, country: address.country, zipCode: address.zipCode };
+            else payload.address = { street: address.street, city: address.city, state: address.state, country: address.country, zipCode: address.zipCode, phone: address.phone, label: address.label, latitude: address.latitude, longitude: address.longitude };
 
             const { data: order } = await api.post("/orders", payload);
             sessionStorage.setItem("pendingOrderId", order.id);
@@ -490,11 +588,15 @@ export default function CheckoutPage() {
                                                                 <MapPin size={13} style={{ color: selectedAddressId === addr.id ? "#fff" : "var(--mid)" }} />
                                                             </div>
                                                             {addr.isDefault && (
-                                                                <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 4, background: "rgba(200,255,0,.14)", color: "#3d5200", border: "1px solid rgba(200,255,0,.28)" }}>Default</span>
+                                                                <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 4, background: "rgba(200,255,0,.14)", color: "#3d5200", border: "1px solid rgba(200,255,0,.28)", marginRight: 6 }}>Default</span>
+                                                            )}
+                                                            {addr.label && (
+                                                                <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 4, background: "var(--ink)", color: "#fff", border: "1px solid var(--ink)" }}>{addr.label}</span>
                                                             )}
                                                         </div>
-                                                        <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 3 }}>{addr.street}</p>
-                                                        <p style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)" }}>{addr.city}, {addr.state} {addr.zipCode}</p>
+                                                        <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={addr.street}>{addr.street}</p>
+                                                        <p style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{addr.city}, {addr.state} {addr.zipCode}</p>
+                                                        {addr.phone && <p style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)" }}>📞 +91 {addr.phone}</p>}
                                                     </div>
                                                 ))}
                                             </div>
@@ -506,40 +608,112 @@ export default function CheckoutPage() {
 
                                     {isAddingNew && (
                                         <div className="co-inset">
-                                            {savedAddresses.length > 0 && (
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                                                {savedAddresses.length > 0 && (
+                                                    <button
+                                                        onClick={() => setIsAddingNew(false)}
+                                                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--mid)", display: "flex", alignItems: "center", gap: 6, padding: 0 }}
+                                                    >
+                                                        ← Back to saved
+                                                    </button>
+                                                )}
                                                 <button
-                                                    onClick={() => setIsAddingNew(false)}
-                                                    style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--mid)", display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: 0 }}
+                                                    onClick={handleDetectLocation}
+                                                    disabled={isDetecting}
+                                                    style={{ background: "var(--ink)", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 11, fontWeight: 500, color: "#fff", display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", marginLeft: "auto" }}
                                                 >
-                                                    ← Back to saved
+                                                    <MapPin size={12} /> {isDetecting ? "Detecting..." : "Detect Location"}
                                                 </button>
-                                            )}
+                                            </div>
                                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                                                <div style={{ gridColumn: "1 / -1", marginBottom: 8 }}>
+                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                                        <label className="co-label" style={{ margin: 0 }}>Pinpoint Location</label>
+                                                        <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 20, background: "rgba(200,255,0,.15)", color: "#3d5200", border: "1px solid rgba(200,255,0,.3)" }}>
+                                                            Label: {address.label === "Custom" ? (customLabel || "Custom") : address.label}
+                                                        </span>
+                                                    </div>
+                                                    <AddressMap 
+                                                        lat={address.latitude} 
+                                                        lng={address.longitude} 
+                                                        onChange={handleMapChange} 
+                                                    />
+                                                    <p style={{ fontSize: 10, color: "var(--mid)", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                                                        <Zap size={10} /> Drag the marker to your exact doorstep for faster delivery.
+                                                    </p>
+                                                </div>
+
+                                                <div style={{ gridColumn: "1 / -1", display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+                                                    {["Home", "Office", "Other", "Custom"].map(lbl => (
+                                                        <button
+                                                            key={lbl}
+                                                            type="button"
+                                                            onClick={() => updateAddress("label", lbl)}
+                                                            style={{
+                                                                padding: "6px 14px", borderRadius: 20, fontSize: 11, fontWeight: 500, border: "1px solid", cursor: "pointer",
+                                                                background: address.label === lbl ? "var(--ink)" : "var(--paper)",
+                                                                color: address.label === lbl ? "#fff" : "var(--mid)",
+                                                                borderColor: address.label === lbl ? "var(--ink)" : "var(--border)"
+                                                            }}
+                                                        >
+                                                            {lbl}
+                                                        </button>
+                                                    ))}
+                                                    {address.label === "Custom" && (
+                                                        <input 
+                                                            className="co-input" 
+                                                            style={{ height: 32, marginTop: 4, fontSize: 11, letterSpacing: ".05em" }}
+                                                            placeholder="ENTER CUSTOM LABEL" 
+                                                            maxLength={20}
+                                                            value={customLabel} 
+                                                            onChange={(e) => setCustomLabel(e.target.value.toUpperCase())} 
+                                                        />
+                                                    )}
+                                                </div>
                                                 <div>
                                                     <label className="co-label">First Name</label>
-                                                    <input className="co-input" placeholder="First name" value={address.firstName} onChange={(e) => updateAddress("firstName", e.target.value)} />
+                                                    <input className="co-input" placeholder="First name" maxLength={50} value={address.firstName} onChange={(e) => updateAddress("firstName", e.target.value)} />
                                                 </div>
                                                 <div>
                                                     <label className="co-label">Last Name</label>
-                                                    <input className="co-input" placeholder="Last name" value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
+                                                    <input className="co-input" placeholder="Last name" maxLength={50} value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
                                                 </div>
-                                             {!isAuthenticated && (
-                                                    <div style={{ gridColumn: "1 / -1" }}>
+                                                <div>
+                                                    <label className="co-label">Phone Number</label>
+                                                    <input className="co-input" placeholder="10-digit mobile" type="tel" maxLength={10} value={address.phone} onChange={(e) => updateAddress("phone", e.target.value.replace(/\D/g, ''))} />
+                                                </div>
+                                                {!isAuthenticated && (
+                                                    <div>
                                                         <label className="co-label">Email Address</label>
                                                         <input className="co-input" type="email" placeholder="you@example.com" value={address.email} onChange={(e) => updateAddress("email", e.target.value)} />
                                                     </div>
                                                 )}
                                                 <div style={{ gridColumn: "1 / -1" }}>
-                                                    <label className="co-label">Street Address</label>
-                                                    <input className="co-input" placeholder="123 Main Street" value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
+                                                    <label className="co-label">Street Address / House No.</label>
+                                                    <input className="co-input" placeholder="House No, Floor, Street, Area" maxLength={100} value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
+                                                </div>
+                                                <div>
+                                                    <label className="co-label">PIN Code</label>
+                                                    <input className="co-input" placeholder="6-digit PIN" maxLength={6} value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value.replace(/\D/g, ''))} />
                                                 </div>
                                                 <div>
                                                     <label className="co-label">City</label>
-                                                    <input className="co-input" placeholder="New York" value={address.city} onChange={(e) => updateAddress("city", e.target.value)} />
+                                                    <input className="co-input" placeholder="Detecting..." maxLength={50} value={address.city} onChange={(e) => updateAddress("city", e.target.value)} />
                                                 </div>
-                                                <div>
-                                                    <label className="co-label">ZIP Code</label>
-                                                    <input className="co-input" placeholder="10001" value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value)} />
+                                                <div style={{ gridColumn: "1 / -1" }}>
+                                                    <label className="co-label">State</label>
+                                                    <input className="co-input" placeholder="Detecting..." maxLength={50} value={address.state} onChange={(e) => updateAddress("state", e.target.value)} />
+                                                </div>
+                                                
+                                                <div style={{ gridColumn: "1 / -1", marginTop: 12 }}>
+                                                    <button 
+                                                        className="co-btn" 
+                                                        style={{ width: "100%", justifyContent: "center" }}
+                                                        onClick={saveNewAddressProfile}
+                                                        disabled={isSavingAddress || !canProceed()}
+                                                    >
+                                                        {isSavingAddress ? "Saving..." : "Save to Address Book"}
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
