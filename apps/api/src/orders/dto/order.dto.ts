@@ -82,20 +82,6 @@ export class CreateOrderDto {
   affiliateCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Email for guest checkout',
-  })
-  @IsString()
-  @IsOptional()
-  guestEmail?: string;
-
-  @ApiPropertyOptional({
-    description: 'Session ID for guest checkout',
-  })
-  @IsString()
-  @IsOptional()
-  sessionId?: string;
-
-  @ApiPropertyOptional({
     description: 'Expected total amount to prevent price bait-and-switch',
   })
   @IsNumber()

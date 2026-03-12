@@ -29,11 +29,9 @@ export class OrdersService {
     private taxService: TaxService,
   ) {}
 
-  async create(userId: string | undefined, data: CreateOrderDto) {
-    if (!userId && !data.sessionId && !data.guestEmail) {
-      throw new BadRequestException(
-        'A user ID or (session ID + guest email) must be provided.',
-      );
+  async create(userId: string, data: CreateOrderDto) {
+    if (!userId) {
+      throw new BadRequestException('A user ID must be provided.');
     }
     if (!data.items || data.items.length === 0) {
       throw new BadRequestException('Order must contain at least one item');
@@ -47,16 +45,13 @@ export class OrdersService {
 
     const result = await this.prisma.$transaction(
       async (tx) => {
-        // Fetch user email before building the order (avoids Prisma tx type narrowing issues)
-        let userEmail = data.guestEmail ?? '';
+        let userEmail = '';
 
-        if (userId) {
-          const user = await tx.user.findUnique({
-            where: { id: userId },
-            select: { email: true },
-          });
-          userEmail = user?.email ?? userEmail;
-        }
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { email: true },
+        });
+        userEmail = user?.email ?? userEmail;
 
         const productIds = data.items.map((item) => item.productId);
 
@@ -199,8 +194,7 @@ export class OrdersService {
             if (!existingAddress)
               throw new BadRequestException('Address not found');
             finalAddressObj = {
-              userId: userId || undefined,
-              sessionId: !userId ? data.sessionId : undefined,
+              userId: userId,
               street: existingAddress.street,
               city: existingAddress.city,
               state: existingAddress.state,
@@ -210,8 +204,7 @@ export class OrdersService {
             };
           } else if (data.address) {
             finalAddressObj = {
-              userId: userId || undefined,
-              sessionId: !userId ? data.sessionId : undefined,
+              userId: userId,
               street: data.address.street,
               city: data.address.city,
               state: data.address.state,
@@ -306,9 +299,7 @@ export class OrdersService {
 
         const order = await tx.order.create({
           data: {
-            userId: userId || undefined,
-            sessionId: !userId ? data.sessionId : undefined,
-            guestEmail: !userId && userEmail ? userEmail : undefined,
+            userId: userId,
             status: OrderStatus.PENDING,
             totalAmount: Math.max(0, grandTotal),
             taxAmount,
@@ -352,7 +343,7 @@ export class OrdersService {
     return result.order;
   }
 
-  async findAllByUser(userId: string | undefined) {
+  async findAllByUser(userId: string) {
     if (!userId) return [];
     return this.prisma.order.findMany({
       where: { userId },
@@ -361,22 +352,12 @@ export class OrdersService {
     });
   }
 
-  async findOne(
-    id: string,
-    userId: string | undefined,
-    sessionId?: string,
-    role?: RoleType,
-  ) {
-    if (!userId && !sessionId)
-      throw new ForbiddenException('Identification required');
+  async findOne(id: string, userId: string, role?: RoleType) {
+    if (!userId) throw new ForbiddenException('Identification required');
 
     // Admins can view any order
     const where: Prisma.OrderWhereInput =
-      role === RoleType.ADMIN
-        ? { id }
-        : userId
-          ? { id, userId }
-          : { id, sessionId: sessionId! };
+      role === RoleType.ADMIN ? { id } : { id, userId };
 
     const order = await this.prisma.order.findFirst({
       where,
@@ -415,17 +396,10 @@ export class OrdersService {
     return { orders, total, page, limit };
   }
 
-  async cancelOrder(
-    id: string,
-    userId: string | undefined,
-    sessionId?: string,
-  ) {
-    if (!userId && !sessionId)
-      throw new ForbiddenException('Identification required');
+  async cancelOrder(id: string, userId: string) {
+    if (!userId) throw new ForbiddenException('Identification required');
 
-    const where: Prisma.OrderWhereInput = userId
-      ? { id, userId }
-      : { id, sessionId: sessionId! };
+    const where: Prisma.OrderWhereInput = { id, userId };
 
     const order = await this.prisma.order.findFirst({
       where,
@@ -474,11 +448,10 @@ export class OrdersService {
       },
     });
 
-    if (order.guestEmail || order.userId) {
-      const email =
-        order.guestEmail ||
-        (await this.prisma.user.findUnique({ where: { id: order.userId! } }))
-          ?.email;
+    if (order.userId) {
+      const email = (
+        await this.prisma.user.findUnique({ where: { id: order.userId } })
+      )?.email;
       if (email) {
         this.logger.log(
           `Dispatching email to ${email} for tracking # ${order.trackingNumber}`,
@@ -489,12 +462,7 @@ export class OrdersService {
     return order;
   }
 
-  async getTracking(
-    id: string,
-    userId?: string,
-    sessionId?: string,
-    role?: RoleType,
-  ) {
+  async getTracking(id: string, userId: string, role?: RoleType) {
     const order = await this.prisma.order.findUnique({
       where: { id },
     });
@@ -505,10 +473,7 @@ export class OrdersService {
 
     // Admins can view tracking for any order
     if (role !== RoleType.ADMIN) {
-      if (!userId && order.sessionId !== sessionId) {
-        throw new ForbiddenException('You do not have access to this order');
-      }
-      if (userId && order.userId !== userId) {
+      if (order.userId !== userId) {
         throw new ForbiddenException('You do not have access to this order');
       }
     }

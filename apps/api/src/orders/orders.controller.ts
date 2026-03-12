@@ -24,7 +24,6 @@ import {
 } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { OrderStatus, RoleType } from '@prisma/client';
@@ -54,13 +53,13 @@ export class OrdersController {
     type: OrderResponseDto,
   })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   create(
-    @Request() req: { user?: { id?: string; userId?: string } },
+    @Request() req: { user: { id: string; userId?: string } },
     @Body() createOrderDto: CreateOrderDto,
   ) {
     return this.ordersService.create(
-      req.user?.userId || req.user?.id,
+      req.user.userId || req.user.id,
       createOrderDto,
     );
   }
@@ -109,7 +108,6 @@ export class OrdersController {
     return this.ordersService.findOne(
       id,
       req.user.userId || req.user.id,
-      undefined,
       req.user.role?.name,
     );
   }
@@ -237,22 +235,15 @@ export class OrdersController {
     description: 'Retrieve dynamic tracking history for a specific order.',
   })
   @ApiParam({ name: 'id', description: 'Order ID' })
-  @ApiQuery({
-    name: 'sessionId',
-    required: false,
-    description: 'Guest session ID',
-  })
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   getTracking(
-    @Request() req: { user?: { id?: string; userId?: string; role?: Role } },
+    @Request() req: { user: { id: string; userId?: string; role?: Role } },
     @Param('id') id: string,
-    @Query('sessionId') sessionId?: string,
   ) {
     return this.ordersService.getTracking(
       id,
-      req.user?.userId || req.user?.id,
-      sessionId,
-      req.user?.role?.name,
+      req.user.userId || req.user.id,
+      req.user.role?.name,
     );
   }
 
