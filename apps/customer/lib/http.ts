@@ -1,6 +1,6 @@
 /**
  * Server-side HTTP wrapper for BFF → NestJS backend communication.
- * ONLY use this inside `apps/web/app/api/` Route Handlers — never in client components.
+ * ONLY use this inside `apps/customer/app/api/` Route Handlers — never in client components.
  *
  * Injects the shared internal secret so the backend can whitelist BFF traffic.
  * Throws a structured ApiError on non-2xx responses.
