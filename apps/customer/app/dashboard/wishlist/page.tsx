@@ -6,7 +6,7 @@ import { Heart, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@repo/ui";
 import Image from "next/image";
 import Link from "next/link";
-import { useCartStore } from "@/store/useCartStore";
+import { useAddToCart } from "@/lib/hooks/useCart";
 import toast from "react-hot-toast";
 
 interface WishlistItem {
@@ -26,7 +26,7 @@ interface WishlistItem {
 export default function WishlistPage() {
     const [items, setItems] = useState<WishlistItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const addItem = useCartStore(state => state.addItem);
+    const { mutate: addToCart } = useAddToCart();
 
     const fetchWishlist = async () => {
         try {
@@ -54,9 +54,8 @@ export default function WishlistPage() {
     const handleMoveToCart = async (item: WishlistItem) => {
         const price = item.product.discounted ?? item.product.price;
         const image = item.product.gallery?.[0];
-        await addItem({ productId: item.product.id, title: item.product.title, price, quantity: 1, image });
+        addToCart({ productId: item.product.id, title: item.product.title, price, quantity: 1, image });
         await handleRemove(item.productId);
-        toast.success("Moved to cart!");
     };
 
     if (loading) {

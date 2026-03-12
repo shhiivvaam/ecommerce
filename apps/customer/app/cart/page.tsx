@@ -1,19 +1,48 @@
 "use client";
 
-import { useCartStore } from "@/store/useCartStore";
+import { useCart, useRemoveFromCart, useUpdateCartItem } from "@/lib/hooks/useCart";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { Trash2, ArrowRight, ShoppingBag, Minus, Plus, ChevronLeft, ShieldCheck, Truck, Lock } from "lucide-react";
 
 export default function CartPage() {
-  const { items, total, removeItem, updateQuantity } = useCartStore();
+  const { data: cart, isLoading } = useCart();
+  const { mutate: removeItem } = useRemoveFromCart();
+  const { mutate: updateQuantity } = useUpdateCartItem();
+
+  const items = cart?.items ?? [];
+  const total = cart?.total ?? 0;
 
   const freeShippingThreshold = 50;
   const remaining = Math.max(0, freeShippingThreshold - total);
   const progressPct = Math.min(100, (total / freeShippingThreshold) * 100);
 
-  /* ── EMPTY STATE ─────────────────────────────────────────── */
+  /* ── LOADING STATE ─────────────────────────────────────── */
+  if (isLoading) {
+    return (
+      <>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
+          :root { --ink:#0a0a0a; --paper:#f5f3ef; --accent:#c8ff00; --mid:#8a8a8a; --border:rgba(10,10,10,0.1); }
+        `}</style>
+        <div style={{
+          fontFamily: "'DM Sans', sans-serif",
+          background: "var(--paper)",
+          color: "var(--ink)",
+          minHeight: "80vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <div style={{ width: 40, height: 40, border: "3px solid var(--border)", borderTopColor: "var(--ink)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </>
+    );
+  }
+
+  /* ── EMPTY STATE ─────────────────────────────────────── */
   if (items.length === 0) {
     return (
       <>
@@ -666,7 +695,7 @@ export default function CartPage() {
                       <div className="cp-qty">
                         <button
                           className="cp-qty-btn"
-                          onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          onClick={() => updateQuantity({ id: item.id, quantity: Math.max(1, item.quantity - 1) })}
                           aria-label="Decrease quantity"
                         >
                           <Minus size={12} strokeWidth={2} />
@@ -674,7 +703,7 @@ export default function CartPage() {
                         <span className="cp-qty-val">{item.quantity}</span>
                         <button
                           className="cp-qty-btn"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity({ id: item.id, quantity: item.quantity + 1 })}
                           aria-label="Increase quantity"
                         >
                           <Plus size={12} strokeWidth={2} />

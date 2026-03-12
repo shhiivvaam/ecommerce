@@ -9,7 +9,7 @@ import { Button } from "@repo/ui";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { useCartStore } from "@/store/useCartStore";
+import { useClearCart } from "@/lib/hooks/useCart";
 
 const getStatusColor = (status: string) => {
     switch (status) {
@@ -50,7 +50,7 @@ function OrdersPageContent() {
     }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const searchParams = useSearchParams();
-    const { clearCart } = useCartStore();
+    const { mutate: clearCart } = useClearCart();
 
     useEffect(() => {
         const fetchOrders = async () => {

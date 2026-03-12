@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useCartStore } from "@/store/useCartStore";
+import { useCart } from "@/lib/hooks/useCart";
 import { useAuthStore } from "@/store/useAuthStore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -264,7 +264,8 @@ const STYLES = `
 
 export default function CheckoutPage() {
     const [currentStep, setCurrentStep] = useState(1);
-    const { items } = useCartStore();
+    const { data: cart } = useCart();
+    const items = cart?.items ?? [];
     const [isProcessing, setIsProcessing] = useState(false);
 
     const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -289,7 +290,7 @@ export default function CheckoutPage() {
 
     useEffect(() => {
         if (!_hasHydrated) return;
-        if (!isAuthenticated) { setIsAddingNew(true); return; }
+        // isAuthenticated is always true here — middleware protects /checkout
         (async () => {
             try {
                 const { data } = await api.get("/addresses");
@@ -335,8 +336,7 @@ export default function CheckoutPage() {
 
     const canProceed = () => {
         if (!isAddingNew && selectedAddressId) return true;
-        if (isAddingNew && address.street && address.city && address.zipCode &&
-            (isAuthenticated || address.email)) return true;
+        if (isAddingNew && address.street && address.city && address.zipCode) return true;
         return false;
     };
 
@@ -346,7 +346,6 @@ export default function CheckoutPage() {
             const payload: Record<string, unknown> = {
                 items: items.map((i) => ({ productId: i.productId, variantId: i.variantId || undefined, quantity: i.quantity })),
                 expectedTotal: finalTotal,
-                ...(!isAuthenticated && address.email ? { guestEmail: address.email, sessionId: Math.random().toString(36).substring(2, 15) } : {}),
                 ...(appliedCoupon?.couponId && { couponId: appliedCoupon.couponId }),
                 ...(appliedCoupon?.affiliateCode && { affiliateCode: appliedCoupon.affiliateCode }),
             };
@@ -524,7 +523,7 @@ export default function CheckoutPage() {
                                                     <label className="co-label">Last Name</label>
                                                     <input className="co-input" placeholder="Last name" value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
                                                 </div>
-                                                {!isAuthenticated && (
+                                             {!isAuthenticated && (
                                                     <div style={{ gridColumn: "1 / -1" }}>
                                                         <label className="co-label">Email Address</label>
                                                         <input className="co-input" type="email" placeholder="you@example.com" value={address.email} onChange={(e) => updateAddress("email", e.target.value)} />

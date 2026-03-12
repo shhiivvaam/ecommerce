@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo, use } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAddToCart } from "@/lib/hooks/useCart";
 import Image from "next/image";
 import { ShoppingBag, Star, ShieldCheck, Truck, ArrowLeft, Send, Heart, ChevronRight, Zap, Plus, Minus, Trash2, Edit2 } from "lucide-react";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import RecentlyViewed from "@/components/RecentlyViewed";
+import { useRouter } from "next/navigation";
 
 interface Variant {
   id: string;
@@ -84,9 +85,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
 
-  const addItem = useCartStore((s) => s.addItem);
   const { isAuthenticated, user } = useAuthStore();
+  const { mutate: addToCart } = useAddToCart();
   const { addRecentlyViewed } = useRecentlyViewed();
+  const router = useRouter();
 
   useEffect(() => {
     if (id) {
@@ -162,14 +164,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const handleAddToCart = () => {
     if (!product) return;
+    if (!isAuthenticated) {
+      router.push(`/login?callbackUrl=/products/${product.id}`);
+      return;
+    }
     const base = product.discounted ?? product.price;
     const price = base + (selectedVariant?.priceDiff ?? 0);
-    addItem({
+    addToCart({
       productId: product.id,
       title: product.title + (selectedVariant ? ` (${[selectedVariant.size, selectedVariant.color].filter(Boolean).join(", ")})` : ""),
       price, quantity, image: product.image,
     });
-    toast.success("Added to bag");
   };
 
   const handleToggleWishlist = async () => {
