@@ -138,9 +138,9 @@ function ProductCardInner({ product }: ProductCardProps) {
         <div className="pc-info">
           <p className="pc-title">{product.title}</p>
           <div className="pc-price-row">
-            <span className="pc-price">${displayPrice.toFixed(2)}</span>
+            <span className="pc-price">₹{displayPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
             {hasDiscount && (
-              <span className="pc-price-orig">${product.price.toFixed(2)}</span>
+              <span className="pc-price-orig">₹{product.price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
             )}
           </div>
         </div>
