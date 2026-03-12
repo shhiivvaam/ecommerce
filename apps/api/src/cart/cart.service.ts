@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
@@ -10,34 +11,23 @@ import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
 export class CartService {
   constructor(private prisma: PrismaService) {}
 
-  async getCart(userId?: string, sessionId?: string) {
-    if (!userId && !sessionId)
-      throw new BadRequestException('Session identifier required');
-
-    let cart;
-    if (userId) {
-      cart = await this.prisma.cart.findFirst({
-        where: { userId },
-        include: {
-          items: {
-            include: { product: true, variant: true },
-          },
-        },
-      });
-    } else {
-      cart = await this.prisma.cart.findFirst({
-        where: { sessionId },
-        include: {
-          items: {
-            include: { product: true, variant: true },
-          },
-        },
-      });
+  async getCart(userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
     }
+
+    let cart = await this.prisma.cart.findFirst({
+      where: { userId },
+      include: {
+        items: {
+          include: { product: true, variant: true },
+        },
+      },
+    });
 
     if (!cart) {
       cart = await this.prisma.cart.create({
-        data: userId ? { userId } : { sessionId: sessionId! },
+        data: { userId },
         include: { items: { include: { product: true, variant: true } } },
       });
     }
@@ -66,12 +56,8 @@ export class CartService {
     });
   }
 
-  async addItem(
-    userId: string | undefined,
-    sessionId: string | undefined,
-    data: AddCartItemDto,
-  ) {
-    const cart = await this.getCart(userId, sessionId);
+  async addItem(userId: string, data: AddCartItemDto) {
+    const cart = await this.getCart(userId);
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
       include: { variants: true },
@@ -143,13 +129,8 @@ export class CartService {
     return this.calculateTotal(cart.id);
   }
 
-  async updateItem(
-    userId: string | undefined,
-    sessionId: string | undefined,
-    itemId: string,
-    data: UpdateCartItemDto,
-  ) {
-    const cart = await this.getCart(userId, sessionId);
+  async updateItem(userId: string, itemId: string, data: UpdateCartItemDto) {
+    const cart = await this.getCart(userId);
 
     const item = await this.prisma.cartItem.findFirst({
       where: { id: itemId, cartId: cart.id },
@@ -192,12 +173,8 @@ export class CartService {
     return this.calculateTotal(cart.id);
   }
 
-  async removeItem(
-    userId: string | undefined,
-    sessionId: string | undefined,
-    itemId: string,
-  ) {
-    const cart = await this.getCart(userId, sessionId);
+  async removeItem(userId: string, itemId: string) {
+    const cart = await this.getCart(userId);
 
     const item = await this.prisma.cartItem.findFirst({
       where: { id: itemId, cartId: cart.id },
@@ -209,37 +186,22 @@ export class CartService {
     return this.calculateTotal(cart.id);
   }
 
-  async clearCart(userId: string | undefined, sessionId: string | undefined) {
-    const cart = await this.getCart(userId, sessionId);
+  async clearCart(userId: string) {
+    const cart = await this.getCart(userId);
 
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
     return this.calculateTotal(cart.id);
   }
 
-  async getCartSummary(
-    userId: string | undefined,
-    sessionId: string | undefined,
-  ) {
-    let cart;
-    if (userId) {
-      cart = await this.prisma.cart.findFirst({
-        where: { userId },
-        include: {
-          items: {
-            include: { product: true, variant: true },
-          },
+  async getCartSummary(userId: string) {
+    const cart = await this.prisma.cart.findFirst({
+      where: { userId },
+      include: {
+        items: {
+          include: { product: true, variant: true },
         },
-      });
-    } else {
-      cart = await this.prisma.cart.findFirst({
-        where: { sessionId },
-        include: {
-          items: {
-            include: { product: true, variant: true },
-          },
-        },
-      });
-    }
+      },
+    });
 
     if (!cart) {
       return {
