@@ -4,13 +4,14 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { Heart, ShoppingBag } from "lucide-react";
-import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAddToCart } from "@/lib/hooks/useCart";
 import { api } from "@/lib/api";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { analytics } from "@/lib/analytics";
 import { ProductErrorBoundary } from "./ErrorBoundary";
+import { useRouter } from "next/navigation";
 
 interface ProductCardProps {
   product: {
@@ -32,10 +33,11 @@ export function ProductCard({ product }: ProductCardProps) {
 }
 
 function ProductCardInner({ product }: ProductCardProps) {
-  const addItem = useCartStore((state) => state.addItem);
   const { isAuthenticated } = useAuthStore();
+  const { mutate: addToCart, isPending } = useAddToCart();
   const [wishlisted, setWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const router = useRouter();
 
   const displayPrice = product.discounted ?? product.price;
   const hasDiscount = product.discounted && product.discounted < product.price;
@@ -46,34 +48,37 @@ function ProductCardInner({ product }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    try {
-      addItem({
-        productId: product.id,
-        title: product.title,
-        price: displayPrice,
-        quantity: 1,
-        image: product.image,
-      });
-      analytics.track("ADD_TO_CART", {
-        productId: product.id,
-        title: product.title,
-        price: displayPrice,
-        location: "product_card",
-      });
-      toast.success("Added to bag");
-    } catch (error) {
-      console.error('Failed to add to cart:', error);
-      toast.error("Failed to add to bag. Please try again.");
+
+    if (!isAuthenticated) {
+      router.push(`/login?callbackUrl=/products/${product.id}`);
+      return;
     }
+
+    addToCart({
+      productId: product.id,
+      title: product.title,
+      price: displayPrice,
+      quantity: 1,
+      image: product.image,
+    });
+
+    analytics.track("ADD_TO_CART", {
+      productId: product.id,
+      title: product.title,
+      price: displayPrice,
+      location: "product_card",
+    });
   };
 
   const handleToggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
     if (!isAuthenticated) {
-      toast.error("Sign in to save favorites");
+      router.push(`/login?callbackUrl=/products/${product.id}`);
       return;
     }
+
     setWishlistLoading(true);
     try {
       if (wishlisted) {
@@ -123,7 +128,7 @@ function ProductCardInner({ product }: ProductCardProps) {
             <Heart size={16} fill={wishlisted ? "#e11d48" : "none"} />
           </button>
 
-          <button className="pc-add" onClick={handleAddToCart}>
+          <button className="pc-add" onClick={handleAddToCart} disabled={isPending}>
             <ShoppingBag size={14} />
             Add to Bag
           </button>
