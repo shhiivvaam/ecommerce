@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useCartStore } from "@/store/useCartStore";
+import { useCart } from "@/lib/hooks/useCart";
 import { useLogout } from "@/lib/hooks/useAuth";
 import { Heart, ShoppingBag, User, LogOut, Search, X, Menu } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -12,8 +12,8 @@ import { motion, AnimatePresence } from "framer-motion";
 export function Navbar() {
   const { isAuthenticated } = useAuthStore();
   const { mutate: logout } = useLogout();
-  const cartItems = useCartStore((state) => state.items);
-  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const { data: cart } = useCart();
+  const cartCount = cart?.itemCount ?? 0;
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -241,12 +241,22 @@ export function Navbar() {
               <Search size={18} />
             </button>
 
-            {/* Wishlist */}
-            <button className="nav-icon-btn" aria-label="Wishlist">
-              <Heart size={18} />
-            </button>
+            {/* Wishlist — requires auth */}
+            {isAuthenticated ? (
+              <Link href="/dashboard/wishlist">
+                <button className="nav-icon-btn" aria-label="Wishlist">
+                  <Heart size={18} />
+                </button>
+              </Link>
+            ) : (
+              <Link href="/login">
+                <button className="nav-icon-btn" aria-label="Wishlist">
+                  <Heart size={18} />
+                </button>
+              </Link>
+            )}
 
-            {/* Cart */}
+            {/* Cart — requires auth; badge from server */}
             <Link href="/cart" style={{ position: "relative" }}>
               <button className="nav-icon-btn" aria-label="Cart">
                 <ShoppingBag size={18} />
