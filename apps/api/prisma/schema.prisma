@@ -136,7 +136,6 @@ model Cart {
   id        String     @id @default(cuid())
   userId    String?    @unique
   user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessionId String?    @unique
   items     CartItem[]
   total     Float      @default(0)
 
@@ -176,8 +175,6 @@ model Order {
   id             String      @id @default(cuid())
   userId         String?
   user           User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessionId      String?
-  guestEmail     String?
   status         OrderStatus @default(PENDING)
   totalAmount    Float
   taxAmount      Float       @default(0)
@@ -299,7 +296,6 @@ model Address {
   id        String  @id @default(cuid())
   userId    String?
   user      User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessionId String?
   street    String
   city      String
   state     String
