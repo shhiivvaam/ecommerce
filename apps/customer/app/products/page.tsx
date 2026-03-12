@@ -200,7 +200,7 @@ function ProductsPageContent() {
                 {/* Price range */}
                 <div>
                   <span className="pp-label">Min Price</span>
-                  <input className="pp-input" placeholder="$0" type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
+                  <input className="pp-input" placeholder="₹0" type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
                 </div>
                 <div>
                   <span className="pp-label">Max Price</span>
@@ -262,7 +262,7 @@ function ProductsPageContent() {
           )}
           {(minPrice || maxPrice) && (
             <button className="pp-tag" onClick={() => { setMinPrice(""); setMaxPrice(""); }}>
-              {minPrice ? `$${minPrice}` : "$0"} – {maxPrice ? `$${maxPrice}` : "any"} <X size={11} />
+              {minPrice ? `₹${minPrice}` : "₹0"} – {maxPrice ? `₹${maxPrice}` : "any"} <X size={11} />
             </button>
           )}
         </div>

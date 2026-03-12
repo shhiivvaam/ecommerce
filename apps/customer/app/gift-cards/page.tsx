@@ -59,7 +59,7 @@ export default function BuyGiftCardPage() {
 
                         <div className="relative z-10">
                             <span className="text-md font-medium opacity-80 uppercase tracking-widest block mb-1">Value</span>
-                            <span className="text-5xl font-black">${selectedAmount}</span>
+                            <span className="text-5xl font-black">₹{selectedAmount}</span>
                         </div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@ export default function BuyGiftCardPage() {
                                     onClick={() => setSelectedAmount(amount)}
                                     className={`h-14 rounded-lg border-2 font-bold transition-all ${selectedAmount === amount ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-foreground'}`}
                                 >
-                                    ${amount}
+                                    ₹{amount}
                                 </button>
                             ))}
                         </div>
@@ -84,7 +84,7 @@ export default function BuyGiftCardPage() {
                     <div className="space-y-6 pt-4 border-t">
                         <div className="flex justify-between items-baseline">
                             <span className="text-muted-foreground font-medium">Total Cost:</span>
-                            <span className="text-3xl font-bold">${selectedAmount.toFixed(2)}</span>
+                            <span className="text-3xl font-bold">₹{selectedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                         </div>
 
                         <Button

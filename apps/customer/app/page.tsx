@@ -19,7 +19,7 @@ export default function Home() {
           {Array.from({ length: 8 }, (_, i) => `marquee-${i}`).map((key) => (
             <span key={key} className="font-display text-sm uppercase tracking-widest whitespace-nowrap px-10"
               style={{ color: "var(--ink)", fontWeight: 700, letterSpacing: ".2em" }}>
-              New Arrivals&nbsp;·&nbsp; Free Shipping Over $50 &nbsp;·&nbsp; Easy Returns &nbsp;·&nbsp; Members Get Early Access &nbsp;·&nbsp;
+              New Arrivals&nbsp;·&nbsp; Free Shipping Over ₹500 &nbsp;·&nbsp; Easy Returns &nbsp;·&nbsp; Members Get Early Access &nbsp;·&nbsp;
             </span>
           ))}
         </div>

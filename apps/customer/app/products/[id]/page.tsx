@@ -480,8 +480,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <div>
                   <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--mid)", display: "block", marginBottom: 6 }}>Price</span>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-                    <span className="pd-price">${displayPrice.toFixed(2)}</span>
-                    {originalPrice && <span className="pd-price-orig">${originalPrice.toFixed(2)}</span>}
+                    <span className="pd-price">₹{displayPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                    {originalPrice && <span className="pd-price-orig">₹{originalPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>}
                   </div>
                 </div>
                 {reviews.length > 0 && (
@@ -557,7 +557,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   <div className="pd-trust-icon" style={{ background: "rgba(200,255,0,.15)" }}><Truck size={18} style={{ color: "#5a6e00" }} /></div>
                   <div>
                     <p className="pd-trust-label">Free Shipping</p>
-                    <p className="pd-trust-desc">On orders over $50. Tracked every step.</p>
+                    <p className="pd-trust-desc">On orders over ₹500. Tracked every step.</p>
                   </div>
                 </div>
                 <div className="pd-trust-item">

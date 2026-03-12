@@ -117,9 +117,9 @@ export default function WishlistPage() {
                                     <h3 className="font-semibold line-clamp-2 hover:text-primary transition-colors">{item.product.title}</h3>
                                 </Link>
                                 <div className="flex items-baseline gap-2 mt-2">
-                                    <span className="font-bold text-lg">${price.toFixed(2)}</span>
-                                    {originalPrice && (
-                                        <span className="text-sm text-muted-foreground line-through">${originalPrice.toFixed(2)}</span>
+                                    <span className="font-bold text-lg">₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                    {originalPrice !== undefined && originalPrice > price && (
+                                        <span className="text-sm text-muted-foreground line-through">₹{originalPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                                     )}
                                 </div>
                                 <div className="flex gap-2 mt-4">
