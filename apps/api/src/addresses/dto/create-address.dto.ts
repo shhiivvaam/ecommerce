@@ -2,6 +2,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsBoolean, IsOptional } from 'class-validator';
 
 export class CreateAddressDto {
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  label?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
   @ApiProperty()
   @IsString()
   street: string;
@@ -21,6 +31,14 @@ export class CreateAddressDto {
   @ApiProperty()
   @IsString()
   zipCode: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  latitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  longitude?: number;
 
   @ApiPropertyOptional()
   @IsBoolean()
