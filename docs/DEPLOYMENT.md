@@ -20,7 +20,7 @@ This guide outlines our production deployment architecture.
        ┌───────▼──────┐      ┌────────▼────────┐
        │    Vercel    │      │   AWS EC2       │
        │  (Next.js)   │ ────▶│  (NestJS API)   │
-       │  apps/web    │      │  Docker Compose │
+       │  apps/customer    │      │  Docker Compose │
        └─────────────┘      └────────┬────────┘
                                      │
                          ┌───────────┼───────────┐
@@ -135,7 +135,7 @@ The Vercel deployment is completely streamlined through their GitHub integration
 
 1. Go to [vercel.com](https://vercel.com) → **New Project**.
 2. Import your GitHub repository.
-3. Set **Root Directory** to `apps/web`.
+3. Set **Root Directory** to `apps/customer`.
 4. Framework Preset: **Next.js** (auto-detected).
 
 ### 2.2 Set Environment Variables
