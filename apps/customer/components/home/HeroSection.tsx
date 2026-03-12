@@ -14,7 +14,7 @@ export function HeroSection() {
 
     // use HERO_SLIDES as a fallback, replace when remote banners load
     const [slides, setSlides] = useState(() =>
-        HERO_SLIDES.map((s: any) => ({
+        HERO_SLIDES.map((s: { label: string; headline: string; sub: string; image: string; link?: string }) => ({
             label: s.label,
             headline: s.headline,
             sub: s.sub,
@@ -53,7 +53,7 @@ export function HeroSection() {
                         headline: b.title ?? "",
                         sub: b.subtitle ?? "",
                         image: b.imageUrl ?? "",
-                        link: b.link ?? (b as any).linkUrl ?? "/products",
+                        link: (b as { link?: string; linkUrl?: string }).link ?? (b as { link?: string; linkUrl?: string }).linkUrl ?? "/products",
                     }));
                 if (mapped.length) {
                     setSlides(mapped);
