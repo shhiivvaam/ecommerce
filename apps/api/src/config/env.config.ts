@@ -18,7 +18,22 @@ export const envValidationSchema = z.object({
     .min(16, 'JWT_SECRET must be at least 16 characters long'),
 
   // Frontend
-  FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').optional(),
+  FRONTEND_URL: z
+    .string()
+    .optional()
+    .transform((val) => val?.split(',').map((url) => url.trim()) ?? [])
+    .refine(
+      (urls) =>
+        urls.every((url) => {
+          try {
+            new URL(url);
+            return true;
+          } catch {
+            return false;
+          }
+        }),
+      { message: 'FRONTEND_URL contains invalid URL(s)' },
+    ),
 
   // Payment (Razorpay) - optional for dev
   RAZORPAY_LIVE_KEY_ID: z

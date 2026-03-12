@@ -41,7 +41,7 @@ export const getCorsConfig = (): CorsOptions => {
       // Allow server-to-server requests
       if (!requestOrigin) return callback(null, true);
 
-      if (allowedOrigins.includes(requestOrigin)) {
+      if (allowedOrigins.some((origin) => requestOrigin.startsWith(origin))) {
         callback(null, true);
       } else {
         logger.warn(`Blocked origin: ${requestOrigin}`);
