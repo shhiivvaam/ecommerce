@@ -25,7 +25,7 @@ A production-ready, highly scalable, and modern full-stack e-commerce platform b
 
 This project follows a **Monorepo Strategy** using standard NPM Workspaces, separating the frontend client and the backend API while allowing them to coexist and cleanly share packages.
 
-### Frontend (`apps/web`)
+### Frontend (`apps/customer`)
 - **Framework:** Next.js 14 (App Router)
 - **Styling:** TailwindCSS, Shadcn UI
 - **State Management:** Zustand
@@ -100,7 +100,7 @@ REDIS_URL="redis://localhost:6379"
 FRONTEND_URL="http://localhost:3000"
 ```
 
-**Frontend (`apps/web/.env.local`)**:
+**Frontend (`apps/customer/.env.local`)**:
 ```env
 NEXT_PUBLIC_API_URL="http://localhost:3001/api"
 ```
