@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getErrorMessage } from "@/lib/api-client";
 import { queryKeys } from "./queryKeys";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useCartStore } from "@/store/useCartStore";
 import type { AuthResponse, LoginCredentials, RegisterCredentials, User } from "@repo/types";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
@@ -29,7 +28,6 @@ export function useMe() {
 
 /**
  * useLogin — mutation that logs in a CUSTOMER and updates the auth store.
- * Syncs any guest cart items to the server after login.
  */
 export function useLogin() {
     const { login } = useAuthStore();
@@ -42,25 +40,6 @@ export function useLogin() {
         },
         onSuccess: async (data) => {
             login(data.user, data.token);
-
-            // Sync guest cart items to server after login
-            const guestCart = useCartStore.getState();
-            if (guestCart.items.length > 0) {
-                try {
-                    await Promise.all(
-                        guestCart.items.map((item) =>
-                            apiClient.post("/cart/items", {
-                                productId: item.productId,
-                                variantId: item.variantId,
-                                quantity: item.quantity,
-                            })
-                        )
-                    );
-                    guestCart.clearCart();
-                } catch (error) {
-                    console.error("Failed to sync guest cart:", error);
-                }
-            }
 
             queryClient.invalidateQueries({ queryKey: queryKeys.cart.root });
             queryClient.invalidateQueries({ queryKey: queryKeys.user.me });
@@ -85,25 +64,6 @@ export function useRegister() {
         },
         onSuccess: async (data) => {
             login(data.user, data.token);
-
-            // Sync guest cart items after registration
-            const guestCart = useCartStore.getState();
-            if (guestCart.items.length > 0) {
-                try {
-                    await Promise.all(
-                        guestCart.items.map((item) =>
-                            apiClient.post("/cart/items", {
-                                productId: item.productId,
-                                variantId: item.variantId,
-                                quantity: item.quantity,
-                            })
-                        )
-                    );
-                    guestCart.clearCart();
-                } catch (error) {
-                    console.error("Failed to sync guest cart:", error);
-                }
-            }
 
             queryClient.invalidateQueries({ queryKey: queryKeys.cart.root });
         },
