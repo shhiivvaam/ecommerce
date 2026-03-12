@@ -3,7 +3,7 @@
 #
 # Targets:
 #   api  → runs apps/api/dist/src/main.js on port 3001
-#   web  → runs apps/web standalone Next.js on port 3000
+#   web  → runs apps/customer standalone Next.js on port 3000
 #
 # Build with:
 #   docker build --target api -t ecommerce-api:latest .
@@ -16,7 +16,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json turbo.json ./
 COPY apps/api/package.json     ./apps/api/
-COPY apps/web/package.json     ./apps/web/
+COPY apps/customer/package.json     ./apps/customer/
 COPY packages/                  ./packages/
 
 RUN npm ci --omit=dev && npm cache clean --force
@@ -84,9 +84,9 @@ WORKDIR /app
 
 RUN addgroup -S -g 1001 nodejs && adduser -S nodejs -u 1001
 
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static     ./apps/web/.next/static
-COPY --from=builder /app/apps/web/public           ./apps/web/public
+COPY --from=builder /app/apps/customer/.next/standalone ./
+COPY --from=builder /app/apps/customer/.next/static     ./apps/customer/.next/static
+COPY --from=builder /app/apps/customer/public           ./apps/customer/public
 
 RUN chown -R nodejs:nodejs /app
 USER nodejs
@@ -101,4 +101,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "apps/customer/server.js"]

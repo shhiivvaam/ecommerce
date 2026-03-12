@@ -29,7 +29,7 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Run build target within the exact workspace
-RUN mkdir -p apps/web/public && npm run build -w apps/web
+RUN mkdir -p apps/customer/public && npm run build -w apps/customer
 
 # ─────────────────────────────────────────────────────────────
 # Stage 3: Production runner (Next.js Standalone in a Monorepo)
@@ -47,15 +47,15 @@ ENV PORT=3000
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Pre-create necessary Next.js directories
-RUN mkdir -p ./apps/web/public ./apps/web/.next/static
+RUN mkdir -p ./apps/customer/public ./apps/customer/.next/static
 
 # Given monorepo standalone tracing, the standalone directory replicates the whole repo tree
 # We copy everything inside the standalone bundle directly to the runner root
-COPY --from=builder --chown=appuser:appgroup /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=appuser:appgroup /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=appuser:appgroup /app/apps/customer/.next/standalone ./
+COPY --from=builder --chown=appuser:appgroup /app/apps/customer/.next/static ./apps/customer/.next/static
 
 # Safely copy public directory (we ensure it exists in the deps/builder phase or we just copy carefully)
-COPY --from=builder --chown=appuser:appgroup /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=appuser:appgroup /app/apps/customer/public ./apps/customer/public
 
 USER appuser
 
@@ -64,4 +64,4 @@ EXPOSE 3000
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # Start from the nested standalone location
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "apps/customer/server.js"]
