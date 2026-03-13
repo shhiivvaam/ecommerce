@@ -143,10 +143,10 @@ echo "  [4/6] Configuring OS firewall..."
 echo "══════════════════════════════════════════════════════════════"
 
 # ── Production architecture note ─────────────────────────────────────────────
-# Port 3001 (API) is NOT opened in the OS firewall.
+# Port 5000 (API) is NOT opened in the OS firewall.
 # All external traffic enters via Nginx on ports 80/443, which proxies internally
-# to localhost:3001. This keeps the API port off the public internet.
-# EC2 Security Group: allow 80 + 443 only (remove 3001 from inbound rules).
+# to localhost:5000. This keeps the API port off the public internet.
+# EC2 Security Group: allow 80 + 443 only (remove 5000 from inbound rules).
 # ─────────────────────────────────────────────────────────────────────────────
 
 if command -v apt-get &>/dev/null && command -v ufw &>/dev/null; then
@@ -160,9 +160,9 @@ if command -v apt-get &>/dev/null && command -v ufw &>/dev/null; then
   sudo ufw allow OpenSSH
   sudo ufw allow 80/tcp
   sudo ufw allow 443/tcp
-  # 3001 intentionally NOT opened publicly — Nginx proxies internally
+  # 5000 intentionally NOT opened publicly — Nginx proxies internally
   sudo ufw --force enable
-  echo "  ✅ UFW enabled: SSH, 80, 443 open (3001 internal-only via Nginx)"
+  echo "  ✅ UFW enabled: SSH, 80, 443 open (5000 internal-only via Nginx)"
 
 elif command -v dnf &>/dev/null; then
   # Amazon Linux 2023 — firewalld (optional but recommended)
@@ -174,9 +174,9 @@ elif command -v dnf &>/dev/null; then
     sudo firewall-cmd --permanent --add-service=ssh   >/dev/null
     sudo firewall-cmd --permanent --add-service=http  >/dev/null
     sudo firewall-cmd --permanent --add-service=https >/dev/null
-    # 3001 intentionally NOT opened publicly — Nginx proxies internally
+    # 5000 intentionally NOT opened publicly — Nginx proxies internally
     sudo firewall-cmd --reload >/dev/null
-    echo "  ✅ firewalld enabled: SSH, 80, 443 open (3001 internal-only via Nginx)"
+    echo "  ✅ firewalld enabled: SSH, 80, 443 open (5000 internal-only via Nginx)"
   else
     echo "  ⚠  firewalld not available — relying on EC2 Security Groups only"
   fi
@@ -234,11 +234,11 @@ echo "     bash ~/ecommerce/deploy.sh <DOCKERHUB_USERNAME>/ecommerce-api latest"
 echo "     (future deploys trigger automatically via GitHub Actions on git push)"
 echo ""
 echo "  4. Verify the API container is healthy:"
-echo "     curl http://localhost:3001/health"
+echo "     curl http://localhost:5000/health"
 echo ""
 echo "  5. Configure Nginx + SSL (run once after DNS A record is pointed here):"
 echo "     bash ~/nginx-setup.sh"
 echo ""
 echo "  🔥 API will be live at: https://<YOUR_DOMAIN>/api"
-echo "  ⚠  Do NOT expose port 3001 publicly — always route via Nginx + SSL"
+echo "  ⚠  Do NOT expose port 5000 publicly — always route via Nginx + SSL"
 echo "══════════════════════════════════════════════════════════════"
