@@ -2,12 +2,12 @@
 # Multi-stage Monorepo Dockerfile
 #
 # Targets:
-#   api  → runs apps/api/dist/src/main.js on port 3001
-#   web  → runs apps/customer standalone Next.js on port 3000
+#   api       → runs apps/api/dist/src/main.js on port 3001
+#   customer  → runs apps/customer standalone Next.js on port 3000
 #
 # Build with:
 #   docker build --target api -t ecommerce-api:latest .
-#   docker build --target web -t ecommerce-web:latest .
+#   docker build --target customer -t ecommerce-customer:latest .
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Install production deps (cached layer) ──────────────────────────
@@ -36,7 +36,7 @@ RUN npm ci
 
 # Generate Prisma client then build
 RUN cd apps/api && npx prisma generate
-RUN npx turbo run build --filter=api
+RUN npx turbo run build --filter=api --filter=customer --filter=admin
 
 # ── Stage 3: API production image ────────────────────────────────────────────
 FROM node:22-alpine AS api
@@ -76,8 +76,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "apps/api/dist/src/main.js"]
 
-# ── Stage 4: Web production image (standalone Next.js) ───────────────────────
-FROM node:22-alpine AS web
+# ── Stage 4: Customer production image (standalone Next.js) ──────────────────
+FROM node:22-alpine AS customer
 RUN apk add --no-cache tini && rm -rf /var/cache/apk/*
 
 WORKDIR /app
