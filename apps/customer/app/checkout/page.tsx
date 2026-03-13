@@ -913,11 +913,7 @@ export default function CheckoutPage() {
                                                     />
                                                     {formErrors.city && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.city}</p>}
                                                 </div>
-                                                <div style={{ gridColumn: "1 / -1" }}>
-                                                    <label className="co-label">State</label>
-                                                    <input className="co-input" style={{ borderColor: formErrors.state ? "#ef4444" : "" }} placeholder="Detecting..." maxLength={50} value={address.state} onChange={(e) => updateAddress("state", e.target.value)} />
-                                                    {formErrors.state && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.state}</p>}
-                                                </div>
+
                                                 
                                                 <div style={{ gridColumn: "1 / -1", marginTop: 12 }}>
                                                     <button 
