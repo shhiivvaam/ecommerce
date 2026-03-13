@@ -7,6 +7,12 @@ import { MapPin, Plus, Trash2, Star, Globe, Zap, ShieldCheck, X, Pencil } from "
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
+
+const AddressMap = dynamic(() => import("@/components/AddressMap"), { 
+    ssr: false,
+    loading: () => <div className="h-64 w-full bg-slate-100 rounded-2xl flex items-center justify-center animate-pulse text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Map Terminal...</div>
+});
 
 interface Address {
     id: string;
@@ -17,6 +23,9 @@ interface Address {
     country: string;
     isDefault: boolean;
     label?: string;
+    phone?: string;
+    latitude?: number | null;
+    longitude?: number | null;
 }
 
 export default function AddressesPage() {
@@ -28,13 +37,23 @@ export default function AddressesPage() {
     const [newAddress, setNewAddress] = useState({
         street: "",
         city: "",
-        state: "NY",
+        state: "MH",
         zipCode: "",
-        country: "IN", // Updated to IN as default for Indian localization
+        country: "IN",
+        phone: "",
         isDefault: false,
-        label: "Home"
+        label: "Home",
+        latitude: null as number | null,
+        longitude: null as number | null,
     });
     const [customLabel, setCustomLabel] = useState("");
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    const [isDetecting, setIsDetecting] = useState(false);
+
+    const updateField = (f: string, v: string | number | boolean | null) => {
+        setNewAddress(prev => ({ ...prev, [f]: v }));
+        if (formErrors[f]) setFormErrors(p => { const n = {...p}; delete n[f]; return n; });
+    };
 
     const fetchAddresses = async () => {
         try {
@@ -52,9 +71,22 @@ export default function AddressesPage() {
         fetchAddresses();
     }, []);
 
+    const validateForm = () => {
+        const errors: Record<string, string> = {};
+        if (!newAddress.street?.trim()) errors.street = "Requirement: Street address mandatory";
+        if (!newAddress.city?.trim()) errors.city = "Requirement: City hub mandatory";
+        if (!newAddress.state?.trim()) errors.state = "Requirement: Territorial division mandatory";
+        if (!newAddress.zipCode?.match(/^\d{6}$/)) errors.zipCode = "Invalid PIN: 6-digit numeric reference required";
+        if (!newAddress.phone?.match(/^\d{10}$/)) errors.phone = "Invalid Phone: 10-digit mobile conduit required";
+        if (newAddress.label === "Custom" && !customLabel.trim()) errors.customLabel = "Requirement: Custom marker name mandatory";
+        
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleSaveAddress = async () => {
-        if (!newAddress.street || !newAddress.city || !newAddress.zipCode) {
-            toast.error("Protocol error: Required parameters missing.");
+        if (!validateForm()) {
+            toast.error("Operation halted: Invalid parameters detected.");
             return;
         }
 
@@ -71,8 +103,9 @@ export default function AddressesPage() {
             }
             setIsAdding(false);
             setEditingId(null);
-            setNewAddress({ street: "", city: "", state: "NY", zipCode: "", country: "IN", isDefault: false, label: "Home" });
+            setNewAddress({ street: "", city: "", state: "MH", zipCode: "", country: "IN", phone: "", isDefault: false, label: "Home", latitude: null, longitude: null });
             setCustomLabel("");
+            setFormErrors({});
             fetchAddresses();
         } catch (error) {
             console.error("Node operation failure:", error);
@@ -91,12 +124,70 @@ export default function AddressesPage() {
             state: addr.state,
             zipCode: addr.zipCode,
             country: addr.country,
+            phone: addr.phone || "",
             isDefault: addr.isDefault,
-            label: isCustom ? "Custom" : (addr.label || "Home")
+            label: isCustom ? "Custom" : (addr.label || "Home"),
+            latitude: addr.latitude || null,
+            longitude: addr.longitude || null,
         });
         if (isCustom) setCustomLabel(addr.label || "");
         setIsAdding(true);
     };
+
+    const handleDetectLocation = () => {
+        setIsDetecting(true);
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            try {
+                const { latitude, longitude } = pos.coords;
+                handleMapChange(latitude, longitude);
+            } catch {
+                toast.error("Geolocation sync failed.");
+            } finally {
+                setIsDetecting(false);
+            }
+        }, () => {
+            toast.error("Coordinate access denied.");
+            setIsDetecting(false);
+        });
+    };
+
+    const handleMapChange = async (lat: number, lng: number) => {
+        setNewAddress(p => ({ ...p, latitude: lat, longitude: lng }));
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            if (data.address) {
+                setNewAddress(p => ({
+                    ...p,
+                    street: data.address.road || data.address.suburb || data.address.neighbourhood || p.street,
+                    city: data.address.city || data.address.town || data.address.village || p.city,
+                    state: data.address.state || p.state,
+                    zipCode: data.address.postcode?.replace(/\s/g, '') || p.zipCode,
+                }));
+                setFormErrors({}); // Clear errors when mapping succeeds
+            }
+        } catch (e) { console.error("Reverse geocode failed", e); }
+    };
+
+    useEffect(() => {
+        if (newAddress.zipCode?.length === 6) {
+            (async () => {
+                try {
+                    const res = await fetch(`https://api.postalpincode.in/pincode/${newAddress.zipCode}`);
+                    const data = await res.json();
+                    if (data[0]?.Status === "Success") {
+                        const postOffice = data[0].PostOffice[0];
+                        setNewAddress(p => ({
+                            ...p,
+                            city: postOffice.District || postOffice.Name,
+                            state: postOffice.State
+                        }));
+                        toast.success(`Hub Detected: ${postOffice.District}`);
+                    }
+                } catch { /* silent */ }
+            })();
+        }
+    }, [newAddress.zipCode]);
 
     const handleDeleteAddress = async (id: string) => {
         if (!window.confirm("CRITICAL PROTOCOL: Decommission this logistics node?")) return;
@@ -166,9 +257,35 @@ export default function AddressesPage() {
                             <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
                                 <Globe className="h-5 w-5 text-primary" /> {editingId ? "Node Rectification" : "Node Configuration"}
                             </h3>
-                            <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="h-10 w-10 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors">
-                                <X className="h-5 w-5" />
-                            </button>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={handleDetectLocation}
+                                    disabled={isDetecting}
+                                    className="h-10 px-4 rounded-xl border-2 border-slate-100 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all disabled:opacity-50"
+                                >
+                                    <MapPin className="h-4 w-4" /> {isDetecting ? "Detecting..." : "Detect Location"}
+                                </button>
+                                <button onClick={() => { setIsAdding(false); setEditingId(null); setFormErrors({}); }} className="h-10 w-10 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Pinpoint Location</label>
+                                <div className="h-64 rounded-3xl overflow-hidden border-2 border-slate-100 relative group">
+                                    <AddressMap 
+                                        lat={newAddress.latitude} 
+                                        lng={newAddress.longitude} 
+                                        onChange={handleMapChange} 
+                                    />
+                                    <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-xl border border-white flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Zap className="h-4 w-4 text-primary" />
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Drag marker to your exact doorstep for faster logistics.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -178,46 +295,62 @@ export default function AddressesPage() {
                                     <button
                                         key={lbl}
                                         type="button"
-                                        onClick={() => setNewAddress({ ...newAddress, label: lbl })}
+                                        onClick={() => {
+                                            updateField("label", lbl);
+                                            if (formErrors.customLabel) setFormErrors(p => { const n = {...p}; delete n.customLabel; return n; });
+                                        }}
                                         className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${newAddress.label === lbl ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}
                                     >
                                         {lbl}
                                     </button>
                                 ))}
                             </div>
-                            {newAddress.label === "Custom" && (
-                                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                             {newAddress.label === "Custom" && (
+                                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
                                     <Input 
                                         value={customLabel} 
-                                        onChange={e => setCustomLabel(e.target.value)} 
+                                        onChange={e => {
+                                            setCustomLabel(e.target.value.toUpperCase());
+                                            if (formErrors.customLabel) setFormErrors(p => { const n = {...p}; delete n.customLabel; return n; });
+                                        }} 
                                         placeholder="E.G. WAREHOUSE" 
                                         maxLength={20}
-                                        className="h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px]" 
+                                        className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.customLabel ? 'border-rose-300 bg-rose-50/30' : ''}`} 
                                     />
+                                    {formErrors.customLabel && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.customLabel}</p>}
                                 </motion.div>
                             )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                             <div className="space-y-4 md:col-span-2">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Logistics conduit (Mobile)</label>
+                                <Input value={newAddress.phone} onChange={e => updateField("phone", e.target.value.replace(/\D/g, ''))} placeholder="10-DIGIT MOBILE" maxLength={10} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.phone ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                {formErrors.phone && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.phone}</p>}
+                            </div>
                             <div className="space-y-4 md:col-span-2">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Primary Conduit (Street)</label>
-                                <Input value={newAddress.street} onChange={e => setNewAddress({ ...newAddress, street: e.target.value })} placeholder="123 MAIN ST" maxLength={100} className="h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px]" />
+                                <Input value={newAddress.street} onChange={e => updateField("street", e.target.value)} placeholder="123 MAIN ST" maxLength={100} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.street ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                {formErrors.street && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.street}</p>}
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">City Hub</label>
-                                <Input value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} placeholder="NEW YORK" maxLength={50} className="h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px]" />
+                                <Input value={newAddress.city} onChange={e => updateField("city", e.target.value)} placeholder="MUMBAI" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.city ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                {formErrors.city && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.city}</p>}
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Territorial Division</label>
-                                <Input value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} placeholder="NY" maxLength={50} className="h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px]" />
+                                <Input value={newAddress.state} onChange={e => updateField("state", e.target.value)} placeholder="MAHARASHTRA" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.state ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                {formErrors.state && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.state}</p>}
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Postal Reference</label>
-                                <Input value={newAddress.zipCode} onChange={e => setNewAddress({ ...newAddress, zipCode: e.target.value })} placeholder="10001" maxLength={6} className="h-16 rounded-2xl border-2 font-black tracking-widest text-[10px]" />
+                                <Input value={newAddress.zipCode} onChange={e => updateField("zipCode", e.target.value.replace(/\D/g, ''))} placeholder="400001" maxLength={6} className={`h-16 rounded-2xl border-2 font-black tracking-widest text-[10px] ${formErrors.zipCode ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                {formErrors.zipCode && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.zipCode}</p>}
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Global Domain</label>
-                                <Input value={newAddress.country} onChange={e => setNewAddress({ ...newAddress, country: e.target.value })} placeholder="IN" maxLength={20} className="h-16 rounded-2xl border-2 font-black tracking-widest text-[10px]" />
+                                <Input value={newAddress.country} onChange={e => updateField("country", e.target.value)} placeholder="IN" maxLength={20} className="h-16 rounded-2xl border-2 font-black tracking-widest text-[10px]" />
                             </div>
                         </div>
 
@@ -284,12 +417,19 @@ export default function AddressesPage() {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="space-y-1">
+                                        <div className="space-y-2">
                                             <p className="font-black text-2xl uppercase tracking-tighter text-slate-800 truncate" title={addr.street}>{addr.street}</p>
                                             <p className="text-sm font-black uppercase tracking-widest text-slate-300 italic truncate">{addr.city}, {addr.state} {addr.zipCode}</p>
-                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2 pt-2">
-                                                <Globe className="h-3.5 w-3.5" /> {addr.country}
-                                            </p>
+                                            <div className="flex flex-wrap items-center gap-4 pt-2">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2">
+                                                    <Globe className="h-3.5 w-3.5" /> {addr.country}
+                                                </p>
+                                                {addr.phone && (
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-2">
+                                                        <Zap className="h-3.5 w-3.5" /> +91 {addr.phone}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 

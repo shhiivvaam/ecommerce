@@ -296,8 +296,16 @@ export default function CheckoutPage() {
         latitude: null as number | null, longitude: null as number | null,
     });
     const [customLabel, setCustomLabel] = useState("");
-    const updateAddress = (f: string, v: string | number | null) =>
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+    const updateAddress = (f: string, v: string | number | null) => {
         setAddress((p) => ({ ...p, [f]: v }));
+        if (formErrors[f]) setFormErrors(prev => {
+            const next = { ...prev };
+            delete next[f];
+            return next;
+        });
+    };
 
     const [isDetecting, setIsDetecting] = useState(false);
     const handleDetectLocation = () => {
@@ -334,6 +342,21 @@ export default function CheckoutPage() {
         } catch (e) { console.error("Reverse geocode failed", e); }
     };
     
+    const validateForm = () => {
+        const errors: Record<string, string> = {};
+        if (!address.firstName?.trim()) errors.firstName = "First name is required";
+        if (!address.lastName?.trim()) errors.lastName = "Last name is required";
+        if (!address.street?.trim()) errors.street = "Street address is required";
+        if (!address.city?.trim()) errors.city = "City is required";
+        if (!address.state?.trim()) errors.state = "State is required";
+        if (!address.zipCode?.match(/^\d{6}$/)) errors.zipCode = "Enter a valid 6-digit PIN code";
+        if (!address.phone?.match(/^\d{10}$/)) errors.phone = "Enter a valid 10-digit mobile number";
+        if (address.label === "Custom" && !customLabel.trim()) errors.customLabel = "Enter a label name";
+        
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleEditAddress = (addr: SavedAddress) => {
         setEditingAddressId(addr.id);
         const standardLabels = ["Home", "Office", "Other"];
@@ -357,8 +380,8 @@ export default function CheckoutPage() {
 
     const [isSavingAddress, setIsSavingAddress] = useState(false);
     const saveNewAddressProfile = async () => {
-        if (!canProceed()) {
-            toast.error("Please fill all required fields correctly (PIN: 6 digits, Phone: 10 digits)");
+        if (!validateForm()) {
+            toast.error("Please fill all the required values.");
             return;
         }
         setIsSavingAddress(true);
@@ -469,14 +492,24 @@ export default function CheckoutPage() {
     };
 
     const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode(""); };
-    const handleNext = () => setCurrentStep((p) => Math.min(p + 1, 3));
-    const handleBack = () => setCurrentStep((p) => Math.max(p - 1, 1));
-
-    const canProceed = () => {
-        if (!isAddingNew && selectedAddressId) return true;
-        if (isAddingNew && address.street && address.city && address.zipCode?.match(/^\d{6}$/) && address.phone?.match(/^\d{10}$/)) return true;
-        return false;
+    const handleNext = () => {
+        if (currentStep === 1 && isAddingNew) {
+            if (!validateForm()) {
+                toast.error("Please save your address details before continuing");
+                return;
+            }
+            // If valid but not saved, prompt user? Actually most users expect 'Continue' to save if they are in 'AddingNew' mode.
+            // But here we have a dedicated save button. Let's make it robust.
+            toast.error("Please click 'Save to Address Book' or 'Apply Update' before continuing");
+            return;
+        }
+        if (currentStep === 1 && !selectedAddressId) {
+            toast.error("Please select or add a shipping address");
+            return;
+        }
+        setCurrentStep((p) => Math.min(p + 1, 3));
     };
+    const handleBack = () => setCurrentStep((p) => Math.max(p - 1, 1));
 
     const handlePlaceOrder = async () => {
         setIsProcessing(true);
@@ -696,7 +729,12 @@ export default function CheckoutPage() {
                                                         <button
                                                             key={lbl}
                                                             type="button"
-                                                            onClick={() => updateAddress("label", lbl)}
+                                                            onClick={() => {
+                                                                updateAddress("label", lbl);
+                                                                if (formErrors.customLabel) setFormErrors(prev => {
+                                                                    const n = {...prev}; delete n.customLabel; return n;
+                                                                });
+                                                            }}
                                                             style={{
                                                                 padding: "6px 14px", borderRadius: 20, fontSize: 11, fontWeight: 500, border: "1px solid", cursor: "pointer",
                                                                 background: address.label === lbl ? "var(--ink)" : "var(--paper)",
@@ -708,27 +746,38 @@ export default function CheckoutPage() {
                                                         </button>
                                                     ))}
                                                     {address.label === "Custom" && (
-                                                        <input 
-                                                            className="co-input" 
-                                                            style={{ height: 32, marginTop: 4, fontSize: 11, letterSpacing: ".05em" }}
-                                                            placeholder="ENTER CUSTOM LABEL" 
-                                                            maxLength={20}
-                                                            value={customLabel} 
-                                                            onChange={(e) => setCustomLabel(e.target.value.toUpperCase())} 
-                                                        />
+                                                        <div style={{ width: "100%" }}>
+                                                            <input 
+                                                                className={`co-input ${formErrors.customLabel ? "error" : ""}`}
+                                                                style={{ height: 32, marginTop: 4, fontSize: 11, letterSpacing: ".05em", borderColor: formErrors.customLabel ? "#ef4444" : "" }}
+                                                                placeholder="ENTER CUSTOM LABEL" 
+                                                                maxLength={20}
+                                                                value={customLabel} 
+                                                                onChange={(e) => {
+                                                                    setCustomLabel(e.target.value.toUpperCase());
+                                                                    if (formErrors.customLabel) setFormErrors(prev => {
+                                                                        const n = {...prev}; delete n.customLabel; return n;
+                                                                    });
+                                                                }} 
+                                                            />
+                                                            {formErrors.customLabel && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.customLabel}</p>}
+                                                        </div>
                                                     )}
                                                 </div>
                                                 <div>
                                                     <label className="co-label">First Name</label>
-                                                    <input className="co-input" placeholder="First name" maxLength={50} value={address.firstName} onChange={(e) => updateAddress("firstName", e.target.value)} />
+                                                    <input className={`co-input ${formErrors.firstName ? "error" : ""}`} style={{ borderColor: formErrors.firstName ? "#ef4444" : "" }} placeholder="First name" maxLength={50} value={address.firstName} onChange={(e) => updateAddress("firstName", e.target.value)} />
+                                                    {formErrors.firstName && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.firstName}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="co-label">Last Name</label>
-                                                    <input className="co-input" placeholder="Last name" maxLength={50} value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
+                                                    <input className={`co-input ${formErrors.lastName ? "error" : ""}`} style={{ borderColor: formErrors.lastName ? "#ef4444" : "" }} placeholder="Last name" maxLength={50} value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
+                                                    {formErrors.lastName && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.lastName}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="co-label">Phone Number</label>
-                                                    <input className="co-input" placeholder="10-digit mobile" type="tel" maxLength={10} value={address.phone} onChange={(e) => updateAddress("phone", e.target.value.replace(/\D/g, ''))} />
+                                                    <input className="co-input" style={{ borderColor: formErrors.phone ? "#ef4444" : "" }} placeholder="10-digit mobile" type="tel" maxLength={10} value={address.phone} onChange={(e) => updateAddress("phone", e.target.value.replace(/\D/g, ''))} />
+                                                    {formErrors.phone && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.phone}</p>}
                                                 </div>
                                                 {!isAuthenticated && (
                                                     <div>
@@ -738,19 +787,23 @@ export default function CheckoutPage() {
                                                 )}
                                                 <div style={{ gridColumn: "1 / -1" }}>
                                                     <label className="co-label">Street Address / House No.</label>
-                                                    <input className="co-input" placeholder="House No, Floor, Street, Area" maxLength={100} value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
+                                                    <input className="co-input" style={{ borderColor: formErrors.street ? "#ef4444" : "" }} placeholder="House No, Floor, Street, Area" maxLength={100} value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
+                                                    {formErrors.street && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.street}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="co-label">PIN Code</label>
-                                                    <input className="co-input" placeholder="6-digit PIN" maxLength={6} value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value.replace(/\D/g, ''))} />
+                                                    <input className="co-input" style={{ borderColor: formErrors.zipCode ? "#ef4444" : "" }} placeholder="6-digit PIN" maxLength={6} value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value.replace(/\D/g, ''))} />
+                                                    {formErrors.zipCode && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.zipCode}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="co-label">City</label>
-                                                    <input className="co-input" placeholder="Detecting..." maxLength={50} value={address.city} onChange={(e) => updateAddress("city", e.target.value)} />
+                                                    <input className="co-input" style={{ borderColor: formErrors.city ? "#ef4444" : "" }} placeholder="Detecting..." maxLength={50} value={address.city} onChange={(e) => updateAddress("city", e.target.value)} />
+                                                    {formErrors.city && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.city}</p>}
                                                 </div>
                                                 <div style={{ gridColumn: "1 / -1" }}>
                                                     <label className="co-label">State</label>
-                                                    <input className="co-input" placeholder="Detecting..." maxLength={50} value={address.state} onChange={(e) => updateAddress("state", e.target.value)} />
+                                                    <input className="co-input" style={{ borderColor: formErrors.state ? "#ef4444" : "" }} placeholder="Detecting..." maxLength={50} value={address.state} onChange={(e) => updateAddress("state", e.target.value)} />
+                                                    {formErrors.state && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.state}</p>}
                                                 </div>
                                                 
                                                 <div style={{ gridColumn: "1 / -1", marginTop: 12 }}>
@@ -758,7 +811,7 @@ export default function CheckoutPage() {
                                                         className="co-btn" 
                                                         style={{ width: "100%", justifyContent: "center" }}
                                                         onClick={saveNewAddressProfile}
-                                                        disabled={isSavingAddress || !canProceed()}
+                                                        disabled={isSavingAddress}
                                                     >
                                                         {isSavingAddress ? "Saving..." : editingAddressId ? "Apply Update" : "Save to Address Book"}
                                                     </button>
@@ -771,7 +824,7 @@ export default function CheckoutPage() {
                                         <span style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)" }}>
                                             {items.length} item{items.length !== 1 ? "s" : ""} &nbsp;·&nbsp; ₹{total.toFixed(2)}
                                         </span>
-                                        <button className="co-btn" onClick={handleNext} disabled={!canProceed()}>
+                                        <button className="co-btn" onClick={handleNext}>
                                             Continue <ChevronRight size={14} />
                                         </button>
                                     </div>
