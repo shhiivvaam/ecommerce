@@ -20,7 +20,7 @@ turbo run dev
 
 # Start specific application
 turbo run dev --filter=api
-turbo run dev --filter=web
+turbo run dev --filter=customer
 ```
 
 ### Build Applications
@@ -31,7 +31,7 @@ turbo run build
 
 # Build specific application
 turbo run build --filter=api
-turbo run build --filter=web
+turbo run build --filter=customer
 ```
 
 ### Testing
@@ -42,7 +42,7 @@ turbo run test
 
 # Run tests for specific app
 turbo run test --filter=api
-turbo run test --filter=web
+turbo run test --filter=customer
 
 # Run linting
 turbo run lint
