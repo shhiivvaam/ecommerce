@@ -57,7 +57,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
 # Expose the API port
-EXPOSE 3001
+EXPOSE 5000
 
 # Use tini as PID 1 for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]

@@ -40,7 +40,7 @@ jobs:
           # Provide a dummy DATABASE_URL so Prisma generate doesn't fail in CI
           DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
           JWT_SECRET: "ci-secret"
-          NEXT_PUBLIC_API_URL: "http://localhost:3001/api"
+          NEXT_PUBLIC_API_URL: "http://localhost:5000/api"
           PRODUCTS_API_URL: "https://api.reyva.co.in/api/products"
 
       - name: Summary

@@ -52,7 +52,7 @@ async function bootstrap() {
   setupSwagger(app);
 
   // 4. Start Server
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT || 5000;
   await app.listen(port);
 
   logger.log(`🚀 E-Commerce API running on port ${port}`);

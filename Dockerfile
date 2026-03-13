@@ -2,7 +2,7 @@
 # Multi-stage Monorepo Dockerfile
 #
 # Targets:
-#   api       → runs apps/api/dist/src/main.js on port 3001
+#   api       → runs apps/api/dist/src/main.js on port 5000
 #   customer  → runs apps/customer standalone Next.js on port 3000
 #   admin     → runs apps/admin standalone Next.js on port 3000
 #
@@ -68,13 +68,13 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=5000
 ENV NODE_OPTIONS="--max-old-space-size=256"
 
-EXPOSE 3001
+EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:3001/health || exit 1
+    CMD wget --quiet --tries=1 --spider http://localhost:5000/health || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "apps/api/dist/src/main.js"]

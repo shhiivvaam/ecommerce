@@ -7,11 +7,11 @@
  */
 
 // Server-to-server base URL. Override via INTERNAL_API_URL in .env.local for Docker / prod.
-// Local dev default: NestJS runs on port 3001.
+// Local dev default: NestJS runs on port 5000.
 const INTERNAL_API_BASE =
     process.env.INTERNAL_API_URL ??
     process.env.NEXT_PUBLIC_API_URL ??
-    "http://127.0.0.1:3001/api";
+    "http://127.0.0.1:5000/api";
 
 const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET || "dev-secret-key";
 

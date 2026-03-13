@@ -74,7 +74,7 @@ Add the following secrets to **Settings → Secrets and Variables → Actions**:
 | AMI | Amazon Linux 2023 or Ubuntu 22.04 LTS |
 | Instance type | `t3.small` (2 vCPU, 2 GB RAM) minimum |
 | Storage | 20 GB gp3 |
-| Security Group | Inbound: TCP 22 (SSH), TCP 3001 (API/Custom), TCP 443 (HTTPS via Nginx Optional) |
+| Security Group | Inbound: TCP 22 (SSH), TCP 5000 (API/Custom), TCP 443 (HTTPS via Nginx Optional) |
 
 ### 1.2 One-Time Server Setup
 
@@ -114,7 +114,7 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:5000:5000"
 ```
 
 ### 1.4 GitHub Actions Takes Over
@@ -180,7 +180,7 @@ docker compose exec api npx prisma migrate deploy
 ### Verify API Health
 
 ```bash
-curl http://<EC2_IP>:3001/api/health
+curl http://<EC2_IP>:5000/api/health
 ```
 
 ---

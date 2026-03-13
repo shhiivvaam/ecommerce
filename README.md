@@ -25,8 +25,8 @@ A production-ready, highly scalable, and modern full-stack e-commerce platform b
 
 This project follows a **Monorepo Strategy** using standard NPM Workspaces, separating the frontend client and the backend API while allowing them to coexist and cleanly share packages.
 
-### Frontend (`apps/customer`)
-- **Framework:** Next.js 14 (App Router)
+### Frontends (`apps/customer` & `apps/admin`)
+- **Framework:** Next.js 15 (App Router)
 - **Styling:** TailwindCSS, Shadcn UI
 - **State Management:** Zustand
 - **Animations:** Framer Motion
@@ -59,7 +59,8 @@ This project follows a **Monorepo Strategy** using standard NPM Workspaces, sepa
 ```text
 ecommerce/
 ├── apps/
-│   ├── web/               # Next.js 14 Frontend Application
+│   ├── customer/          # Next.js Customer Storefront
+│   ├── admin/             # Next.js Admin Dashboard
 │   └── api/               # NestJS Backend API
 ├── packages/              # Shared monorepo packages (if any)
 ├── scripts/               # Utility and deployment scripts
@@ -97,12 +98,12 @@ Copy the example environment files and configure them:
 DATABASE_URL="postgresql://ecommerce_user:ecommerce_password@localhost:5432/ecommerce_db?schema=public"
 JWT_SECRET="supers3cr3tjwt_change_in_production"
 REDIS_URL="redis://localhost:6379"
-FRONTEND_URL="http://localhost:3000"
+FRONTEND_URL="http://localhost:1000,http://localhost:1001"
 ```
 
-**Frontend (`apps/customer/.env.local`)**:
+**Frontend (`apps/customer/.env` & `apps/admin/.env`)**:
 ```env
-NEXT_PUBLIC_API_URL="http://localhost:3001/api"
+NEXT_PUBLIC_API_URL="http://localhost:5000/api"
 ```
 
 ### 3. Spin up Local Services (PostgreSQL & Redis)
@@ -131,9 +132,10 @@ npm run dev
 ```
 
 The applications will be available at:
-- **Frontend App**: [http://localhost:3000](http://localhost:3000)
-- **Backend API**: [http://localhost:3001/api](http://localhost:3001/api)
-- **Swagger API Docs**: [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
+- **Customer App**: [http://localhost:1000](http://localhost:1000)
+- **Admin App**: [http://localhost:1001](http://localhost:1001)
+- **Backend API**: [http://localhost:5000/api](http://localhost:5000/api)
+- **Swagger API Docs**: [http://localhost:5000/api/docs](http://localhost:5000/api/docs)
 
 ---
 
@@ -141,7 +143,7 @@ The applications will be available at:
 
 The backend exposes a fully documented Swagger OpenAPI interface. Once the development server is running, navigate to:
 
-👉 **[http://localhost:3001/api/docs](http://localhost:3001/api/docs)**
+👉 **[http://localhost:5000/api/docs](http://localhost:5000/api/docs)**
 
 This interface allows you to explore all available endpoints, required payloads, and test API calls directly from your browser.
 

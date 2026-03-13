@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # Stage 1: Dependencies
 # ─────────────────────────────────────────────────────────────
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
@@ -11,12 +11,12 @@ COPY package.json package-lock.json* ./
 # Copy all workspace packages just to ensure correct dependency resolution
 COPY . .
 
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+RUN if [ -f package-lock.json ]; then npm ci --legacy-peer-deps; else npm install; fi
 
 # ─────────────────────────────────────────────────────────────
 # Stage 2: Builder
 # ─────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -34,7 +34,7 @@ RUN mkdir -p apps/customer/public && npm run build -w apps/customer
 # ─────────────────────────────────────────────────────────────
 # Stage 3: Production runner (Next.js Standalone in a Monorepo)
 # ─────────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 RUN apk add --no-cache tini
 

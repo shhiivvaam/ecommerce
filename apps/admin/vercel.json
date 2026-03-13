@@ -2,6 +2,6 @@
   "version": 2,
   "framework": "nextjs",
   "buildCommand": "cd ../.. && turbo run build --filter=admin",
-  "installCommand": "cd ../.. && npm install",
+  "installCommand": "cd ../.. && npm ci --legacy-peer-deps",
   "outputDirectory": ".next"
 }

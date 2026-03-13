@@ -42,7 +42,7 @@ COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.yml"
 CONTAINER_NAME="ecommerce-api"
 SHADOW_NAME="ecommerce-api-shadow"
 MIGRATE_NAME="ecommerce-api-migrate"
-APP_PORT=3001
+APP_PORT=5000
 SHADOW_PORT=3099
 HEALTH_URL="http://localhost:${SHADOW_PORT}/health"
 
@@ -85,7 +85,7 @@ log_success "Pre-flight checks passed"
 # ─────────────────────────────────────────────────────────────────────────────
 log_info "[1/7] Pre-deploy cleanup..."
 
-docker system prune -af --volumes >/dev/null 2>&1 || true
+docker image prune -f > /dev/null 2>&1 || true
 
 log_success "Cleanup done"
 

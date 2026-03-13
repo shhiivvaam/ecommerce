@@ -7,7 +7,7 @@ export const envValidationSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
-  PORT: z.coerce.number().default(3001),
+  PORT: z.coerce.number().default(5000),
 
   // Database
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL'),
