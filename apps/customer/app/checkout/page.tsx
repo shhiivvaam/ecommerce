@@ -814,7 +814,8 @@ export default function CheckoutPage() {
                                                                 maxLength={20}
                                                                 value={customLabel} 
                                                                 onChange={(e) => {
-                                                                    setCustomLabel(e.target.value.toUpperCase());
+                                                                    const val = e.target.value.toUpperCase().replace(/[^A-Z\s]/g, "");
+                                                                    setCustomLabel(val);
                                                                     if (formErrors.customLabel) setFormErrors(prev => {
                                                                         const n = {...prev}; delete n.customLabel; return n;
                                                                     });
