@@ -5,7 +5,7 @@ import { useCart } from "@/lib/hooks/useCart";
 import { useAuthStore } from "@/store/useAuthStore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    CheckCircle2, CreditCard, MapPin, Package, Lock,
+    CheckCircle2, MapPin, Package,
     Plus, Tag, X, ChevronRight, ShieldCheck, Zap, ShieldAlert, Pencil,
 } from "lucide-react";
 import Link from "next/link";
@@ -47,8 +47,7 @@ interface SavedAddress {
 
 const steps = [
     { id: 1, name: "Shipping", icon: MapPin, label: "Delivery address" },
-    { id: 2, name: "Payment", icon: CreditCard, label: "Secure payment" },
-    { id: 3, name: "Review", icon: Package, label: "Order summary" },
+    { id: 2, name: "Review", icon: Package, label: "Order summary" },
 ];
 
 const STYLES = `
@@ -541,12 +540,6 @@ export default function CheckoutPage() {
     const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode(""); };
     const handleNext = () => {
         if (currentStep === 1 && isAddingNew) {
-            if (!validateForm()) {
-                toast.error("Please save your address details before continuing");
-                return;
-            }
-            // If valid but not saved, prompt user? Actually most users expect 'Continue' to save if they are in 'AddingNew' mode.
-            // But here we have a dedicated save button. Let's make it robust.
             toast.error("Please click 'Save to Address Book' or 'Apply Update' before continuing");
             return;
         }
@@ -554,7 +547,7 @@ export default function CheckoutPage() {
             toast.error("Please select or add a shipping address");
             return;
         }
-        setCurrentStep((p) => Math.min(p + 1, 3));
+        setCurrentStep((p) => Math.min(p + 1, 2));
     };
     const handleBack = () => setCurrentStep((p) => Math.max(p - 1, 1));
 
@@ -577,6 +570,12 @@ export default function CheckoutPage() {
                 ...(appliedCoupon && { discountAmount: appliedCoupon.discountAmount }),
             });
 
+            // Build prefill from selected saved address or the new address form
+            const selectedAddr = savedAddresses.find(a => a.id === selectedAddressId);
+            const prefillName = selectedAddr
+                ? `${selectedAddr.firstName || ""} ${selectedAddr.lastName || ""}`.trim()
+                : `${address.firstName} ${address.lastName}`.trim();
+
             if (pay.id) {
                 const opts = {
                     key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder",
@@ -591,20 +590,20 @@ export default function CheckoutPage() {
                                 razorpayPaymentId: r.razorpay_payment_id,
                                 signature: r.razorpay_signature,
                             });
-                            setCurrentStep(4);
+                            setCurrentStep(3);
                         } catch (err: unknown) {
                             const e = err as { response?: { data?: { message?: string } } };
                             toast.error(e.response?.data?.message || "Payment verification failed.");
                         } finally { setIsProcessing(false); }
                     },
-                    prefill: { name: `${address.firstName} ${address.lastName}`.trim(), email: address.email || "" },
+                    prefill: { name: prefillName, email: address.email || "" },
                     theme: { color: "#0a0a0a" },
                 };
                 type RzpWindow = { Razorpay: new (o: Record<string, unknown>) => { on: (e: string, cb: (r: { error: { description: string } }) => void) => void; open: () => void } };
                 const rzp = new (window as unknown as RzpWindow).Razorpay(opts);
                 rzp.on("payment.failed", (r) => { toast.error(r.error.description); setIsProcessing(false); });
                 rzp.open();
-            } else { setCurrentStep(4); }
+            } else { setCurrentStep(3); }
         } catch (err: unknown) {
             const e = err as { response?: { status?: number; data?: { statusCode?: number; message?: string | string[] } } };
             if (e.response?.status === 409 || e.response?.data?.statusCode === 409)
@@ -618,7 +617,7 @@ export default function CheckoutPage() {
     };
 
     /* ── empty cart ── */
-    if (items.length === 0 && currentStep !== 4) return (
+    if (items.length === 0 && currentStep !== 3) return (
         <>
             <style>{STYLES}</style>
             <div className="co-root" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", padding: "0 32px", textAlign: "center" }}>
@@ -647,7 +646,7 @@ export default function CheckoutPage() {
                             <h1 className="co-page-title">Complete<br />Your Order</h1>
                         </div>
 
-                        {currentStep < 4 && (
+                        {currentStep < 3 && (
                             <div className="co-stepper">
                                 {steps.map((step, idx) => {
                                     const active = currentStep >= step.id;
@@ -689,7 +688,7 @@ export default function CheckoutPage() {
                             {currentStep === 1 && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
                                     <div>
-                                        <span className="co-step-eyebrow">Step 1 of 3</span>
+                                        <span className="co-step-eyebrow">Step 1 of 2</span>
                                         <h2 className="co-step-title">Shipping Address</h2>
                                         <p className="co-step-desc">Choose a saved address or enter a new one.</p>
                                     </div>
@@ -883,46 +882,11 @@ export default function CheckoutPage() {
                                 </div>
                             )}
 
-                            {/* ══ STEP 2 ── PAYMENT ══ */}
+                            {/* ══ STEP 2 ── REVIEW ══ */}
                             {currentStep === 2 && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
                                     <div>
-                                        <span className="co-step-eyebrow">Step 2 of 3</span>
-                                        <h2 className="co-step-title">Payment</h2>
-                                        <p className="co-step-desc">You&apos;ll be redirected to Razorpay&apos;s secure gateway to complete payment.</p>
-                                    </div>
-
-                                    <div className="co-pay-card">
-                                        <div className="co-pay-icon">
-                                            <Lock size={24} />
-                                        </div>
-                                        <h3 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 28, fontWeight: 900, textTransform: "uppercase", marginBottom: 10 }}>
-                                            Razorpay Secure Payment
-                                        </h3>
-                                        <p style={{ fontSize: 14, fontWeight: 300, color: "var(--mid)", maxWidth: 380, lineHeight: 1.7, marginBottom: 24 }}>
-                                            All major Indian payment methods supported — UPI, cards, net banking, and wallets. Fully encrypted.
-                                        </p>
-                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-                                            {["UPI", "Cards", "Net Banking", "Wallets"].map((m) => (
-                                                <span key={m} className="co-pay-badge">{m}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="co-nav">
-                                        <button className="co-btn-ghost" onClick={handleBack}>← Back</button>
-                                        <button className="co-btn" onClick={handleNext}>
-                                            Review Order <ChevronRight size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* ══ STEP 3 ── REVIEW ══ */}
-                            {currentStep === 3 && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-                                    <div>
-                                        <span className="co-step-eyebrow">Step 3 of 3</span>
+                                        <span className="co-step-eyebrow">Step 2 of 2</span>
                                         <h2 className="co-step-title">Review Order</h2>
                                         <p className="co-step-desc">Confirm your items and apply any discount codes before placing your order.</p>
                                     </div>
@@ -1033,8 +997,8 @@ export default function CheckoutPage() {
                                 </div>
                             )}
 
-                            {/* ══ STEP 4 ── SUCCESS ══ */}
-                            {currentStep === 4 && (
+                            {/* ══ STEP 3 ── SUCCESS ══ */}
+                            {currentStep === 3 && (
                                 <div style={{ textAlign: "center", padding: "72px 32px" }}>
                                     <motion.div
                                         initial={{ scale: 0.55, opacity: 0 }}
