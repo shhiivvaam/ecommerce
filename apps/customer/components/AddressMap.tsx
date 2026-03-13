@@ -59,7 +59,7 @@ export default function AddressMap({ lat, lng, onChange }: AddressMapProps) {
     const center: [number, number] = useMemo(() => [lat || 28.6139, lng || 77.2090], [lat, lng]);
 
     return (
-        <div style={{ height: "300px", width: "100%", borderRadius: "8px", overflow: "hidden", border: "1.5px solid var(--border)", zIndex: 0 }}>
+        <div style={{ height: "300px", width: "100%", borderRadius: "8px", overflow: "hidden", border: "1.5px solid var(--border)", zIndex: 0, position: "relative" }}>
             <MapContainer
                 center={center}
                 zoom={lat ? 16 : 13}
