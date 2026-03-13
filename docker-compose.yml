@@ -52,6 +52,10 @@ services:
       # ── CORS / Frontend ───────────────────────────────────────────
       FRONTEND_URL: ${FRONTEND_URL:-https://your-vercel-domain.vercel.app}
 
+      # ── Razorpay (for payment integration) ───────────────────────
+      RAZORPAY_LIVE_KEY_ID: ${RAZORPAY_LIVE_KEY_ID}
+      RAZORPAY_LIVE_SECRET: ${RAZORPAY_LIVE_SECRET}
+
     healthcheck:
       test: [ "CMD", "wget", "--quiet", "--spider", "http://localhost:5000/health" ]
       interval: 30s
