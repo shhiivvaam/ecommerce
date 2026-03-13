@@ -4,10 +4,12 @@
 # Targets:
 #   api       → runs apps/api/dist/src/main.js on port 3001
 #   customer  → runs apps/customer standalone Next.js on port 3000
+#   admin     → runs apps/admin standalone Next.js on port 3000
 #
 # Build with:
 #   docker build --target api -t ecommerce-api:latest .
 #   docker build --target customer -t ecommerce-customer:latest .
+#   docker build --target admin -t ecommerce-admin:latest .
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Install production deps (cached layer) ──────────────────────────
@@ -17,6 +19,7 @@ WORKDIR /app
 COPY package.json package-lock.json turbo.json ./
 COPY apps/api/package.json     ./apps/api/
 COPY apps/customer/package.json     ./apps/customer/
+COPY apps/admin/package.json        ./apps/admin/
 COPY packages/                  ./packages/
 
 RUN npm ci --omit=dev && npm cache clean --force
@@ -102,3 +105,31 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "apps/customer/server.js"]
+
+# ── Stage 5: Admin production image (standalone Next.js) ─────────────────────
+FROM node:22-alpine AS admin
+RUN apk add --no-cache tini && rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+RUN addgroup -S -g 1001 nodejs && adduser -S nodejs -u 1001
+
+COPY --from=builder /app/apps/admin/.next/standalone ./
+COPY --from=builder /app/apps/admin/.next/static     ./apps/admin/.next/static
+COPY --from=builder /app/apps/admin/public           ./apps/admin/public
+
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "apps/admin/server.js"]
+
