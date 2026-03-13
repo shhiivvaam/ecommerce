@@ -1,8 +1,0 @@
-{
-  "version": 2,
-  "buildCommand": "turbo run build --filter=customer",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "outputDirectory": "apps/customer/.next",
-  "devCommand": "turbo run dev --filter=customer"
-}
