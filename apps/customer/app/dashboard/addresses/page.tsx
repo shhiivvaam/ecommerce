@@ -261,7 +261,7 @@ export default function AddressesPage() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: idx * 0.1 }}
                                     key={addr.id}
-                                    className={`p-10 rounded-[40px] border-2 relative transition-all group ${addr.isDefault ? 'border-primary bg-primary/5 shadow-2xl shadow-primary/5' : 'bg-white border-slate-50 hover:border-slate-100 hover:shadow-xl'}`}
+                                    className={`p-10 rounded-[40px] border-2 relative transition-all group flex flex-col min-h-[320px] ${addr.isDefault ? 'border-primary bg-primary/5 shadow-2xl shadow-primary/5' : 'bg-white border-slate-50 hover:border-slate-100 hover:shadow-xl'}`}
                                 >
                                     {addr.isDefault && (
                                         <div className="absolute top-8 right-8 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-primary bg-white px-4 py-2 rounded-full shadow-sm border border-primary/10">
@@ -274,9 +274,13 @@ export default function AddressesPage() {
                                             <div className="h-12 w-12 rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-slate-300 group-hover:bg-white group-hover:text-black transition-colors">
                                                 <MapPin className="h-6 w-6" />
                                             </div>
-                                            {addr.label && (
+                                            {addr.label ? (
                                                 <div className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:bg-black group-hover:text-white transition-all">
                                                     {addr.label}
+                                                </div>
+                                            ) : (
+                                                <div className="px-4 py-2 rounded-xl bg-slate-50/50 border border-dashed border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-300">
+                                                    UNLABELED
                                                 </div>
                                             )}
                                         </div>
@@ -299,10 +303,10 @@ export default function AddressesPage() {
                                                 <ShieldCheck className="h-4 w-4" /> Operations Linked
                                             </div>
                                         )}
-                                        <Button variant="ghost" size="sm" onClick={() => handleEditAddress(addr)} className="h-12 w-12 rounded-xl text-slate-300 hover:bg-slate-50 hover:text-black transition-all">
+                                        <Button variant="ghost" size="sm" onClick={() => handleEditAddress(addr)} className="h-12 w-12 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-black border border-slate-100 transition-all">
                                             <Pencil className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="sm" onClick={() => handleDeleteAddress(addr.id)} className="h-12 w-12 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 transition-all">
+                                        <Button variant="ghost" size="sm" onClick={() => handleDeleteAddress(addr.id)} className="h-12 w-12 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 border border-rose-50 transition-all">
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>

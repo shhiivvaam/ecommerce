@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     CheckCircle2, CreditCard, MapPin, Package, Lock,
-    Plus, Tag, X, ChevronRight, ShieldCheck, Zap, ShieldAlert,
+    Plus, Tag, X, ChevronRight, ShieldCheck, Zap, ShieldAlert, Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -39,6 +39,8 @@ interface SavedAddress {
     isDefault: boolean;
     label?: string;
     phone?: string;
+    latitude?: number | null;
+    longitude?: number | null;
 }
 
 const steps = [
@@ -279,6 +281,7 @@ export default function CheckoutPage() {
     const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
+    const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
     const [couponCode, setCouponCode] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
@@ -330,6 +333,27 @@ export default function CheckoutPage() {
             }
         } catch (e) { console.error("Reverse geocode failed", e); }
     };
+    
+    const handleEditAddress = (addr: SavedAddress) => {
+        setEditingAddressId(addr.id);
+        const standardLabels = ["Home", "Office", "Other"];
+        const isCustom = addr.label && !standardLabels.includes(addr.label);
+        
+        setAddress(p => ({
+            ...p,
+            street: addr.street,
+            city: addr.city,
+            state: addr.state,
+            zipCode: addr.zipCode,
+            country: addr.country,
+            phone: addr.phone || "",
+            label: isCustom ? "Custom" : (addr.label || "Home"),
+            latitude: addr.latitude || null,
+            longitude: addr.longitude || null,
+        }));
+        if (isCustom) setCustomLabel(addr.label || "");
+        setIsAddingNew(true);
+    };
 
     const [isSavingAddress, setIsSavingAddress] = useState(false);
     const saveNewAddressProfile = async () => {
@@ -339,6 +363,7 @@ export default function CheckoutPage() {
         }
         setIsSavingAddress(true);
         try {
+            const finalLabel = address.label === "Custom" ? customLabel : address.label;
             const payload = {
                 street: address.street,
                 city: address.city,
@@ -346,16 +371,31 @@ export default function CheckoutPage() {
                 zipCode: address.zipCode,
                 country: "IN",
                 phone: address.phone,
-                label: address.label === "Custom" ? customLabel : address.label,
+                label: finalLabel,
                 latitude: address.latitude,
                 longitude: address.longitude,
                 isDefault: savedAddresses.length === 0
             };
-            const { data } = await api.post("/addresses", payload);
-            setSavedAddresses(prev => [...prev, data]);
-            setSelectedAddressId(data.id);
+
+            if (editingAddressId) {
+                const { data } = await api.patch(`/addresses/${editingAddressId}`, payload);
+                setSavedAddresses(prev => prev.map(a => a.id === data.id ? data : a));
+                toast.success("Address updated successfully");
+            } else {
+                const { data } = await api.post("/addresses", payload);
+                setSavedAddresses(prev => [...prev, data]);
+                setSelectedAddressId(data.id);
+                toast.success("Address saved to your profile");
+            }
+
             setIsAddingNew(false);
-            toast.success("Address saved to your profile");
+            setEditingAddressId(null);
+            setAddress({
+                firstName: address.firstName, lastName: address.lastName, email: address.email, phone: "", label: "Home",
+                street: "", city: "", zipCode: "", state: "MH", country: "IN",
+                latitude: null, longitude: null,
+            });
+            setCustomLabel("");
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
             toast.error(e.response?.data?.message || "Failed to save address");
@@ -595,8 +635,16 @@ export default function CheckoutPage() {
                                                             )}
                                                         </div>
                                                         <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={addr.street}>{addr.street}</p>
-                                                        <p style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{addr.city}, {addr.state} {addr.zipCode}</p>
-                                                        {addr.phone && <p style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)" }}>📞 +91 {addr.phone}</p>}
+                                                        <p style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{addr.city}, {addr.state} {addr.zipCode}</p>
+                                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                                            {addr.phone ? <p style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)" }}>📞 +91 {addr.phone}</p> : <div />}
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleEditAddress(addr); }}
+                                                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--mid)", padding: "4px", display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em" }}
+                                                            >
+                                                                <Pencil size={11} /> Edit
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -611,7 +659,7 @@ export default function CheckoutPage() {
                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                                                 {savedAddresses.length > 0 && (
                                                     <button
-                                                        onClick={() => setIsAddingNew(false)}
+                                                        onClick={() => { setIsAddingNew(false); setEditingAddressId(null); }}
                                                         style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 11, fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--mid)", display: "flex", alignItems: "center", gap: 6, padding: 0 }}
                                                     >
                                                         ← Back to saved
@@ -712,7 +760,7 @@ export default function CheckoutPage() {
                                                         onClick={saveNewAddressProfile}
                                                         disabled={isSavingAddress || !canProceed()}
                                                     >
-                                                        {isSavingAddress ? "Saving..." : "Save to Address Book"}
+                                                        {isSavingAddress ? "Updating..." : editingAddressId ? "Apply Update" : "Save to Address Book"}
                                                     </button>
                                                 </div>
                                             </div>
