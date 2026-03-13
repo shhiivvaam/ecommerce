@@ -8,6 +8,8 @@ import { api } from "@/lib/api";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import Select from "react-select";
+import { INDIAN_STATES, getCitiesForState } from "@/lib/india-states-cities";
 
 const AddressMap = dynamic(() => import("@/components/AddressMap"), { 
     ssr: false,
@@ -101,16 +103,12 @@ export default function AddressesPage() {
             errors.street = "Street address must be under 100 characters";
         }
 
-        if (!newAddress.city?.trim()) {
-            errors.city = "City is required";
-        } else if (!alphaRegex.test(newAddress.city)) {
-            errors.city = "Only alphabets are allowed";
+        if (!newAddress.city) {
+            errors.city = "Please select a city";
         }
 
-        if (!newAddress.state?.trim()) {
-            errors.state = "State is required";
-        } else if (!alphaRegex.test(newAddress.state)) {
-            errors.state = "Only alphabets are allowed";
+        if (!newAddress.state) {
+            errors.state = "Please select a state";
         }
 
         if (!newAddress.zipCode?.match(/^\d{6}$/)) {
@@ -212,11 +210,21 @@ export default function AddressesPage() {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
             const data = await res.json();
             if (data.address) {
+                const apiState = data.address.state || "";
+                const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === apiState.toLowerCase()) || newAddress.state;
+                
+                let matchedCity = newAddress.city;
+                if (matchedState) {
+                    const apiCity = data.address.city || data.address.town || data.address.village || "";
+                    const availableCities = getCitiesForState(matchedState);
+                    matchedCity = availableCities.find(c => c.toLowerCase() === apiCity.toLowerCase()) || "";
+                }
+
                 setNewAddress(p => ({
                     ...p,
                     street: data.address.road || data.address.suburb || data.address.neighbourhood || p.street,
-                    city: data.address.city || data.address.town || data.address.village || p.city,
-                    state: data.address.state || p.state,
+                    state: matchedState,
+                    city: matchedCity,
                     zipCode: data.address.postcode?.replace(/\s/g, '') || p.zipCode,
                 }));
                 setFormErrors({}); // Clear errors when mapping succeeds
@@ -232,17 +240,28 @@ export default function AddressesPage() {
                     const data = await res.json();
                     if (data[0]?.Status === "Success") {
                         const postOffice = data[0].PostOffice[0];
+                        const apiState = postOffice.State;
+                        const apiCity = postOffice.District || postOffice.Name;
+                        
+                        const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === apiState.toLowerCase()) || newAddress.state;
+                        let matchedCity = newAddress.city;
+                        
+                        if (matchedState) {
+                            const availableCities = getCitiesForState(matchedState);
+                            matchedCity = availableCities.find(c => c.toLowerCase() === apiCity.toLowerCase()) || "";
+                        }
+
                         setNewAddress(p => ({
                             ...p,
-                            city: postOffice.District || postOffice.Name,
-                            state: postOffice.State
+                            state: matchedState,
+                            city: matchedCity
                         }));
-                        toast.success(`Hub Detected: ${postOffice.District}`);
+                        toast.success(`Hub Detected: ${matchedCity || apiCity}`);
                     }
                 } catch { /* silent */ }
             })();
         }
-    }, [newAddress.zipCode]);
+    }, [newAddress.zipCode, newAddress.city, newAddress.state]);
 
     const handleDeleteAddress = async (id: string) => {
         try {
@@ -390,7 +409,19 @@ export default function AddressesPage() {
                             </div>
                              <div className="space-y-4 md:col-span-2">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Logistics conduit (Mobile)</label>
-                                <Input value={newAddress.phone} onChange={e => updateField("phone", e.target.value)} placeholder="10-DIGIT MOBILE" maxLength={10} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.phone ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                <div className="flex h-16 rounded-2xl border-2 overflow-hidden transition-colors focus-within:border-primary">
+                                    <div className="flex items-center justify-center bg-slate-50 px-4 border-r-2 border-slate-100 text-[12px] font-black uppercase tracking-widest text-slate-500 shrink-0">
+                                        🇮🇳 +91
+                                    </div>
+                                    <Input 
+                                        type="tel"
+                                        value={newAddress.phone} 
+                                        onChange={e => updateField("phone", e.target.value)} 
+                                        placeholder="10-DIGIT MOBILE" 
+                                        maxLength={10} 
+                                        className={`flex-1 h-full border-none rounded-none font-black uppercase tracking-widest text-[12px] ${formErrors.phone ? 'bg-rose-50/30' : ''}`} 
+                                    />
+                                </div>
                                 {formErrors.phone && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.phone}</p>}
                             </div>
                             <div className="space-y-4 md:col-span-2">
@@ -399,14 +430,50 @@ export default function AddressesPage() {
                                 {formErrors.street && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.street}</p>}
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">City Hub</label>
-                                <Input value={newAddress.city} onChange={e => updateField("city", e.target.value)} placeholder="CITY NAME" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.city ? 'border-rose-300 bg-rose-50/30' : ''}`} />
-                                {formErrors.city && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.city}</p>}
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">State</label>
+                                <Select
+                                    options={INDIAN_STATES.map(s => ({ value: s, label: s }))}
+                                    value={newAddress.state ? { value: newAddress.state, label: newAddress.state } : null}
+                                    onChange={(opt) => {
+                                        updateField("state", opt?.value || "");
+                                        updateField("city", ""); // Reset city when state changes
+                                    }}
+                                    placeholder="SELECT STATE"
+                                    styles={{
+                                        control: (base) => ({
+                                            ...base, minHeight: '64px', borderRadius: '16px', borderWidth: '2px', borderColor: formErrors.state ? '#fca5a5' : '#f1f5f9',
+                                            backgroundColor: formErrors.state ? 'rgb(255 241 242 / 0.3)' : 'transparent', boxShadow: 'none', cursor: 'pointer',
+                                            '&:hover': { borderColor: '#e2e8f0' }
+                                        }),
+                                        placeholder: (base) => ({ ...base, fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8' }),
+                                        singleValue: (base) => ({ ...base, fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }),
+                                        menu: (base) => ({ ...base, borderRadius: '16px', padding: '8px', zIndex: 50 }),
+                                        option: (base, state) => ({ ...base, borderRadius: '8px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', backgroundColor: state.isSelected ? 'black' : state.isFocused ? '#f1f5f9' : 'transparent', color: state.isSelected ? 'white' : 'black' })
+                                    }}
+                                />
+                                {formErrors.state && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.state}</p>}
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">State</label>
-                                <Input value={newAddress.state} onChange={e => updateField("state", e.target.value)} placeholder="STATE NAME" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.state ? 'border-rose-300 bg-rose-50/30' : ''}`} />
-                                {formErrors.state && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.state}</p>}
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">City Hub</label>
+                                <Select
+                                    options={newAddress.state ? getCitiesForState(newAddress.state).map(c => ({ value: c, label: c })) : []}
+                                    value={newAddress.city ? { value: newAddress.city, label: newAddress.city } : null}
+                                    onChange={(opt) => updateField("city", opt?.value || "")}
+                                    placeholder={newAddress.state ? "SELECT CITY" : "SELECT STATE FIRST"}
+                                    isDisabled={!newAddress.state}
+                                    styles={{
+                                        control: (base, state) => ({
+                                            ...base, minHeight: '64px', borderRadius: '16px', borderWidth: '2px', borderColor: formErrors.city ? '#fca5a5' : '#f1f5f9',
+                                            backgroundColor: state.isDisabled ? '#f8fafc' : formErrors.city ? 'rgb(255 241 242 / 0.3)' : 'transparent', boxShadow: 'none', cursor: state.isDisabled ? 'not-allowed' : 'pointer',
+                                            '&:hover': { borderColor: state.isDisabled ? '#f1f5f9' : '#e2e8f0' }
+                                        }),
+                                        placeholder: (base) => ({ ...base, fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8' }),
+                                        singleValue: (base) => ({ ...base, fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }),
+                                        menu: (base) => ({ ...base, borderRadius: '16px', padding: '8px', zIndex: 50 }),
+                                        option: (base, state) => ({ ...base, borderRadius: '8px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', backgroundColor: state.isSelected ? 'black' : state.isFocused ? '#f1f5f9' : 'transparent', color: state.isSelected ? 'white' : 'black' })
+                                    }}
+                                />
+                                {formErrors.city && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.city}</p>}
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">PIN Code</label>

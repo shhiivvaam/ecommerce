@@ -14,6 +14,8 @@ import Script from "next/script";
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
+import Select from "react-select";
+import { INDIAN_STATES, getCitiesForState } from "@/lib/india-states-cities";
 
 const AddressMap = dynamic(() => import("@/components/AddressMap"), { 
     ssr: false,
@@ -369,16 +371,12 @@ export default function CheckoutPage() {
             errors.street = "Limit: 100 characters";
         }
 
-        if (!address.city?.trim()) {
-            errors.city = "City is required";
-        } else if (!alphaRegex.test(address.city)) {
-            errors.city = "Only alphabets are allowed";
+        if (!address.city) {
+            errors.city = "Please select a city";
         }
 
-        if (!address.state?.trim()) {
-            errors.state = "State is required";
-        } else if (!alphaRegex.test(address.state)) {
-            errors.state = "Only alphabets are allowed";
+        if (!address.state) {
+            errors.state = "Please select a state";
         }
 
         if (!address.zipCode?.match(/^\d{6}$/)) {
@@ -481,17 +479,28 @@ export default function CheckoutPage() {
                     const data = await res.json();
                     if (data[0]?.Status === "Success") {
                         const postOffice = data[0].PostOffice[0];
+                        const apiState = postOffice.State;
+                        const apiCity = postOffice.District || postOffice.Name;
+                        
+                        const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === apiState.toLowerCase()) || address.state;
+                        let matchedCity = address.city;
+                        
+                        if (matchedState) {
+                            const availableCities = getCitiesForState(matchedState);
+                            matchedCity = availableCities.find(c => c.toLowerCase() === apiCity.toLowerCase()) || "";
+                        }
+
                         setAddress(p => ({
                             ...p,
-                            city: postOffice.District || postOffice.Name,
-                            state: postOffice.State
+                            state: matchedState,
+                            city: matchedCity,
                         }));
-                        toast.success(`Detected: ${postOffice.District}, ${postOffice.State}`);
+                        toast.success(`Location Found: ${matchedCity || apiCity}`);
                     }
                 } catch { /* silent fail */ }
             })();
         }
-    }, [address.zipCode]);
+    }, [address.zipCode, address.city, address.state]);
 
     const { isAuthenticated, _hasHydrated } = useAuthStore();
 
@@ -825,30 +834,83 @@ export default function CheckoutPage() {
                                                     <input className={`co-input ${formErrors.lastName ? "error" : ""}`} style={{ borderColor: formErrors.lastName ? "#ef4444" : "" }} placeholder="Last name" maxLength={50} value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
                                                     {formErrors.lastName && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.lastName}</p>}
                                                 </div>
-                                                <div>
-                                                    <label className="co-label">Phone Number</label>
-                                                    <input className="co-input" style={{ borderColor: formErrors.phone ? "#ef4444" : "" }} placeholder="10-digit mobile" type="tel" maxLength={10} value={address.phone} onChange={(e) => updateAddress("phone", e.target.value)} />
+                                                <div style={{ gridColumn: "1 / -1", marginBottom: 4 }}>
+                                                    <label className="co-label">Mobile Number</label>
+                                                    <div style={{ display: "flex", width: "100%", height: 46, borderRadius: 6, border: "1.5px solid", borderColor: formErrors.phone ? "#ef4444" : "var(--border)", overflow: "hidden", transition: "border-color .2s" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f8fafc", padding: "0 14px", borderRight: "1.5px solid var(--border)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "#64748b", flexShrink: 0 }}>
+                                                            🇮🇳 +91
+                                                        </div>
+                                                        <input 
+                                                            style={{ flex: 1, border: "none", borderRadius: 0, padding: "0 14px", fontSize: 11, fontFamily: "'DM Sans',sans-serif", background: "transparent", outline: "none" }}
+                                                            placeholder="10-digit mobile" 
+                                                            type="tel" 
+                                                            maxLength={10} 
+                                                            value={address.phone} 
+                                                            onChange={(e) => updateAddress("phone", e.target.value)} 
+                                                        />
+                                                    </div>
                                                     {formErrors.phone && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.phone}</p>}
                                                 </div>
                                                 {!isAuthenticated && (
-                                                    <div>
+                                                    <div style={{ gridColumn: "1 / -1", marginTop: 4 }}>
                                                         <label className="co-label">Email Address</label>
                                                         <input className="co-input" type="email" placeholder="you@example.com" value={address.email} onChange={(e) => updateAddress("email", e.target.value)} />
                                                     </div>
                                                 )}
-                                                <div style={{ gridColumn: "1 / -1" }}>
+                                                <div style={{ gridColumn: "1 / -1", marginTop: 4 }}>
                                                     <label className="co-label">Street Address / House No. (Max 100)</label>
-                                                    <input className="co-input" style={{ borderColor: formErrors.street ? "#ef4444" : "" }} placeholder="House No, Floor, Street, Area" maxLength={100} value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
+                                                    <input className={`co-input ${formErrors.street ? "error" : ""}`} style={{ borderColor: formErrors.street ? "#ef4444" : "" }} placeholder="House No, Floor, Street, Area" maxLength={100} value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
                                                     {formErrors.street && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.street}</p>}
                                                 </div>
-                                                <div>
+                                                <div style={{ marginTop: 4 }}>
                                                     <label className="co-label">PIN Code</label>
                                                     <input className="co-input" style={{ borderColor: formErrors.zipCode ? "#ef4444" : "" }} placeholder="6-digit PIN" maxLength={6} value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value)} />
                                                     {formErrors.zipCode && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.zipCode}</p>}
                                                 </div>
-                                                <div>
+                                                <div style={{ marginTop: 4 }}>
+                                                    <label className="co-label">State</label>
+                                                    <Select
+                                                        options={INDIAN_STATES.map(s => ({ value: s, label: s }))}
+                                                        value={address.state ? { value: address.state, label: address.state } : null}
+                                                        onChange={(opt) => {
+                                                            updateAddress("state", opt?.value || "");
+                                                            updateAddress("city", ""); // Reset city when state changes
+                                                        }}
+                                                        placeholder="Select State"
+                                                        styles={{
+                                                            control: (base) => ({
+                                                                ...base, minHeight: '46px', borderRadius: '6px', borderWidth: '1.5px', borderColor: formErrors.state ? '#ef4444' : 'var(--border)',
+                                                                backgroundColor: formErrors.state ? 'rgba(239,68,68,0.05)' : 'transparent', boxShadow: 'none', cursor: 'pointer',
+                                                                '&:hover': { borderColor: 'var(--ink)' }
+                                                            }),
+                                                            placeholder: (base) => ({ ...base, fontSize: '11px', fontFamily: "'DM Sans',sans-serif", color: 'var(--mid)' }),
+                                                            singleValue: (base) => ({ ...base, fontSize: '11px', fontFamily: "'DM Sans',sans-serif", fontWeight: 500 }),
+                                                            menu: (base) => ({ ...base, borderRadius: '6px', zIndex: 50 }),
+                                                            option: (base, state) => ({ ...base, fontSize: '11px', fontFamily: "'DM Sans',sans-serif", cursor: 'pointer', backgroundColor: state.isSelected ? 'var(--ink)' : state.isFocused ? '#f1f5f9' : 'transparent', color: state.isSelected ? 'white' : 'inherit' })
+                                                        }}
+                                                    />
+                                                    {formErrors.state && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.state}</p>}
+                                                </div>
+                                                <div style={{ marginTop: 4 }}>
                                                     <label className="co-label">City</label>
-                                                    <input className="co-input" style={{ borderColor: formErrors.city ? "#ef4444" : "" }} placeholder="Detecting..." maxLength={50} value={address.city} onChange={(e) => updateAddress("city", e.target.value)} />
+                                                    <Select
+                                                        options={address.state ? getCitiesForState(address.state).map(c => ({ value: c, label: c })) : []}
+                                                        value={address.city ? { value: address.city, label: address.city } : null}
+                                                        onChange={(opt) => updateAddress("city", opt?.value || "")}
+                                                        placeholder={address.state ? "Select City" : "Select State First"}
+                                                        isDisabled={!address.state}
+                                                        styles={{
+                                                            control: (base, state) => ({
+                                                                ...base, minHeight: '46px', borderRadius: '6px', borderWidth: '1.5px', borderColor: formErrors.city ? '#ef4444' : 'var(--border)',
+                                                                backgroundColor: state.isDisabled ? '#f8fafc' : formErrors.city ? 'rgba(239,68,68,0.05)' : 'transparent', boxShadow: 'none', cursor: state.isDisabled ? 'not-allowed' : 'pointer',
+                                                                '&:hover': { borderColor: state.isDisabled ? 'var(--border)' : 'var(--ink)' }
+                                                            }),
+                                                            placeholder: (base) => ({ ...base, fontSize: '11px', fontFamily: "'DM Sans',sans-serif", color: 'var(--mid)' }),
+                                                            singleValue: (base) => ({ ...base, fontSize: '11px', fontFamily: "'DM Sans',sans-serif", fontWeight: 500 }),
+                                                            menu: (base) => ({ ...base, borderRadius: '6px', zIndex: 50 }),
+                                                            option: (base, state) => ({ ...base, fontSize: '11px', fontFamily: "'DM Sans',sans-serif", cursor: 'pointer', backgroundColor: state.isSelected ? 'var(--ink)' : state.isFocused ? '#f1f5f9' : 'transparent', color: state.isSelected ? 'white' : 'inherit' })
+                                                        }}
+                                                    />
                                                     {formErrors.city && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.city}</p>}
                                                 </div>
                                                 <div style={{ gridColumn: "1 / -1" }}>
