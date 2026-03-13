@@ -35,6 +35,7 @@ export default function AddressesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     const [newAddress, setNewAddress] = useState({
         firstName: "",
@@ -43,7 +44,7 @@ export default function AddressesPage() {
         city: "",
         state: "",
         zipCode: "",
-        country: "",
+        country: "India",
         phone: "",
         isDefault: false,
         label: "Home",
@@ -85,45 +86,51 @@ export default function AddressesPage() {
         const alphaRegex = /^[A-Za-z\s]+$/;
 
         if (!newAddress.firstName?.trim()) {
-            errors.firstName = "Requirement: First name mandatory";
+            errors.firstName = "First name is required";
         } else if (!alphaRegex.test(newAddress.firstName)) {
-            errors.firstName = "Only alphabets allowed";
+            errors.firstName = "Only alphabets are allowed";
         }
 
         if (newAddress.lastName?.trim() && !alphaRegex.test(newAddress.lastName)) {
-            errors.lastName = "Only alphabets allowed";
+            errors.lastName = "Only alphabets are allowed";
         }
 
         if (!newAddress.street?.trim()) {
-            errors.street = "Requirement: Street address mandatory";
+            errors.street = "Street address is required";
         } else if (newAddress.street.length > 100) {
-            errors.street = "Limit: 100 characters";
+            errors.street = "Street address must be under 100 characters";
         }
 
         if (!newAddress.city?.trim()) {
-            errors.city = "Requirement: City hub mandatory";
+            errors.city = "City is required";
         } else if (!alphaRegex.test(newAddress.city)) {
-            errors.city = "Only alphabets allowed";
+            errors.city = "Only alphabets are allowed";
         }
 
         if (!newAddress.state?.trim()) {
-            errors.state = "Requirement: Territorial division mandatory";
+            errors.state = "State is required";
         } else if (!alphaRegex.test(newAddress.state)) {
-            errors.state = "Only alphabets allowed";
+            errors.state = "Only alphabets are allowed";
         }
 
         if (!newAddress.zipCode?.match(/^\d{6}$/)) {
-            errors.zipCode = "Invalid PIN: 6-digit numeric reference required";
+            errors.zipCode = "Enter a valid 6-digit PIN code";
         }
 
         if (!newAddress.phone?.match(/^\d{10}$/)) {
-            errors.phone = "Invalid Phone: 10-digit mobile conduit required";
+            errors.phone = "Enter a valid 10-digit mobile number";
+        }
+
+        if (!newAddress.country?.trim()) {
+            errors.country = "Country is required";
+        } else if (!alphaRegex.test(newAddress.country)) {
+            errors.country = "Only alphabets are allowed";
         }
 
         if (newAddress.label === "Custom" && !customLabel.trim()) {
-            errors.customLabel = "Requirement: Custom marker name mandatory";
+            errors.customLabel = "Please enter a custom label name";
         } else if (newAddress.label === "Custom" && !alphaRegex.test(customLabel)) {
-            errors.customLabel = "Only alphabets allowed";
+            errors.customLabel = "Only alphabets are allowed";
         }
         
         setFormErrors(errors);
@@ -132,7 +139,7 @@ export default function AddressesPage() {
 
     const handleSaveAddress = async () => {
         if (!validateForm()) {
-            toast.error("Operation halted: Invalid parameters detected.");
+            toast.error("Please fill in all required fields correctly.");
             return;
         }
 
@@ -142,20 +149,20 @@ export default function AddressesPage() {
         try {
             if (editingId) {
                 await api.patch(`/addresses/${editingId}`, payload);
-                toast.success("Logistics node updated.", { icon: '🔄' });
+                toast.success("Address updated successfully.");
             } else {
                 await api.post('/addresses', payload);
-                toast.success("Logistics node established.", { icon: '📍' });
+                toast.success("Address saved to your profile.");
             }
             setIsAdding(false);
             setEditingId(null);
-            setNewAddress({ firstName: "", lastName: "", street: "", city: "", state: "", zipCode: "", country: "", phone: "", isDefault: false, label: "Home", latitude: null, longitude: null });
+            setNewAddress({ firstName: "", lastName: "", street: "", city: "", state: "", zipCode: "", country: "India", phone: "", isDefault: false, label: "Home", latitude: null, longitude: null });
             setCustomLabel("");
             setFormErrors({});
             fetchAddresses();
         } catch (error) {
-            console.error("Node operation failure:", error);
-            toast.error("Database rejection: Could not commit node.");
+            console.error("Address save failed:", error);
+            toast.error("Failed to save address. Please try again.");
         }
     };
 
@@ -238,26 +245,25 @@ export default function AddressesPage() {
     }, [newAddress.zipCode]);
 
     const handleDeleteAddress = async (id: string) => {
-        if (!window.confirm("CRITICAL PROTOCOL: Decommission this logistics node?")) return;
-
         try {
             await api.delete(`/addresses/${id}`);
-            toast.success("Node decommissioned.");
+            toast.success("Address deleted.");
+            setConfirmDeleteId(null);
             fetchAddresses();
         } catch (error) {
-            console.error("Decommissioning failure:", error);
-            toast.error("Protocol rejection: Node deletion failed.");
+            console.error("Address delete failed:", error);
+            toast.error("Failed to delete address. Please try again.");
         }
     };
 
     const handleSetDefault = async (id: string) => {
         try {
             await api.patch(`/addresses/${id}`, { isDefault: true });
-            toast.success("Primary logistics link updated.");
+            toast.success("Default address updated.");
             fetchAddresses();
         } catch (error) {
-            console.error("Link update failure:", error);
-            toast.error("Protocol rejection: Link update failed.");
+            console.error("Set default failed:", error);
+            toast.error("Failed to update default address.");
         }
     };
 
@@ -398,18 +404,19 @@ export default function AddressesPage() {
                                 {formErrors.city && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.city}</p>}
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[10px) font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Territorial Division</label>
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">State</label>
                                 <Input value={newAddress.state} onChange={e => updateField("state", e.target.value)} placeholder="STATE NAME" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.state ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.state && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.state}</p>}
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Postal Reference</label>
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">PIN Code</label>
                                 <Input value={newAddress.zipCode} onChange={e => updateField("zipCode", e.target.value)} placeholder="6-DIGIT PIN" maxLength={6} className={`h-16 rounded-2xl border-2 font-black tracking-widest text-[10px] ${formErrors.zipCode ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.zipCode && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.zipCode}</p>}
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Global Domain</label>
-                                <Input value={newAddress.country} onChange={e => updateField("country", e.target.value)} placeholder="COUNTRY" maxLength={20} className="h-16 rounded-2xl border-2 font-black tracking-widest text-[10px]" />
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Country</label>
+                                <Input value={newAddress.country} onChange={e => updateField("country", e.target.value)} placeholder="COUNTRY" maxLength={50} className={`h-16 rounded-2xl border-2 font-black tracking-widest text-[10px] ${formErrors.country ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                {formErrors.country && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.country}</p>}
                             </div>
                         </div>
 
@@ -498,19 +505,30 @@ export default function AddressesPage() {
                                     <div className="flex items-center gap-4 pt-8 border-t-2 border-slate-50/50 mt-auto">
                                         {!addr.isDefault ? (
                                             <Button variant="ghost" size="sm" onClick={() => handleSetDefault(addr.id)} className="h-12 text-[10px] font-black uppercase tracking-widest flex-1 rounded-xl bg-slate-50 hover:bg-black hover:text-white transition-all">
-                                                Designate Primary
+                                                Set as Default
                                             </Button>
                                         ) : (
                                             <div className="flex-1 flex items-center gap-2 text-emerald-500 text-[10px] font-black uppercase tracking-widest px-4">
-                                                <ShieldCheck className="h-4 w-4" /> Operations Linked
+                                                <ShieldCheck className="h-4 w-4" /> Default Address
                                             </div>
                                         )}
                                         <Button variant="ghost" size="sm" onClick={() => handleEditAddress(addr)} className="h-12 w-12 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-black border border-slate-100 transition-all">
                                             <Pencil className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="sm" onClick={() => handleDeleteAddress(addr.id)} className="h-12 w-12 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 border border-rose-50 transition-all">
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        {confirmDeleteId === addr.id ? (
+                                            <div className="flex items-center gap-2">
+                                                <Button variant="ghost" size="sm" onClick={() => handleDeleteAddress(addr.id)} className="h-10 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-rose-500 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all">
+                                                    Confirm
+                                                </Button>
+                                                <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(null)} className="h-10 w-10 rounded-xl text-slate-400 hover:bg-slate-50 border border-slate-100 transition-all">
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(addr.id)} className="h-12 w-12 rounded-xl text-rose-300 hover:bg-rose-50 hover:text-rose-500 border border-rose-50 transition-all">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </motion.div>
                             ))
