@@ -18,6 +18,8 @@ export class AddressesService {
     return this.prisma.address.create({
       data: {
         userId,
+        firstName: data.firstName,
+        lastName: data.lastName,
         street: data.street,
         city: data.city,
         state: data.state,

@@ -5,6 +5,16 @@ export class CreateAddressDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
+  firstName?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  lastName?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
   label?: string;
 
   @ApiPropertyOptional()
