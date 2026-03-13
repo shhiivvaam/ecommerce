@@ -15,7 +15,7 @@
 # Prerequisites (before running):
 #   ✅ EC2 security group: ports 22, 80, 443 open
 #   ✅ DNS A record: api.reyva.co.in → <THIS EC2 PUBLIC IP>
-#   ✅ API container running: curl http://localhost:3001/health
+#   ✅ API container running: curl http://localhost:5000/health
 #
 # Usage:
 #   bash ~/nginx-setup.sh
@@ -36,7 +36,7 @@ log_error()   { echo -e "${RED}  ❌ $*${NC}"; }
 
 # ── Config ────────────────────────────────────────────────────────────────────
 API_DOMAIN="api.reyva.co.in"
-API_PORT=3001
+API_PORT=5000
 EMAIL="learnthefutureai@gmail.com"
 NGINX_SITE="/etc/nginx/sites-available/${API_DOMAIN}"
 NGINX_GLOBAL="/etc/nginx/conf.d/ecommerce-global.conf"
