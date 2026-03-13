@@ -23,6 +23,10 @@ export class AddressesService {
         state: data.state,
         country: data.country,
         zipCode: data.zipCode,
+        label: data.label,
+        phone: data.phone,
+        latitude: data.latitude,
+        longitude: data.longitude,
         isDefault: data.isDefault || false,
       },
     });
