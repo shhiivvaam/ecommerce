@@ -301,7 +301,13 @@ export default function CheckoutPage() {
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
     const updateAddress = (f: string, v: string | number | null) => {
-        setAddress((p) => ({ ...p, [f]: v }));
+        let val = v;
+        if (typeof val === 'string') {
+            if (f === 'phone' || f === 'zipCode') val = val.replace(/\D/g, '');
+            if (['firstName', 'lastName', 'city', 'state'].includes(f)) val = val.replace(/[^A-Za-z\s]/g, '');
+        }
+        
+        setAddress((p) => ({ ...p, [f]: val }));
         if (formErrors[f]) setFormErrors(prev => {
             const next = { ...prev };
             delete next[f];
@@ -346,14 +352,49 @@ export default function CheckoutPage() {
     
     const validateForm = () => {
         const errors: Record<string, string> = {};
-        if (!address.firstName?.trim()) errors.firstName = "First name is required";
-        if (!address.lastName?.trim()) errors.lastName = "Last name is required";
-        if (!address.street?.trim()) errors.street = "Street address is required";
-        if (!address.city?.trim()) errors.city = "City is required";
-        if (!address.state?.trim()) errors.state = "State is required";
-        if (!address.zipCode?.match(/^\d{6}$/)) errors.zipCode = "Enter a valid 6-digit PIN code";
-        if (!address.phone?.match(/^\d{10}$/)) errors.phone = "Enter a valid 10-digit mobile number";
-        if (address.label === "Custom" && !customLabel.trim()) errors.customLabel = "Enter a label name";
+        const alphaRegex = /^[A-Za-z\s]+$/;
+        
+        if (!address.firstName?.trim()) {
+            errors.firstName = "First name is required";
+        } else if (!alphaRegex.test(address.firstName)) {
+            errors.firstName = "Only alphabets are allowed";
+        }
+
+        if (address.lastName?.trim() && !alphaRegex.test(address.lastName)) {
+            errors.lastName = "Only alphabets are allowed";
+        }
+
+        if (!address.street?.trim()) {
+            errors.street = "Street address is required";
+        } else if (address.street.length > 100) {
+            errors.street = "Limit: 100 characters";
+        }
+
+        if (!address.city?.trim()) {
+            errors.city = "City is required";
+        } else if (!alphaRegex.test(address.city)) {
+            errors.city = "Only alphabets are allowed";
+        }
+
+        if (!address.state?.trim()) {
+            errors.state = "State is required";
+        } else if (!alphaRegex.test(address.state)) {
+            errors.state = "Only alphabets are allowed";
+        }
+
+        if (!address.zipCode?.match(/^\d{6}$/)) {
+            errors.zipCode = "Enter a valid 6-digit PIN code";
+        }
+
+        if (!address.phone?.match(/^\d{10}$/)) {
+            errors.phone = "Enter a valid 10-digit mobile number";
+        }
+
+        if (address.label === "Custom" && !customLabel.trim()) {
+            errors.customLabel = "Enter a label name";
+        } else if (address.label === "Custom" && !alphaRegex.test(customLabel)) {
+            errors.customLabel = "Only alphabets are allowed";
+        }
         
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
@@ -781,13 +822,13 @@ export default function CheckoutPage() {
                                                     {formErrors.firstName && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.firstName}</p>}
                                                 </div>
                                                 <div>
-                                                    <label className="co-label">Last Name</label>
+                                                    <label className="co-label">Last Name (Optional)</label>
                                                     <input className={`co-input ${formErrors.lastName ? "error" : ""}`} style={{ borderColor: formErrors.lastName ? "#ef4444" : "" }} placeholder="Last name" maxLength={50} value={address.lastName} onChange={(e) => updateAddress("lastName", e.target.value)} />
                                                     {formErrors.lastName && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.lastName}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="co-label">Phone Number</label>
-                                                    <input className="co-input" style={{ borderColor: formErrors.phone ? "#ef4444" : "" }} placeholder="10-digit mobile" type="tel" maxLength={10} value={address.phone} onChange={(e) => updateAddress("phone", e.target.value.replace(/\D/g, ''))} />
+                                                    <input className="co-input" style={{ borderColor: formErrors.phone ? "#ef4444" : "" }} placeholder="10-digit mobile" type="tel" maxLength={10} value={address.phone} onChange={(e) => updateAddress("phone", e.target.value)} />
                                                     {formErrors.phone && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.phone}</p>}
                                                 </div>
                                                 {!isAuthenticated && (
@@ -797,13 +838,13 @@ export default function CheckoutPage() {
                                                     </div>
                                                 )}
                                                 <div style={{ gridColumn: "1 / -1" }}>
-                                                    <label className="co-label">Street Address / House No.</label>
+                                                    <label className="co-label">Street Address / House No. (Max 100)</label>
                                                     <input className="co-input" style={{ borderColor: formErrors.street ? "#ef4444" : "" }} placeholder="House No, Floor, Street, Area" maxLength={100} value={address.street} onChange={(e) => updateAddress("street", e.target.value)} />
                                                     {formErrors.street && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.street}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="co-label">PIN Code</label>
-                                                    <input className="co-input" style={{ borderColor: formErrors.zipCode ? "#ef4444" : "" }} placeholder="6-digit PIN" maxLength={6} value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value.replace(/\D/g, ''))} />
+                                                    <input className="co-input" style={{ borderColor: formErrors.zipCode ? "#ef4444" : "" }} placeholder="6-digit PIN" maxLength={6} value={address.zipCode} onChange={(e) => updateAddress("zipCode", e.target.value)} />
                                                     {formErrors.zipCode && <p style={{ color: "#ef4444", fontSize: 10, marginTop: 4, fontWeight: 500 }}>{formErrors.zipCode}</p>}
                                                 </div>
                                                 <div>

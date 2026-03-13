@@ -55,7 +55,12 @@ export default function AddressesPage() {
     const [isDetecting, setIsDetecting] = useState(false);
 
     const updateField = (f: string, v: string | number | boolean | null) => {
-        setNewAddress(prev => ({ ...prev, [f]: v }));
+        let val = v;
+        if (typeof val === 'string') {
+            if (f === 'phone' || f === 'zipCode') val = val.replace(/\D/g, '');
+            if (['firstName', 'lastName', 'city', 'state'].includes(f)) val = val.replace(/[^A-Za-z\s]/g, '');
+        }
+        setNewAddress(prev => ({ ...prev, [f]: val }));
         if (formErrors[f]) setFormErrors(p => { const n = {...p}; delete n[f]; return n; });
     };
 
@@ -77,14 +82,49 @@ export default function AddressesPage() {
 
     const validateForm = () => {
         const errors: Record<string, string> = {};
-        if (!newAddress.firstName?.trim()) errors.firstName = "Requirement: First name mandatory";
-        if (!newAddress.lastName?.trim()) errors.lastName = "Requirement: Last name mandatory";
-        if (!newAddress.street?.trim()) errors.street = "Requirement: Street address mandatory";
-        if (!newAddress.city?.trim()) errors.city = "Requirement: City hub mandatory";
-        if (!newAddress.state?.trim()) errors.state = "Requirement: Territorial division mandatory";
-        if (!newAddress.zipCode?.match(/^\d{6}$/)) errors.zipCode = "Invalid PIN: 6-digit numeric reference required";
-        if (!newAddress.phone?.match(/^\d{10}$/)) errors.phone = "Invalid Phone: 10-digit mobile conduit required";
-        if (newAddress.label === "Custom" && !customLabel.trim()) errors.customLabel = "Requirement: Custom marker name mandatory";
+        const alphaRegex = /^[A-Za-z\s]+$/;
+
+        if (!newAddress.firstName?.trim()) {
+            errors.firstName = "Requirement: First name mandatory";
+        } else if (!alphaRegex.test(newAddress.firstName)) {
+            errors.firstName = "Only alphabets allowed";
+        }
+
+        if (newAddress.lastName?.trim() && !alphaRegex.test(newAddress.lastName)) {
+            errors.lastName = "Only alphabets allowed";
+        }
+
+        if (!newAddress.street?.trim()) {
+            errors.street = "Requirement: Street address mandatory";
+        } else if (newAddress.street.length > 100) {
+            errors.street = "Limit: 100 characters";
+        }
+
+        if (!newAddress.city?.trim()) {
+            errors.city = "Requirement: City hub mandatory";
+        } else if (!alphaRegex.test(newAddress.city)) {
+            errors.city = "Only alphabets allowed";
+        }
+
+        if (!newAddress.state?.trim()) {
+            errors.state = "Requirement: Territorial division mandatory";
+        } else if (!alphaRegex.test(newAddress.state)) {
+            errors.state = "Only alphabets allowed";
+        }
+
+        if (!newAddress.zipCode?.match(/^\d{6}$/)) {
+            errors.zipCode = "Invalid PIN: 6-digit numeric reference required";
+        }
+
+        if (!newAddress.phone?.match(/^\d{10}$/)) {
+            errors.phone = "Invalid Phone: 10-digit mobile conduit required";
+        }
+
+        if (newAddress.label === "Custom" && !customLabel.trim()) {
+            errors.customLabel = "Requirement: Custom marker name mandatory";
+        } else if (newAddress.label === "Custom" && !alphaRegex.test(customLabel)) {
+            errors.customLabel = "Only alphabets allowed";
+        }
         
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
@@ -318,7 +358,8 @@ export default function AddressesPage() {
                                     <Input 
                                         value={customLabel} 
                                         onChange={e => {
-                                            setCustomLabel(e.target.value.toUpperCase());
+                                            const val = e.target.value.toUpperCase().replace(/[^A-Z\s]/g, '');
+                                            setCustomLabel(val);
                                             if (formErrors.customLabel) setFormErrors(p => { const n = {...p}; delete n.customLabel; return n; });
                                         }} 
                                         placeholder="E.G. WAREHOUSE" 
@@ -337,17 +378,17 @@ export default function AddressesPage() {
                                 {formErrors.firstName && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.firstName}</p>}
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Receiver (Last Name)</label>
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Receiver (Last Name - Optional)</label>
                                 <Input value={newAddress.lastName} onChange={e => updateField("lastName", e.target.value)} placeholder="LAST NAME" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.lastName ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.lastName && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.lastName}</p>}
                             </div>
                              <div className="space-y-4 md:col-span-2">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Logistics conduit (Mobile)</label>
-                                <Input value={newAddress.phone} onChange={e => updateField("phone", e.target.value.replace(/\D/g, ''))} placeholder="10-DIGIT MOBILE" maxLength={10} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.phone ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                <Input value={newAddress.phone} onChange={e => updateField("phone", e.target.value)} placeholder="10-DIGIT MOBILE" maxLength={10} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.phone ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.phone && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.phone}</p>}
                             </div>
                             <div className="space-y-4 md:col-span-2">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Primary Conduit (Street)</label>
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Primary Conduit (Street - Max 100)</label>
                                 <Input value={newAddress.street} onChange={e => updateField("street", e.target.value)} placeholder="123 MAIN ST" maxLength={100} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.street ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.street && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.street}</p>}
                             </div>
@@ -363,7 +404,7 @@ export default function AddressesPage() {
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Postal Reference</label>
-                                <Input value={newAddress.zipCode} onChange={e => updateField("zipCode", e.target.value.replace(/\D/g, ''))} placeholder="6-DIGIT PIN" maxLength={6} className={`h-16 rounded-2xl border-2 font-black tracking-widest text-[10px] ${formErrors.zipCode ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                <Input value={newAddress.zipCode} onChange={e => updateField("zipCode", e.target.value)} placeholder="6-DIGIT PIN" maxLength={6} className={`h-16 rounded-2xl border-2 font-black tracking-widest text-[10px] ${formErrors.zipCode ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.zipCode && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.zipCode}</p>}
                             </div>
                             <div className="space-y-4">
