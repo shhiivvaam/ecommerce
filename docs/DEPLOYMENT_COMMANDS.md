@@ -21,6 +21,7 @@ turbo run dev
 # Start specific application
 turbo run dev --filter=api
 turbo run dev --filter=customer
+turbo run dev --filter=admin
 ```
 
 ### Build Applications
@@ -32,6 +33,7 @@ turbo run build
 # Build specific application
 turbo run build --filter=api
 turbo run build --filter=customer
+turbo run build --filter=admin
 ```
 
 ### Testing
@@ -43,6 +45,7 @@ turbo run test
 # Run tests for specific app
 turbo run test --filter=api
 turbo run test --filter=customer
+turbo run test --filter=admin
 
 # Run linting
 turbo run lint
@@ -253,7 +256,10 @@ export PORT=3000
 export DATABASE_URL=postgresql://...
 export JWT_SECRET=your-secret
 
-# Web Service
+# Customer Service
 export NEXT_PUBLIC_API_URL=https://your-domain.com/api
 export NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# Admin Service
+export NEXT_PUBLIC_API_URL=https://your-domain.com/api
 ```
