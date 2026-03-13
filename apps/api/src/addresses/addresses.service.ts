@@ -65,7 +65,20 @@ export class AddressesService {
 
     return this.prisma.address.update({
       where: { id },
-      data,
+      data: {
+        ...(data.firstName !== undefined && { firstName: data.firstName }),
+        ...(data.lastName !== undefined && { lastName: data.lastName }),
+        ...(data.street !== undefined && { street: data.street }),
+        ...(data.city !== undefined && { city: data.city }),
+        ...(data.state !== undefined && { state: data.state }),
+        ...(data.country !== undefined && { country: data.country }),
+        ...(data.zipCode !== undefined && { zipCode: data.zipCode }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.label !== undefined && { label: data.label }),
+        ...(data.latitude !== undefined && { latitude: data.latitude }),
+        ...(data.longitude !== undefined && { longitude: data.longitude }),
+        ...(data.isDefault !== undefined && { isDefault: data.isDefault }),
+      },
     });
   }
 
