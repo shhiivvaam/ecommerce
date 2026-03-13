@@ -760,7 +760,7 @@ export default function CheckoutPage() {
                                                         onClick={saveNewAddressProfile}
                                                         disabled={isSavingAddress || !canProceed()}
                                                     >
-                                                        {isSavingAddress ? "Updating..." : editingAddressId ? "Apply Update" : "Save to Address Book"}
+                                                        {isSavingAddress ? "Saving..." : editingAddressId ? "Apply Update" : "Save to Address Book"}
                                                     </button>
                                                 </div>
                                             </div>
