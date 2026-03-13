@@ -22,6 +22,8 @@ interface Address {
     zipCode: string;
     country: string;
     isDefault: boolean;
+    firstName?: string;
+    lastName?: string;
     label?: string;
     phone?: string;
     latitude?: number | null;
@@ -35,11 +37,13 @@ export default function AddressesPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
 
     const [newAddress, setNewAddress] = useState({
+        firstName: "",
+        lastName: "",
         street: "",
         city: "",
-        state: "MH",
+        state: "",
         zipCode: "",
-        country: "IN",
+        country: "",
         phone: "",
         isDefault: false,
         label: "Home",
@@ -73,6 +77,8 @@ export default function AddressesPage() {
 
     const validateForm = () => {
         const errors: Record<string, string> = {};
+        if (!newAddress.firstName?.trim()) errors.firstName = "Requirement: First name mandatory";
+        if (!newAddress.lastName?.trim()) errors.lastName = "Requirement: Last name mandatory";
         if (!newAddress.street?.trim()) errors.street = "Requirement: Street address mandatory";
         if (!newAddress.city?.trim()) errors.city = "Requirement: City hub mandatory";
         if (!newAddress.state?.trim()) errors.state = "Requirement: Territorial division mandatory";
@@ -103,7 +109,7 @@ export default function AddressesPage() {
             }
             setIsAdding(false);
             setEditingId(null);
-            setNewAddress({ street: "", city: "", state: "MH", zipCode: "", country: "IN", phone: "", isDefault: false, label: "Home", latitude: null, longitude: null });
+            setNewAddress({ firstName: "", lastName: "", street: "", city: "", state: "", zipCode: "", country: "", phone: "", isDefault: false, label: "Home", latitude: null, longitude: null });
             setCustomLabel("");
             setFormErrors({});
             fetchAddresses();
@@ -119,6 +125,8 @@ export default function AddressesPage() {
         const isCustom = addr.label && !standardLabels.includes(addr.label);
         
         setNewAddress({
+            firstName: addr.firstName || "",
+            lastName: addr.lastName || "",
             street: addr.street,
             city: addr.city,
             state: addr.state,
@@ -323,6 +331,16 @@ export default function AddressesPage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                             <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Receiver (First Name)</label>
+                                <Input value={newAddress.firstName} onChange={e => updateField("firstName", e.target.value)} placeholder="FIRST NAME" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.firstName ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                {formErrors.firstName && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.firstName}</p>}
+                            </div>
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Receiver (Last Name)</label>
+                                <Input value={newAddress.lastName} onChange={e => updateField("lastName", e.target.value)} placeholder="LAST NAME" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.lastName ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                {formErrors.lastName && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.lastName}</p>}
+                            </div>
                              <div className="space-y-4 md:col-span-2">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Logistics conduit (Mobile)</label>
                                 <Input value={newAddress.phone} onChange={e => updateField("phone", e.target.value.replace(/\D/g, ''))} placeholder="10-DIGIT MOBILE" maxLength={10} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.phone ? 'border-rose-300 bg-rose-50/30' : ''}`} />
@@ -335,22 +353,22 @@ export default function AddressesPage() {
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">City Hub</label>
-                                <Input value={newAddress.city} onChange={e => updateField("city", e.target.value)} placeholder="MUMBAI" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.city ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                <Input value={newAddress.city} onChange={e => updateField("city", e.target.value)} placeholder="CITY NAME" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.city ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.city && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.city}</p>}
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Territorial Division</label>
-                                <Input value={newAddress.state} onChange={e => updateField("state", e.target.value)} placeholder="MAHARASHTRA" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.state ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                <label className="text-[10px) font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Territorial Division</label>
+                                <Input value={newAddress.state} onChange={e => updateField("state", e.target.value)} placeholder="STATE NAME" maxLength={50} className={`h-16 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] ${formErrors.state ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.state && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.state}</p>}
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Postal Reference</label>
-                                <Input value={newAddress.zipCode} onChange={e => updateField("zipCode", e.target.value.replace(/\D/g, ''))} placeholder="400001" maxLength={6} className={`h-16 rounded-2xl border-2 font-black tracking-widest text-[10px] ${formErrors.zipCode ? 'border-rose-300 bg-rose-50/30' : ''}`} />
+                                <Input value={newAddress.zipCode} onChange={e => updateField("zipCode", e.target.value.replace(/\D/g, ''))} placeholder="6-DIGIT PIN" maxLength={6} className={`h-16 rounded-2xl border-2 font-black tracking-widest text-[10px] ${formErrors.zipCode ? 'border-rose-300 bg-rose-50/30' : ''}`} />
                                 {formErrors.zipCode && <p className="text-[9px] font-black uppercase tracking-tight text-rose-500 ml-1">{formErrors.zipCode}</p>}
                             </div>
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Global Domain</label>
-                                <Input value={newAddress.country} onChange={e => updateField("country", e.target.value)} placeholder="IN" maxLength={20} className="h-16 rounded-2xl border-2 font-black tracking-widest text-[10px]" />
+                                <Input value={newAddress.country} onChange={e => updateField("country", e.target.value)} placeholder="COUNTRY" maxLength={20} className="h-16 rounded-2xl border-2 font-black tracking-widest text-[10px]" />
                             </div>
                         </div>
 
@@ -417,7 +435,10 @@ export default function AddressesPage() {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2">
+                                                <ShieldCheck className="h-3.5 w-3.5 text-primary" /> {addr.firstName} {addr.lastName}
+                                            </p>
                                             <p className="font-black text-2xl uppercase tracking-tighter text-slate-800 truncate" title={addr.street}>{addr.street}</p>
                                             <p className="text-sm font-black uppercase tracking-widest text-slate-300 italic truncate">{addr.city}, {addr.state} {addr.zipCode}</p>
                                             <div className="flex flex-wrap items-center gap-4 pt-2">

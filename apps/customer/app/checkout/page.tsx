@@ -31,14 +31,16 @@ interface AppliedCoupon {
 
 interface SavedAddress {
     id: string;
+    firstName?: string;
+    lastName?: string;
     street: string;
     city: string;
     state: string;
     zipCode: string;
     country: string;
     isDefault: boolean;
-    label?: string;
-    phone?: string;
+    label: string;
+    phone: string;
     latitude?: number | null;
     longitude?: number | null;
 }
@@ -292,7 +294,7 @@ export default function CheckoutPage() {
 
     const [address, setAddress] = useState({
         firstName: "", lastName: "", email: "", phone: "", label: "Home",
-        street: "", city: "", zipCode: "", state: "MH", country: "IN",
+        street: "", city: "", zipCode: "", state: "", country: "",
         latitude: null as number | null, longitude: null as number | null,
     });
     const [customLabel, setCustomLabel] = useState("");
@@ -364,6 +366,8 @@ export default function CheckoutPage() {
         
         setAddress(p => ({
             ...p,
+            firstName: addr.firstName || "",
+            lastName: addr.lastName || "",
             street: addr.street,
             city: addr.city,
             state: addr.state,
@@ -388,11 +392,13 @@ export default function CheckoutPage() {
         try {
             const finalLabel = address.label === "Custom" ? customLabel : address.label;
             const payload = {
+                firstName: address.firstName,
+                lastName: address.lastName,
                 street: address.street,
                 city: address.city,
                 state: address.state,
                 zipCode: address.zipCode,
-                country: "IN",
+                country: address.country || "IN",
                 phone: address.phone,
                 label: finalLabel,
                 latitude: address.latitude,
@@ -414,8 +420,8 @@ export default function CheckoutPage() {
             setIsAddingNew(false);
             setEditingAddressId(null);
             setAddress({
-                firstName: address.firstName, lastName: address.lastName, email: address.email, phone: "", label: "Home",
-                street: "", city: "", zipCode: "", state: "MH", country: "IN",
+                firstName: "", lastName: "", email: "", phone: "", label: "Home",
+                street: "", city: "", zipCode: "", state: "", country: "",
                 latitude: null, longitude: null,
             });
             setCustomLabel("");
@@ -667,6 +673,11 @@ export default function CheckoutPage() {
                                                                 <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 4, background: "var(--ink)", color: "#fff", border: "1px solid var(--ink)" }}>{addr.label}</span>
                                                             )}
                                                         </div>
+                                                        {(addr.firstName || addr.lastName) && (
+                                                            <p style={{ fontSize: 10, fontWeight: 700, color: "var(--mid)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 }}>
+                                                                👤 {addr.firstName} {addr.lastName}
+                                                            </p>
+                                                        )}
                                                         <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={addr.street}>{addr.street}</p>
                                                         <p style={{ fontSize: 12, fontWeight: 300, color: "var(--mid)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{addr.city}, {addr.state} {addr.zipCode}</p>
                                                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
