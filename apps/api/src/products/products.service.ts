@@ -293,7 +293,16 @@ export class ProductsService {
         const tags = tagsStr
           ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean)
           : [];
-        const categoryId = getCell('categoryid') || getCell('categoryId') || undefined;
+        // Resolve category by name (case-insensitive). Falls back to Uncategorized via create().
+        const categoryName = getCell('category') || '';
+        let resolvedCategoryId: string | undefined;
+        if (categoryName) {
+          const found = await this.prisma.category.findFirst({
+            where: { name: { equals: categoryName, mode: 'insensitive' } },
+            select: { id: true },
+          });
+          resolvedCategoryId = found?.id; // undefined → falls back to Uncategorized in create()
+        }
 
         await this.create(userId, {
           title,
@@ -301,7 +310,7 @@ export class ProductsService {
           stock,
           description,
           tags,
-          categoryId: categoryId || undefined,
+          categoryId: resolvedCategoryId,
           discounted,
         });
 
@@ -342,7 +351,7 @@ export class ProductsService {
       { header: 'price', key: 'price', width: 12 },
       { header: 'discounted', key: 'discounted', width: 14 },
       { header: 'stock', key: 'stock', width: 10 },
-      { header: 'categoryId', key: 'categoryId', width: 30 },
+      { header: 'category', key: 'category', width: 30 },
       { header: 'tags', key: 'tags', width: 30 },
     ];
 
@@ -364,7 +373,7 @@ export class ProductsService {
       'Required. e.g. 99.99',
       'Optional. Sale price, e.g. 79.99',
       'Required. e.g. 100',
-      'Optional. Paste category ID from admin.',
+      'Optional. Category name e.g. Electronics (or leave blank)',
       'Optional. Comma-separated e.g. new,sale',
     ];
     const instrRow = ws.insertRow(2, instructionData);
@@ -380,7 +389,11 @@ export class ProductsService {
     };
     instrRow.height = 20;
 
-    // Sample data row (row 3)
+    // Sample data row (row 3) — use a real category from DB if available
+    const sampleCategory = await this.prisma.category.findFirst({
+      select: { name: true },
+      orderBy: { createdAt: 'asc' },
+    });
     ws.addRow({
       title: 'Wireless Noise-Cancel Headphones',
       description:
@@ -388,8 +401,8 @@ export class ProductsService {
       price: 149.99,
       discounted: 119.99,
       stock: 50,
-      categoryId: '(paste-category-id-here)',
-      tags: 'electronics,audio,wireless',
+      category: sampleCategory?.name ?? '',
+      tags: 'audio,wireless',
     });
 
     // Style sample row
