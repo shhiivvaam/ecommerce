@@ -267,7 +267,9 @@ export class ProductsService {
         const idx = headers.indexOf(colName);
         if (idx === -1) return '';
         const val = row.getCell(idx + 1).value;
-        return val === null || val === undefined ? '' : String(val?.toString() ?? '').trim();
+        return val === null || val === undefined
+          ? ''
+          : String(val?.toString() ?? '').trim();
       };
 
       try {
