@@ -214,6 +214,26 @@ export class ProductsService {
   }
 
   // ─── Excel Processing ──────────────────────────────────────────────────────
+  private stringifyExcelValue(value: ExcelJS.CellValue): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean')
+      return String(value);
+    if (value instanceof Date) return value.toISOString();
+
+    if (typeof value === 'object') {
+      if ('richText' in value && Array.isArray(value.richText)) {
+        return value.richText.map((t) => t.text).join('');
+      }
+      if ('formula' in value) {
+        return this.stringifyExcelValue(value.result);
+      }
+      if ('text' in value && typeof value.text === 'string') {
+        return value.text;
+      }
+    }
+    return '';
+  }
 
   async processExcelImport(
     filePath: string,
@@ -240,11 +260,7 @@ export class ProductsService {
     const headerRow = worksheet.getRow(1);
     const headers: string[] = [];
     headerRow.eachCell((cell) => {
-      headers.push(
-        String(cell.value?.toString() ?? '')
-          .toLowerCase()
-          .trim(),
-      );
+      headers.push(this.stringifyExcelValue(cell.value).toLowerCase().trim());
     });
 
     let importedCount = 0;
@@ -266,10 +282,7 @@ export class ProductsService {
       const getCell = (colName: string): string => {
         const idx = headers.indexOf(colName);
         if (idx === -1) return '';
-        const val = row.getCell(idx + 1).value;
-        return val === null || val === undefined
-          ? ''
-          : String(val?.toString() ?? '').trim();
+        return this.stringifyExcelValue(row.getCell(idx + 1).value).trim();
       };
 
       try {
