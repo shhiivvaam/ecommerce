@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { Button } from "@repo/ui";
 import { Input } from "@repo/ui";
 import { Textarea } from "@repo/ui";
-import { Save, ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Save, ArrowLeft, Plus, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -108,6 +108,41 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
         setFormData(prev => ({ ...prev, gallery: newGallery }));
     };
 
+    const handleFileUpload = async (index: number, file: File | undefined) => {
+        if (!file) return;
+        const uploadToast = toast.loading("Preparing upload...");
+        try {
+            // 1. Get presigned URL securely from our API
+            const { data: presignedData } = await api.post("/storage/presigned-url", {
+                fileName: file.name,
+                mimeType: file.type,
+                folder: "products"
+            });
+            
+            toast.loading("Uploading to S3...", { id: uploadToast });
+
+            // 2. Upload file directly to AWS S3, bypassing backend limits
+            const uploadRes = await fetch(presignedData.uploadUrl, {
+                method: "PUT",
+                body: file,
+                headers: {
+                    "Content-Type": file.type,
+                },
+            });
+
+            if (!uploadRes.ok) {
+                throw new Error(`S3 Upload failed: ${uploadRes.statusText}`);
+            }
+
+            // 3. Save the resulting public URL to the form
+            handleGalleryChange(index, presignedData.publicUrl);
+            toast.success("Image uploaded successfully", { id: uploadToast });
+        } catch (error) {
+            console.error("Upload error:", error);
+            toast.error("Failed to upload image", { id: uploadToast });
+        }
+    };
+
     const addGalleryItem = () => {
         setFormData(prev => ({ ...prev, gallery: [...prev.gallery, ""] }));
     };
@@ -190,7 +225,20 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                         value={url}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleGalleryChange(index, e.target.value)}
                                         placeholder="https://..."
+                                        className="flex-1"
                                     />
+                                    <div className="relative">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                                            onChange={(e) => handleFileUpload(index, e.target.files?.[0])}
+                                            title="Upload Image"
+                                        />
+                                        <Button type="button" variant="secondary" size="icon" className="pointer-events-none">
+                                            <Upload className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                     <Button
                                         type="button"
                                         variant="ghost"
