@@ -247,9 +247,9 @@ export class ProductsService {
     let importedCount = 0;
     let failedCount = 0;
     const errors: BulkImportResult['errors'] = [];
-    const totalRows = worksheet.rowCount - 1; // Exclude header
+    const totalRows = Math.max(0, worksheet.rowCount - 2); // Exclude header AND instruction row
 
-    for (let rowNum = 2; rowNum <= worksheet.rowCount; rowNum++) {
+    for (let rowNum = 3; rowNum <= worksheet.rowCount; rowNum++) {
       const row = worksheet.getRow(rowNum);
 
       // Skip completely empty rows
