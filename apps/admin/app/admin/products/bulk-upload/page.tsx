@@ -608,7 +608,7 @@ export default function BulkUploadPage() {
                                                     <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                                                         <thead>
                                                             <tr>
-                                                                {["#", "Title", "Description", "Price", "Sale", "Stock", "Tags", "Status"].map((h) => (
+                                                                {["#", "Title", "Description", "Price", "Sale", "Stock", "Category", "Tags", "Status"].map((h) => (
                                                                     <th key={h} className="bu-th">{h}</th>
                                                                 ))}
                                                             </tr>
@@ -626,6 +626,7 @@ export default function BulkUploadPage() {
                                                                     <td className="bu-td" style={{ fontSize: 12, fontFamily: "monospace" }}>{row.price || "—"}</td>
                                                                     <td className="bu-td" style={{ fontSize: 12, fontFamily: "monospace" }}>{row.discounted || "—"}</td>
                                                                     <td className="bu-td" style={{ fontSize: 12 }}>{row.stock || "0"}</td>
+                                                                    <td className="bu-td" style={{ fontSize: 11, color: MID }}>{row.categoryId || "—"}</td>
                                                                     <td className="bu-td" style={{ fontSize: 11, color: MID }}>{row.tags || "—"}</td>
                                                                     <td className="bu-td">
                                                                         {row._error
@@ -686,7 +687,7 @@ export default function BulkUploadPage() {
                                             { col: "price", req: true, tip: "Base price, e.g. 99.99" },
                                             { col: "discounted", req: false, tip: "Sale price (optional)" },
                                             { col: "stock", req: false, tip: "Quantity in stock (default 0)" },
-                                            { col: "categoryId", req: false, tip: "Copy ID from Categories page" },
+                                            { col: "category", req: false, tip: "Category name, e.g. Electronics (falls back to Uncategorized)" },
                                             { col: "tags", req: false, tip: "Comma-separated, e.g. new,sale" },
                                         ].map(({ col, req, tip }) => (
                                             <div key={col} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${BORDER}` }}>
