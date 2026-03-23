@@ -39,10 +39,16 @@ export async function serverFetch<T = unknown>(
 ): Promise<T> {
     const url = `${INTERNAL_API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
+    // Use global FormData because this runs in a Node environment (Next.js Edge/Node)
+    const isFormData = body instanceof FormData;
+
     const headers: Record<string, string> = {
-        "Content-Type": "application/json",
         ...(extraHeaders as Record<string, string>),
     };
+
+    if (!isFormData) {
+        headers["Content-Type"] = "application/json";
+    }
 
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (INTERNAL_SECRET) headers["X-Internal-Secret"] = INTERNAL_SECRET;
@@ -50,7 +56,7 @@ export async function serverFetch<T = unknown>(
     const response = await fetch(url, {
         ...init,
         headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: body !== undefined ? (isFormData ? body : JSON.stringify(body)) : undefined,
         // Never cache server-to-server calls by default; individual routes opt-in
         cache: init.cache ?? "no-store",
     });
