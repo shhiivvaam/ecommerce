@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Body,
   UseInterceptors,
   UploadedFile,
   UseGuards,
@@ -40,5 +41,19 @@ export class StorageController {
       message: 'File uploaded successfully',
       url: fileUrl,
     };
+  }
+
+  @Post('presigned-url')
+  async getPresignedUrl(
+    @Body() body: { fileName: string; mimeType: string; folder?: string },
+  ) {
+    if (!body?.fileName || !body?.mimeType) {
+      throw new BadRequestException('fileName and mimeType are required');
+    }
+    return this.storageService.generatePresignedUrl(
+      body.fileName,
+      body.mimeType,
+      body.folder || 'products',
+    );
   }
 }
