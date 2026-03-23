@@ -19,16 +19,29 @@ async function main() {
         create: { id: 'role_customer', name: RoleType.CUSTOMER },
     });
 
-    // 2. Create Admin User
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    // 2. Create Admin and Customer Users
+    const sharedPassword = await bcrypt.hash('Reyva@shikri26', 10);
+    
     const adminUser = await prisma.user.upsert({
-        where: { email: 'admin@reyva.com' },
-        update: {},
+        where: { email: 'admin@reyva.co.in' },
+        update: { password: sharedPassword },
         create: {
-            email: 'admin@reyva.com',
-            password: hashedPassword,
+            email: 'admin@reyva.co.in',
+            password: sharedPassword,
             name: 'Super Admin',
             roleId: adminRole.id,
+            isVerified: true
+        },
+    });
+
+    const customerUser = await prisma.user.upsert({
+        where: { email: 'customer@reyva.co.in' },
+        update: { password: sharedPassword },
+        create: {
+            email: 'customer@reyva.co.in',
+            password: sharedPassword,
+            name: 'Customer User',
+            roleId: customerRole.id,
             isVerified: true
         },
     });
@@ -58,6 +71,20 @@ async function main() {
             categoryId: catAudio.id,
             gallery: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1000&auto=format&fit=crop'],
             stock: 50
+        }
+    });
+
+    await prisma.product.upsert({
+        where: { slug: 'smart-fitness-watch' },
+        update: {},
+        create: {
+            title: 'Smart Fitness Watch',
+            slug: 'smart-fitness-watch',
+            description: 'Track your health and fitness with this sleek smartwatch.',
+            price: 199.99,
+            categoryId: catAudio.id,
+            gallery: ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'],
+            stock: 100
         }
     });
 
