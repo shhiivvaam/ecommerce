@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 
@@ -40,7 +41,8 @@ export class StorageService {
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: filename,
-        Body: file.buffer,
+        Body: Buffer.from(file.buffer),
+        ContentLength: file.size,
         ContentType: file.mimetype,
         // ACL: 'public-read' // Uncomment if bucket policies allow public read ACLs
       });
@@ -61,6 +63,47 @@ export class StorageService {
         bucket: this.bucketName,
       });
       throw new InternalServerErrorException('Failed to upload file to S3');
+    }
+  }
+
+  async generatePresignedUrl(
+    fileName: string,
+    mimeType: string,
+    folder: string = 'products',
+  ): Promise<{ uploadUrl: string; publicUrl: string; filename: string }> {
+    try {
+      const extension = path.extname(fileName);
+      const uniqueFilename = `${folder}/${uuidv4()}${extension}`;
+
+      const command = new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: uniqueFilename,
+        ContentType: mimeType,
+        // Optional ACL config:
+        // ACL: 'public-read'
+      });
+
+      const uploadUrl = await getSignedUrl(this.s3Client, command, {
+        expiresIn: 3600, // URL valid for 1 hour
+      });
+
+      const region =
+        this.configService.get<string>('AWS_REGION') || 'ap-south-1';
+      const publicUrl = `https://${this.bucketName}.s3.${region}.amazonaws.com/${uniqueFilename}`;
+
+      return { uploadUrl, publicUrl, filename: uniqueFilename };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Error generating S3 presigned URL', {
+        error: errorMessage,
+        fileName,
+        folder,
+        bucket: this.bucketName,
+      });
+      throw new InternalServerErrorException(
+        'Failed to generate presigned upload URL',
+      );
     }
   }
 }
