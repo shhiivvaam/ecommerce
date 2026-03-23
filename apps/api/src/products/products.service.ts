@@ -6,6 +6,7 @@ import {
 import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 import { parse } from 'csv-parse/sync';
+import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
@@ -15,6 +16,13 @@ import {
   ProductQueryDto,
 } from './dto/product.dto';
 import { Prisma } from '@prisma/client';
+
+export interface BulkImportResult {
+  importedCount: number;
+  failedCount: number;
+  total: number;
+  errors: Array<{ row: number; reason: string; title?: string }>;
+}
 
 @Injectable()
 export class ProductsService {
@@ -47,12 +55,56 @@ export class ProductsService {
     return `${base}-${Math.max(...suffixes) + 1}`;
   }
 
+  // ─── Bulk JSON Create ──────────────────────────────────────────────────────
+
+  async bulkCreate(
+    userId: string,
+    products: CreateProductDto[],
+  ): Promise<BulkImportResult> {
+    let importedCount = 0;
+    let failedCount = 0;
+    const errors: BulkImportResult['errors'] = [];
+
+    for (let i = 0; i < products.length; i++) {
+      const dto = products[i];
+      try {
+        await this.create(userId, dto);
+        importedCount++;
+      } catch (err) {
+        failedCount++;
+        errors.push({
+          row: i + 1,
+          title: dto.title,
+          reason: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    }
+
+    await this.audit.logAction(userId, 'BULK_CREATE', 'Product', 'bulk', {
+      importedCount,
+      failedCount,
+      total: products.length,
+    });
+
+    return { importedCount, failedCount, total: products.length, errors };
+  }
+
+  // ─── CSV / Excel Queue Import ──────────────────────────────────────────────
+
   async queueCsvImport(userId: string, csvString: string) {
     const job = await this.importQueue.add('import-csv', {
       csvString,
       userId,
     });
     return { message: 'Import queued successfully', jobId: job.id };
+  }
+
+  async queueExcelImport(userId: string, filePath: string) {
+    const job = await this.importQueue.add('import-excel', {
+      excelFilePath: filePath,
+      userId,
+    });
+    return { message: 'Excel import queued successfully', jobId: job.id };
   }
 
   async getImportJobStatus(jobId: string) {
@@ -66,7 +118,12 @@ export class ProductsService {
     return { id: job.id, state, result, error };
   }
 
-  async processCsvImport(csvString: string, userId: string) {
+  // ─── CSV Processing ────────────────────────────────────────────────────────
+
+  async processCsvImport(
+    csvString: string,
+    userId: string,
+  ): Promise<BulkImportResult> {
     try {
       const records = parse(csvString, {
         columns: true,
@@ -75,6 +132,7 @@ export class ProductsService {
 
       let importedCount = 0;
       let failedCount = 0;
+      const errors: BulkImportResult['errors'] = [];
 
       interface CsvRecord {
         title?: string;
@@ -84,32 +142,48 @@ export class ProductsService {
         description?: string;
         tags?: string;
         categoryId?: string;
+        discounted?: string;
       }
-      for (const record of records as CsvRecord[]) {
+
+      for (let idx = 0; idx < (records as CsvRecord[]).length; idx++) {
+        const record = (records as CsvRecord[])[idx];
         try {
           const title = record.title || record.name;
-          if (!title) continue;
+          if (!title) {
+            failedCount++;
+            errors.push({ row: idx + 2, reason: 'Missing title/name column' });
+            continue;
+          }
 
           const price = record.price ? parseFloat(record.price) : 0;
           const stock = record.stock ? parseInt(record.stock, 10) : 0;
           const description = record.description || '';
+          const discounted = record.discounted
+            ? parseFloat(record.discounted)
+            : undefined;
           const tags = record.tags
             ? record.tags.split(',').map((t: string) => t.trim())
             : [];
           const categoryId = record.categoryId || undefined;
 
           await this.create(userId, {
-            title: title,
-            price: price,
+            title,
+            price,
             stock,
             description,
             tags,
             categoryId,
+            discounted,
           });
 
           importedCount++;
-        } catch {
+        } catch (err) {
           failedCount++;
+          errors.push({
+            row: idx + 2,
+            title: record.title || record.name,
+            reason: err instanceof Error ? err.message : 'Unknown error',
+          });
         }
       }
 
@@ -119,7 +193,12 @@ export class ProductsService {
         total: records.length,
       });
 
-      return { importedCount, failedCount };
+      return {
+        importedCount,
+        failedCount,
+        total: (records as CsvRecord[]).length,
+        errors,
+      };
     } catch (error) {
       const err = error as Error;
       await this.audit.logAction(
@@ -132,6 +211,209 @@ export class ProductsService {
       throw err;
     }
   }
+
+  // ─── Excel Processing ──────────────────────────────────────────────────────
+
+  async processExcelImport(
+    filePath: string,
+    userId: string,
+  ): Promise<BulkImportResult> {
+    const workbook = new ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.readFile(filePath);
+    } catch (err) {
+      const fs = require('fs');
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      throw err;
+    }
+
+    const fs = require('fs');
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      throw new Error('Excel file has no worksheets');
+    }
+
+    // Read header row
+    const headerRow = worksheet.getRow(1);
+    const headers: string[] = [];
+    headerRow.eachCell((cell) => {
+      headers.push(String(cell.value ?? '').toLowerCase().trim());
+    });
+
+    let importedCount = 0;
+    let failedCount = 0;
+    const errors: BulkImportResult['errors'] = [];
+    const totalRows = worksheet.rowCount - 1; // Exclude header
+
+    for (let rowNum = 2; rowNum <= worksheet.rowCount; rowNum++) {
+      const row = worksheet.getRow(rowNum);
+
+      // Skip completely empty rows
+      const cellValues = headers.map((_, colIdx) =>
+        row.getCell(colIdx + 1).value,
+      );
+      if (cellValues.every((v) => v === null || v === undefined || v === '')) {
+        continue;
+      }
+
+      const getCell = (colName: string): string => {
+        const idx = headers.indexOf(colName);
+        if (idx === -1) return '';
+        const val = row.getCell(idx + 1).value;
+        return val === null || val === undefined ? '' : String(val).trim();
+      };
+
+      try {
+        const title = getCell('title') || getCell('name');
+        if (!title) {
+          failedCount++;
+          errors.push({
+            row: rowNum,
+            reason: 'Missing title/name column',
+          });
+          continue;
+        }
+
+        const priceStr = getCell('price');
+        const price = priceStr ? parseFloat(priceStr) : 0;
+        const stockStr = getCell('stock');
+        const stock = stockStr ? parseInt(stockStr, 10) : 0;
+        const description = getCell('description') || '';
+        const discountedStr = getCell('discounted');
+        const discounted = discountedStr ? parseFloat(discountedStr) : undefined;
+        const tagsStr = getCell('tags');
+        const tags = tagsStr
+          ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean)
+          : [];
+        const categoryId = getCell('categoryid') || getCell('categoryId') || undefined;
+
+        await this.create(userId, {
+          title,
+          price,
+          stock,
+          description,
+          tags,
+          categoryId: categoryId || undefined,
+          discounted,
+        });
+
+        importedCount++;
+      } catch (err) {
+        failedCount++;
+        errors.push({
+          row: rowNum,
+          reason: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    }
+
+    await this.audit.logAction(userId, 'IMPORT_BATCH_EXCEL', 'Product', 'bulk', {
+      importedCount,
+      failedCount,
+      total: totalRows,
+    });
+
+    return { importedCount, failedCount, total: totalRows, errors };
+  }
+
+  // ─── Excel Template ────────────────────────────────────────────────────────
+
+  async generateExcelTemplate(): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'E-Commerce Admin';
+    workbook.created = new Date();
+
+    const ws = workbook.addWorksheet('Products', {
+      views: [{ state: 'frozen', ySplit: 2 }],
+    });
+
+    // Define columns
+    ws.columns = [
+      { header: 'title', key: 'title', width: 30 },
+      { header: 'description', key: 'description', width: 50 },
+      { header: 'price', key: 'price', width: 12 },
+      { header: 'discounted', key: 'discounted', width: 14 },
+      { header: 'stock', key: 'stock', width: 10 },
+      { header: 'categoryId', key: 'categoryId', width: 30 },
+      { header: 'tags', key: 'tags', width: 30 },
+    ];
+
+    // Style header row
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1A1A2E' },
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height = 28;
+
+    // Instruction row (row 2)
+    const instructionData = [
+      'Required. 3–100 chars.',
+      'Required. Min 10 chars.',
+      'Required. e.g. 99.99',
+      'Optional. Sale price, e.g. 79.99',
+      'Required. e.g. 100',
+      'Optional. Paste category ID from admin.',
+      'Optional. Comma-separated e.g. new,sale',
+    ];
+    const instrRow = ws.insertRow(2, instructionData);
+    instrRow.font = {
+      italic: true,
+      color: { argb: 'FF777777' },
+      size: 9,
+    };
+    instrRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF5F5F5' },
+    };
+    instrRow.height = 20;
+
+    // Sample data row (row 3)
+    ws.addRow({
+      title: 'Wireless Noise-Cancel Headphones',
+      description:
+        'Premium wireless headphones with active noise cancellation, 30h battery life, and foldable design.',
+      price: 149.99,
+      discounted: 119.99,
+      stock: 50,
+      categoryId: '(paste-category-id-here)',
+      tags: 'electronics,audio,wireless',
+    });
+
+    // Style sample row
+    const sampleRow = ws.getRow(3);
+    sampleRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFEAF4FF' },
+    };
+    sampleRow.font = { color: { argb: 'FF444444' }, size: 10 };
+
+    // Border all used cells
+    ws.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+          left: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+          bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+          right: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
+  }
+
+  // ─── CSV Export ────────────────────────────────────────────────────────────
 
   async generateCsvExport(): Promise<string> {
     const products = await this.prisma.product.findMany({
@@ -163,6 +445,8 @@ export class ProductsService {
 
     return [headers.join(','), ...rows].join('\n');
   }
+
+  // ─── Single Create ─────────────────────────────────────────────────────────
 
   async create(userId: string, data: CreateProductDto) {
     // Block creation in single product mode
@@ -239,6 +523,8 @@ export class ProductsService {
     );
     return product;
   }
+
+  // ─── Find All ──────────────────────────────────────────────────────────────
 
   async findAll(query: ProductQueryDto = {}) {
     const isSingle = await this.settings.isSingleProductMode();
@@ -334,6 +620,8 @@ export class ProductsService {
     return { data: products, total, page, limit, totalPages };
   }
 
+  // ─── Find One ──────────────────────────────────────────────────────────────
+
   async findOne(idOrSlug: string) {
     let product = await this.prisma.product.findUnique({
       where: { id: idOrSlug },
@@ -370,6 +658,8 @@ export class ProductsService {
 
     return product;
   }
+
+  // ─── Find Related ──────────────────────────────────────────────────────────
 
   async findRelated(idOrSlug: string, limit: number = 4) {
     let product = await this.prisma.product.findUnique({
@@ -414,6 +704,8 @@ export class ProductsService {
 
     return relatedByCategory;
   }
+
+  // ─── Update ────────────────────────────────────────────────────────────────
 
   async update(userId: string, id: string, data: UpdateProductDto) {
     const product = await this.prisma.product.findUnique({ where: { id } });
@@ -478,6 +770,8 @@ export class ProductsService {
     );
     return updated;
   }
+
+  // ─── Remove ────────────────────────────────────────────────────────────────
 
   async remove(userId: string, id: string) {
     const product = await this.prisma.product.findUnique({ where: { id } });
