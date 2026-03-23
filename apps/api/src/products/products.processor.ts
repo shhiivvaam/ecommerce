@@ -10,7 +10,8 @@ export class ProductsProcessor extends WorkerHost {
 
   async process(
     job: Job<
-      { csvString: string; userId: string } | { excelFilePath: string; userId: string },
+      | { csvString: string; userId: string }
+      | { excelFilePath: string; userId: string },
       any,
       string
     >,

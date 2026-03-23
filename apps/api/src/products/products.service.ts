@@ -241,7 +241,11 @@ export class ProductsService {
     const headerRow = worksheet.getRow(1);
     const headers: string[] = [];
     headerRow.eachCell((cell) => {
-      headers.push(String(cell.value ?? '').toLowerCase().trim());
+      headers.push(
+        String(cell.value ?? '')
+          .toLowerCase()
+          .trim(),
+      );
     });
 
     let importedCount = 0;
@@ -253,8 +257,8 @@ export class ProductsService {
       const row = worksheet.getRow(rowNum);
 
       // Skip completely empty rows
-      const cellValues = headers.map((_, colIdx) =>
-        row.getCell(colIdx + 1).value,
+      const cellValues = headers.map(
+        (_, colIdx) => row.getCell(colIdx + 1).value,
       );
       if (cellValues.every((v) => v === null || v === undefined || v === '')) {
         continue;
@@ -288,10 +292,14 @@ export class ProductsService {
         const description = getCell('description') || '';
         const discountedStr = getCell('discounted');
         let discounted = discountedStr ? parseFloat(discountedStr) : undefined;
-        if (discounted !== undefined && isNaN(discounted)) discounted = undefined;
+        if (discounted !== undefined && isNaN(discounted))
+          discounted = undefined;
         const tagsStr = getCell('tags');
         const tags = tagsStr
-          ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean)
+          ? tagsStr
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean)
           : [];
         // Resolve category by name (case-insensitive). Falls back to Uncategorized via create().
         const categoryName = getCell('category') || '';
@@ -324,11 +332,17 @@ export class ProductsService {
       }
     }
 
-    await this.audit.logAction(userId, 'IMPORT_BATCH_EXCEL', 'Product', 'bulk', {
-      importedCount,
-      failedCount,
-      total: totalRows,
-    });
+    await this.audit.logAction(
+      userId,
+      'IMPORT_BATCH_EXCEL',
+      'Product',
+      'bulk',
+      {
+        importedCount,
+        failedCount,
+        total: totalRows,
+      },
+    );
 
     return { importedCount, failedCount, total: totalRows, errors };
   }

@@ -248,13 +248,45 @@ export class ProductsController {
     description:
       'Retrieve a paginated list of all products with optional filters.',
   })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by product name' })
-  @ApiQuery({ name: 'categoryId', required: false, description: 'Filter by category ID' })
-  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
-  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 10)', example: 10 })
-  @ApiQuery({ name: 'sortBy', required: false, description: 'Sort field', enum: ['price', 'name', 'createdAt'] })
-  @ApiQuery({ name: 'sortOrder', required: false, description: 'Sort direction', enum: ['asc', 'desc'] })
-  @ApiResponse({ status: 200, description: 'List of products', type: [ProductResponseDto] })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Search by product name',
+  })
+  @ApiQuery({
+    name: 'categoryId',
+    required: false,
+    description: 'Filter by category ID',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (default: 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Items per page (default: 10)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    description: 'Sort field',
+    enum: ['price', 'name', 'createdAt'],
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    description: 'Sort direction',
+    enum: ['asc', 'desc'],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of products',
+    type: [ProductResponseDto],
+  })
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(300000)
   findAll(@Query() query: ProductQueryDto) {
@@ -265,8 +297,16 @@ export class ProductsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a product by ID' })
-  @ApiParam({ name: 'id', description: 'Product ID', example: 'clx_product_id_123' })
-  @ApiResponse({ status: 200, description: 'Product details', type: ProductResponseDto })
+  @ApiParam({
+    name: 'id',
+    description: 'Product ID',
+    example: 'clx_product_id_123',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Product details',
+    type: ProductResponseDto,
+  })
   @ApiNotFoundResponse({ description: 'Product not found' })
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(600000)
@@ -284,9 +324,17 @@ export class ProductsController {
     summary: 'Update a product',
     description: 'Update product details. Requires authentication.',
   })
-  @ApiParam({ name: 'id', description: 'Product ID', example: 'clx_product_id_123' })
+  @ApiParam({
+    name: 'id',
+    description: 'Product ID',
+    example: 'clx_product_id_123',
+  })
   @ApiBody({ type: UpdateProductDto })
-  @ApiResponse({ status: 200, description: 'Product updated successfully', type: ProductResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Product updated successfully',
+    type: ProductResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
   @ApiNotFoundResponse({ description: 'Product not found' })
   async update(
@@ -313,7 +361,11 @@ export class ProductsController {
     summary: 'Delete a product',
     description: 'Permanently delete a product. Requires authentication.',
   })
-  @ApiParam({ name: 'id', description: 'Product ID', example: 'clx_product_id_123' })
+  @ApiParam({
+    name: 'id',
+    description: 'Product ID',
+    example: 'clx_product_id_123',
+  })
   @ApiResponse({ status: 200, description: 'Product deleted successfully' })
   @ApiUnauthorizedResponse({ description: 'JWT token is missing or invalid' })
   @ApiNotFoundResponse({ description: 'Product not found' })
