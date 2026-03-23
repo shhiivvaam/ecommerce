@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Trash2, RefreshCw, Pencil, Package, AlertTriangle, CheckCircle, ExternalLink, Clock } from "lucide-react";
+import { Plus, Search, Trash2, RefreshCw, Pencil, Package, AlertTriangle, CheckCircle, ExternalLink, Clock, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -77,6 +77,9 @@ export default function AdminProductsPage() {
             <button onClick={() => refetch()} className="ap-btn" style={{ color: MID }}>
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
             </button>
+            <Link href="/admin/products/bulk-upload" className="ap-btn" style={{ color: INK, backgroundColor: "#fff" }}>
+              <FileSpreadsheet size={13} /> Bulk Upload
+            </Link>
             <Link href="/admin/products/new" className="ap-btn ap-btn-ink">
               <Plus size={13} /> Add Product
             </Link>
