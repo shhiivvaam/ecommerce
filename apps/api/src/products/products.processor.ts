@@ -9,12 +9,26 @@ export class ProductsProcessor extends WorkerHost {
   }
 
   async process(
-    job: Job<{ csvString: string; userId: string }, any, string>,
+    job: Job<
+      { csvString: string; userId: string } | { excelFilePath: string; userId: string },
+      any,
+      string
+    >,
   ): Promise<any> {
     switch (job.name) {
       case 'import-csv': {
-        const { csvString, userId } = job.data;
+        const { csvString, userId } = job.data as {
+          csvString: string;
+          userId: string;
+        };
         return this.productsService.processCsvImport(csvString, userId);
+      }
+      case 'import-excel': {
+        const { excelFilePath, userId } = job.data as {
+          excelFilePath: string;
+          userId: string;
+        };
+        return this.productsService.processExcelImport(excelFilePath, userId);
       }
     }
   }
