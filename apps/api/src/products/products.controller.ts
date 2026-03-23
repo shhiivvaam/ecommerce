@@ -25,7 +25,7 @@ import {
 } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import * as fs from 'fs';
-import * as path from 'path';
+
 import * as os from 'os';
 import { randomUUID } from 'crypto';
 import { RoleType } from '@prisma/client';

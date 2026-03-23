@@ -10,6 +10,7 @@ import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
+import * as fs from 'fs';
 import {
   CreateProductDto,
   UpdateProductDto,
@@ -222,12 +223,10 @@ export class ProductsService {
     try {
       await workbook.xlsx.readFile(filePath);
     } catch (err) {
-      const fs = require('fs');
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       throw err;
     }
 
-    const fs = require('fs');
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
@@ -242,7 +241,7 @@ export class ProductsService {
     const headers: string[] = [];
     headerRow.eachCell((cell) => {
       headers.push(
-        String(cell.value ?? '')
+        String(cell.value?.toString() ?? '')
           .toLowerCase()
           .trim(),
       );
@@ -268,7 +267,7 @@ export class ProductsService {
         const idx = headers.indexOf(colName);
         if (idx === -1) return '';
         const val = row.getCell(idx + 1).value;
-        return val === null || val === undefined ? '' : String(val).trim();
+        return val === null || val === undefined ? '' : String(val?.toString() ?? '').trim();
       };
 
       try {
