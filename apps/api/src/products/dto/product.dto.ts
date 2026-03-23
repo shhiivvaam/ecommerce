@@ -236,6 +236,16 @@ export class ProductQueryDto {
   sortOrder?: string;
 }
 
+export class BulkCreateProductDto {
+  @ApiProperty({
+    type: [CreateProductDto],
+    description: 'Array of products to create in bulk',
+  })
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductDto)
+  products: CreateProductDto[];
+}
+
 export class ProductResponseDto {
   @ApiProperty({ example: 'clx_product_id_123' })
   id: string;
