@@ -83,23 +83,15 @@ export async function POST(request: Request): Promise<NextResponse> {
       .replace(/_{2,}/g, '_')
       .toLowerCase();
 
-    // Convert file to base64 for forwarding
-    const buffer = await file.arrayBuffer();
-    const base64Data = Buffer.from(buffer).toString('base64');
+    // Forward the file directly using FormData
+    const forwardFormData = new FormData();
+    forwardFormData.append('file', file);
+    if (folder) forwardFormData.append('folder', folder);
 
     const data = await serverFetch('/storage/upload', {
       method: 'POST',
       token,
-      body: {
-        file: base64Data,
-        filename: sanitizedFilename,
-        originalName,
-        mimeType: file.type,
-        size: file.size,
-        folder,
-        isPublic,
-        fileType
-      }
+      body: forwardFormData
     }) as { url?: string; publicUrl?: string; fileId?: string };
 
     return NextResponse.json({
