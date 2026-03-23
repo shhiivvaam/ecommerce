@@ -52,7 +52,7 @@ const nextConfig = {
                             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
                             "font-src 'self' https://fonts.gstatic.com",
                             "img-src 'self' data: blob: https: *.tile.openstreetmap.org",
-                            "connect-src 'self' http://localhost:* https://127.0.0.1:* https://api.reyva.co.in https://lumberjack.razorpay.com https://nominatim.openstreetmap.org https://api.postalpincode.in",
+                            "connect-src 'self' http://localhost:* https://127.0.0.1:* https://api.reyva.co.in https://lumberjack.razorpay.com https://nominatim.openstreetmap.org https://api.postalpincode.in https://*.amazonaws.com",
                             "frame-src https://api.razorpay.com",
                         ].join('; '),
                     },
