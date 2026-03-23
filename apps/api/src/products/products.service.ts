@@ -279,12 +279,16 @@ export class ProductsService {
         }
 
         const priceStr = getCell('price');
-        const price = priceStr ? parseFloat(priceStr) : 0;
+        let price = priceStr ? parseFloat(priceStr) : 0;
+        if (isNaN(price)) price = 0;
+
         const stockStr = getCell('stock');
-        const stock = stockStr ? parseInt(stockStr, 10) : 0;
+        let stock = stockStr ? parseInt(stockStr, 10) : 0;
+        if (isNaN(stock)) stock = 0;
         const description = getCell('description') || '';
         const discountedStr = getCell('discounted');
-        const discounted = discountedStr ? parseFloat(discountedStr) : undefined;
+        let discounted = discountedStr ? parseFloat(discountedStr) : undefined;
+        if (discounted !== undefined && isNaN(discounted)) discounted = undefined;
         const tagsStr = getCell('tags');
         const tags = tagsStr
           ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean)
